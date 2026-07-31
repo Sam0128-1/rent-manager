@@ -1,0 +1,2926 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="房租统计">
+<meta name="theme-color" content="#5C6DFF">
+<meta name="application-name" content="房租费用统计">
+<!-- 内嵌 SVG 图标，添加到主屏幕时显示 -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%235C6DFF'/%3E%3Ctext x='90' y='115' font-size='80' text-anchor='middle' fill='white'%3E🏠%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%235C6DFF'/%3E%3Ctext x='90' y='115' font-size='80' text-anchor='middle' fill='white'%3E🏠%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="/manifest.json">
+<title>房租费用统计工作台</title>
+<style>
+  /* ===== 左侧楼栋菜单 ===== */
+  :root{
+    --primary:#5C6DFF;--primary-dark:#4B5BF0;--primary-light:#818CF8;
+    --bg:#F7FBFC;--card:#ffffff;--text:#1e293b;--text-light:#64748b;--text-lighter:#94a3b8;
+    --border:#e2e8f0;--success:#22c55e;--success-bg:#dcfce7;--warning:#f59e0b;--warning-bg:#fef9c3;
+    --danger:#ef4444;--danger-bg:#fee2e2;--purple:#7e22ce;--purple-bg:#f3e8ff;
+    --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+    --sidebar-w:200px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  input,textarea,select,button{font-family:inherit}
+
+  /* 侧栏收起态：通过 body.sidebar-collapsed 控制 */
+  body.sidebar-collapsed{--sidebar-w:0px}
+  .sidebar{
+    position:fixed;left:0;top:0;bottom:0;width:200px;z-index:110;
+    background:#fff;display:flex;flex-direction:column;
+    padding:env(safe-area-inset-top) 0 0;
+    box-shadow:2px 0 8px rgba(0,0,0,.08);
+    border-right:1px solid var(--border);
+    transition:transform .3s cubic-bezier(.32,.72,0,1);
+  }
+  body.sidebar-collapsed .sidebar{transform:translateX(-200px)}
+  .sidebar-header{
+    padding:14px 14px 10px;border-bottom:1px solid var(--border);flex-shrink:0;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .sidebar-header-title{font-size:16px;font-weight:600;color:var(--text)}
+  .sidebar-header-btn{
+    width:28px;height:28px;border:none;border-radius:7px;background:#f1f5f9;color:var(--text-light);
+    font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .sidebar-header-btn:active{background:#e2e8f0}
+  .sidebar-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 0}
+  .sb-building{
+    margin:0 8px 8px;border-radius:10px;overflow:hidden;border:1px solid var(--border);
+  }
+  .sb-building.active{border-color:var(--primary);box-shadow:0 0 0 2px rgba(92,109,255,.1)}
+  .sb-building-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 12px;cursor:pointer;background:#f8fafc;
+  }
+  .sb-building.active .sb-building-header{background:#eff6ff}
+  .sb-building-name{font-size:14px;font-weight:600;color:var(--text)}
+  .sb-building-summary{font-size:10px;color:var(--text-light);margin-top:2px}
+  .sb-building-arrow{font-size:11px;color:var(--text-lighter);transition:transform .25s}
+  .sb-building.expanded .sb-building-arrow{transform:rotate(90deg)}
+  .sb-building-body{display:none;padding:4px 8px 8px}
+  .sb-building.expanded .sb-building-body{display:block}
+  .sb-building-head-left{flex:1;min-width:0}
+  .sb-building-edit{
+    width:32px;height:32px;border:none;border-radius:8px;background:transparent;color:var(--text-light);
+    font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    margin-left:4px;transition:background .15s;
+  }
+  .sb-building-edit:active{background:rgba(0,0,0,.08)}
+  .sb-floor-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:7px 8px;border-radius:7px;margin-bottom:3px;background:#fff;
+  }
+  .sb-floor-row:active{background:#f1f5f9}
+  .sb-floor-label{font-size:13px;font-weight:500;color:var(--text);cursor:pointer;flex:1}
+  .sb-floor-ctrl{display:flex;align-items:center;gap:4px}
+  .sb-floor-btn{
+    width:24px;height:24px;border:1px solid var(--border);border-radius:6px;
+    background:#fff;color:var(--text-light);font-size:14px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;line-height:1;
+  }
+  .sb-floor-btn:active{background:#f1f5f9}
+  .sb-floor-edit{
+    width:24px;height:24px;border:1px solid var(--border);border-radius:6px;
+    background:#fff;color:var(--primary);font-size:12px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;line-height:1;
+    margin-left:3px;
+  }
+  .sb-floor-edit:active{background:#eff6ff}
+  .sb-floor-count{font-size:12px;color:var(--text);min-width:28px;text-align:center;font-weight:500}
+  .sb-add-floor{
+    width:100%;padding:7px 0;border:1px dashed var(--border);border-radius:7px;
+    background:transparent;color:var(--text-light);font-size:12px;cursor:pointer;margin-top:4px;
+  }
+  .sb-add-floor:active{background:#f8fafc}
+  .sb-add-building{
+    margin:0 8px;padding:10px 0;border:1px dashed var(--primary);border-radius:10px;
+    background:transparent;color:var(--primary);font-size:13px;font-weight:500;cursor:pointer;
+  }
+  .sb-add-building:active{background:#eff6ff}
+  .sb-bottom{flex-shrink:0;border-top:1px solid var(--border);padding:8px}
+  .sb-archive-btn{
+    width:100%;padding:11px 0;border:none;border-radius:9px;
+    background:var(--warning-bg);color:var(--warning);font-size:14px;font-weight:500;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .sb-archive-btn:active{opacity:.7}
+  .sb-archive-btn .badge{
+    background:var(--warning);color:#fff;font-size:10px;padding:1px 6px;border-radius:8px;
+  }
+
+  /* ===== 顶部标题栏 ===== */
+  .header{
+    position:fixed;top:0;left:var(--sidebar-w);right:0;z-index:100;
+    background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+    color:#fff;padding:env(safe-area-inset-top) 0 0;
+    box-shadow:0 2px 12px rgba(92,109,255,.25);
+    transition:left .3s cubic-bezier(.32,.72,0,1);
+  }
+  .header-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px}
+  .header-title-wrap{flex:1}
+  .header-title{font-size:18px;font-weight:600}
+  .header-subtitle{font-size:12px;opacity:.85;margin-top:1px}
+  .header-actions{display:flex;gap:8px}
+  .header-btn{width:36px;height:36px;border:none;border-radius:10px;background:rgba(255,255,255,.18);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+  .header-btn:active{background:rgba(255,255,255,.3)}
+
+  .search-bar{display:none;padding:0 16px 12px}
+  .search-bar.show{display:block}
+  .search-input-wrap{position:relative}
+  .search-input{width:100%;padding:10px 12px 10px 38px;border:none;border-radius:10px;font-size:15px;background:rgba(255,255,255,.95);color:var(--text)}
+  .search-input::placeholder{color:var(--text-lighter)}
+  .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--text-light)}
+  .search-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:22px;height:22px;border:none;border-radius:50%;background:#e2e8f0;color:var(--text-light);font-size:13px;cursor:pointer;display:none;align-items:center;justify-content:center}
+  .search-clear.show{display:flex}
+
+  .search-results{display:none;padding:0 10px}
+  .search-results.show{display:block}
+  .search-result-item{background:#fff;border-radius:10px;padding:12px;margin-bottom:8px;box-shadow:var(--shadow);cursor:pointer;display:flex;align-items:center;gap:12px}
+  .search-result-item:active{background:#f8fafc}
+  .sr-room{width:44px;height:44px;border-radius:10px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0}
+  .sr-info{flex:1;min-width:0}
+  .sr-name{font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px}
+  .sr-tag{font-size:10px;padding:1px 6px;border-radius:8px;font-weight:400}
+  .sr-detail{font-size:12px;color:var(--text-light);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ===== 主内容区 ===== */
+  .main{padding-top:96px;padding-bottom:24px;padding-left:var(--sidebar-w);height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch;transition:padding-left .3s cubic-bezier(.32,.72,0,1)}
+  .main.searching{padding-top:104px}
+
+  .overview{margin:10px 10px;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+  .overview-title{font-size:13px;color:var(--text-light);margin-bottom:10px;font-weight:500;display:flex;align-items:center;gap:6px}
+  .overview-title::before{content:'';width:3px;height:14px;background:var(--primary);border-radius:2px}
+  .overview-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .overview-item{text-align:center;background:#f8fafc;border-radius:10px;padding:10px 6px}
+  .overview-item.clickable{cursor:pointer;transition:background .15s}
+  .overview-item.clickable:active{background:#f1f5f9}
+  .ov-detail{font-size:11px;color:var(--text-light);text-align:left;padding:6px 8px 0;line-height:1.7;border-top:1px solid var(--border);margin-top:6px}
+  .ov-detail .ovd-row{display:flex;justify-content:space-between}
+  .ov-detail .ovd-label{color:var(--text-lighter)}
+  .ov-detail .ovd-val{font-weight:600}
+  .overview-num{font-size:18px;font-weight:700}
+  .overview-label{font-size:11px;color:var(--text-light);margin-top:2px}
+
+  .floor{background:var(--card);margin:10px 10px;border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+  .floor-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer}
+  .floor-title{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px}
+  .floor-badge{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
+  .floor-info{font-size:12px;color:var(--text-light);display:flex;align-items:center;gap:8px}
+  .floor-arrow{transition:transform .25s;font-size:11px;color:var(--text-lighter)}
+  .floor.expanded .floor-arrow{transform:rotate(90deg)}
+  .floor-body{display:none;padding:4px 12px 12px}
+  .floor.expanded .floor-body{display:block}
+
+  .rooms-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .room-cell{aspect-ratio:.8;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-weight:600;font-size:14px;transition:transform .1s;border:2px solid transparent;position:relative;padding:2px 0}
+  .room-cell:active{transform:scale(.9)}
+  .room-cell .r-num{font-size:15px;font-weight:600;line-height:1.2}
+  .room-cell .r-tenant{font-size:11px;font-weight:500;margin-top:2px;line-height:1.2;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .room-cell .r-arrears{font-size:10px;font-weight:700;color:var(--danger);margin-bottom:1px;line-height:1.2}
+  .room-empty{background:#f0fdf4;color:#15803d;border-color:#bbf7d0}
+  .room-empty .r-tenant{color:#94a3b8}
+  .room-occupied{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+  .room-unpaid{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+  .room-maintenance{background:#fefce8;color:#a16207;border-color:#fde68a}
+
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;opacity:0;transition:opacity .25s}
+  .overlay.show{display:block;opacity:1}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:201;background:var(--bg);border-radius:16px 16px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom)}
+  .sheet.show{transform:translateY(0)}
+  .sheet-handle{width:36px;height:4px;background:#cbd5e1;border-radius:2px;margin:10px auto 0}
+  .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;border-radius:16px 16px 0 0;z-index:5}
+  .sheet-title{font-size:17px;font-weight:600}
+  .sheet-close{width:32px;height:32px;border:none;background:#f1f5f9;border-radius:50%;font-size:20px;color:var(--text-light);cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+  .sheet-body{padding:12px 16px 24px}
+
+  .section{background:var(--card);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+  .section-title{font-size:13px;font-weight:600;color:var(--text-light);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .section-title::before{content:'';width:3px;height:13px;background:var(--primary);border-radius:2px}
+  .section-title .st-action{margin-left:auto;font-size:12px;color:var(--primary);font-weight:500;cursor:pointer}
+
+  .form-row{margin-bottom:10px}
+  .form-row:last-child{margin-bottom:0}
+  .form-row label{display:block;font-size:13px;color:var(--text-light);margin-bottom:4px;font-weight:500}
+  .form-row input,.form-row textarea,.form-row select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:15px;background:#fff;color:var(--text);transition:border-color .15s}
+  .form-row input:focus,.form-row textarea:focus,.form-row select:focus{outline:none;border-color:var(--primary)}
+  .form-row textarea{resize:vertical;min-height:56px}
+  .form-row-2{display:flex;gap:10px}
+  .form-row-2>div{flex:1}
+  .form-row-3{display:flex;gap:8px}
+  .form-row-3>div{flex:1}
+
+  .input-with-btn{display:flex;gap:8px;align-items:stretch}
+  .input-with-btn input{flex:1}
+  .input-icon-btn{flex-shrink:0;width:44px;border:1.5px solid var(--border);border-radius:9px;background:#f8fafc;cursor:pointer;font-size:18px;color:var(--primary);display:flex;align-items:center;justify-content:center;transition:all .15s;position:relative;overflow:hidden}
+  .input-icon-btn:active{background:#e2e8f0}
+  .input-icon-btn.has-img{border-color:var(--primary);background:var(--primary)}
+  .input-icon-btn.has-img .iib-icon{display:none}
+  .input-icon-btn .iib-thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:7px}
+  .input-icon-btn .iib-del{position:absolute;top:-2px;right:-2px;width:18px;height:18px;border-radius:50%;background:var(--danger);color:#fff;border:1.5px #fff solid;font-size:11px;display:none;align-items:center;justify-content:center;z-index:2;line-height:1}
+  .input-icon-btn.has-img .iib-del{display:flex}
+
+  .status-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0}
+  .pill{padding:7px 14px;border-radius:18px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--text-light);transition:all .15s}
+  .pill.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+  .fee-calc{background:#f8fafc;border-radius:10px;padding:12px;margin-top:8px}
+  .fee-calc-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px}
+  .fee-calc-row .fc-label{color:var(--text-light)}
+  .fee-calc-row .fc-value{font-weight:600}
+  .fee-calc-row.total{border-top:1px solid var(--border);margin-top:6px;padding-top:8px;font-size:15px}
+  .fee-calc-row.total .fc-value{color:var(--danger);font-size:17px}
+
+  .month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .month-nav-btn{width:36px;height:36px;border:1.5px solid var(--border);border-radius:9px;background:#fff;cursor:pointer;font-size:14px;color:var(--text-light);display:flex;align-items:center;justify-content:center}
+  .month-nav-btn:active{background:#f1f5f9}
+  .month-nav-current{font-size:16px;font-weight:600}
+  .month-list-item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer}
+  .month-list-item:active{background:#f8fafc}
+  .month-list-item.unpaid{border-left:3px solid var(--danger)}
+  .month-list-item.paid{border-left:3px solid var(--success)}
+  .mli-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .mli-month{font-size:15px;font-weight:600}
+  .mli-total{font-size:15px;font-weight:700;color:var(--danger)}
+  .mli-status{font-size:10px;padding:1px 8px;border-radius:8px;font-weight:500;display:inline-block;margin-top:4px}
+  .mli-status.paid{background:var(--success-bg);color:#15803d}
+  .mli-status.unpaid{background:var(--danger-bg);color:#b91c1c}
+  .mli-detail{font-size:12px;color:var(--text-light);line-height:1.6}
+
+  .archive-item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px}
+  .archive-item:active{background:#f8fafc}
+  .archive-icon{width:36px;height:36px;border-radius:9px;background:var(--text-lighter);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+  .archive-info{flex:1;min-width:0}
+  .archive-name{font-size:14px;font-weight:600}
+  .archive-date{font-size:12px;color:var(--text-light);margin-top:1px}
+
+  .btn-group{display:flex;gap:10px;margin-top:12px}
+  .btn{flex:1;padding:12px 0;border:none;border-radius:10px;font-size:15px;font-weight:500;cursor:pointer;transition:opacity .15s}
+  .btn:active{opacity:.7}
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-danger{background:var(--danger-bg);color:var(--danger)}
+  .btn-secondary{background:#f1f5f9;color:var(--text)}
+  .btn-warn{background:var(--warning-bg);color:var(--warning)}
+  .btn-full{width:100%;padding:11px 0;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;background:var(--primary);color:#fff;margin-top:8px}
+  .btn-full:active{opacity:.7}
+
+  .switch-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0}
+  .switch-label{font-size:14px;font-weight:500}
+  .switch{position:relative;width:44px;height:24px;border-radius:12px;background:#cbd5e1;cursor:pointer;transition:background .2s;flex-shrink:0}
+  .switch.on{background:var(--primary)}
+  .switch::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .switch.on::after{transform:translateX(20px)}
+
+  .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 22px;border-radius:10px;font-size:14px;z-index:999;opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap}
+  .toast.show{opacity:1}
+
+  .img-viewer{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:300;display:none;align-items:center;justify-content:center;cursor:pointer}
+  .img-viewer.show{display:flex}
+  .img-viewer img{max-width:95%;max-height:90vh;border-radius:8px}
+  .img-viewer-close{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;border:none;font-size:22px;cursor:pointer}
+
+  .export-modal,.action-modal,.rate-popover{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:14px;padding:20px;z-index:301;width:85%;max-width:320px;display:none}
+  .export-modal.show,.action-modal.show,.rate-popover.show{display:block}
+  .export-modal-title,.action-modal-title,.rate-popover-title{font-size:16px;font-weight:600;text-align:center;margin-bottom:14px}
+  .export-option,.action-option{display:flex;align-items:center;gap:10px;padding:14px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer}
+  .export-option:active,.action-option:active{background:#f8fafc}
+  .export-option .eo-icon,.action-option .ao-icon{font-size:24px}
+  .export-option .eo-text,.action-option .ao-text{flex:1}
+  .export-option .eo-title,.action-option .ao-text{font-size:14px;font-weight:600}
+  .export-option .eo-desc{font-size:12px;color:var(--text-light)}
+
+  .empty-hint{text-align:center;color:var(--text-lighter);font-size:13px;padding:24px 16px}
+  .info-hint{font-size:12px;color:var(--text-lighter);padding:8px 12px;text-align:center}
+
+  /* 楼栋管理卡片 */
+  .building-mgmt-item{background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:10px}
+  .building-mgmt-item:last-child{margin-bottom:0}
+
+  @media (max-width:360px){
+    .rooms-grid{gap:5px}
+    .room-cell .r-num{font-size:13px}
+    .room-cell .r-tenant{font-size:10px}
+    .room-cell .r-arrears{font-size:9px}
+    .overview-num{font-size:16px}
+  }
+</style>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- 左侧楼栋菜单 -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-header-title">楼栋菜单</div>
+    <button class="sidebar-header-btn" id="btnCollapseSidebar" title="收起菜单">◀</button>
+  </div>
+  <div class="sidebar-body" id="sidebarBody"></div>
+  <button class="sb-add-building" id="btnAddBuilding">+ 添加楼栋</button>
+  <div class="sb-bottom">
+    <button class="sb-archive-btn" id="btnArchiveList">📁 归档记录 <span class="badge" id="archiveBadge" style="display:none">0</span></button>
+  </div>
+</div>
+
+<!-- 顶部 -->
+<div class="header">
+  <div class="header-top">
+    <div class="header-title-wrap" style="display:flex;align-items:center;gap:10px">
+      <button class="header-btn" id="btnOpenSidebar" title="打开楼栋菜单" style="display:none">☰</button>
+      <div>
+        <div class="header-title" id="headerTitle" style="font-size:16px;font-weight:600">房租费用统计工作台</div>
+        <div class="header-subtitle" id="headerBuildingName" style="font-size:13px;opacity:.9;margin-top:1px"></div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="header-btn" id="btnSearch" title="搜索">🔍</button>
+      <button class="header-btn" id="btnSettings" title="设置">⚙</button>
+    </div>
+  </div>
+  <div class="search-bar" id="searchBar">
+    <div class="search-input-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="search" class="search-input" id="searchInput" placeholder="搜索租客姓名 / 身份证号 / 手机号">
+      <button class="search-clear" id="searchClear">×</button>
+    </div>
+  </div>
+</div>
+
+<!-- 主内容 -->
+<div class="main" id="main">
+  <div class="overview">
+    <div class="overview-title" id="overviewTitle">概览</div>
+    <div class="overview-grid" id="overviewGrid">
+      <div class="overview-item"><div class="overview-num" id="ovTotal" style="color:var(--primary)">0</div><div class="overview-label">入住情况</div></div>
+      <div class="overview-item clickable" id="ovMonthWrap"><div class="overview-num" id="ovMonthIncome" style="color:var(--success)">¥0 <span id="ovMonthArrow" style="font-size:11px">▶</span></div><div class="overview-label">月租金(已收)</div><div class="ov-detail" id="ovMonthDetail" style="display:none"></div></div>
+      <div class="overview-item clickable" id="ovYearWrap"><div class="overview-num" id="ovYearIncome" style="color:var(--primary)">¥0 <span id="ovYearArrow" style="font-size:11px">▶</span></div><div class="overview-label">年租金(已收)</div><div class="ov-detail" id="ovYearDetail" style="display:none"></div></div>
+      <div class="overview-item clickable" id="ovArrearsWrap"><div class="overview-num" id="ovArrears" style="color:var(--danger)">¥0</div><div class="overview-label">欠缴租金 ▶</div></div>
+    </div>
+  </div>
+  <div id="floorList"></div>
+  <div id="searchResults" class="search-results"></div>
+</div>
+
+<!-- 房间详情弹层 -->
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><div class="sheet-title" id="sheetTitle">房间详情</div><button class="sheet-close" id="sheetClose">×</button></div>
+  <div class="sheet-body" id="sheetBody"></div>
+</div>
+
+<!-- 设置弹层 -->
+<div class="sheet" id="settingsSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><div class="sheet-title">全局设置</div><button class="sheet-close" id="settingsClose">×</button></div>
+  <div class="sheet-body" id="settingsBody"></div>
+</div>
+
+<!-- 月度录入弹层 -->
+<div class="sheet" id="monthSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><div class="sheet-title" id="monthSheetTitle">录入费用</div><button class="sheet-close" id="monthClose">×</button></div>
+  <div class="sheet-body" id="monthSheetBody"></div>
+</div>
+
+<!-- 导出选择弹窗 -->
+<div class="overlay" id="exportOverlay"></div>
+<div class="export-modal" id="exportModal">
+  <div class="export-modal-title">选择导出格式</div>
+  <div class="export-option" id="exportImg"><span class="eo-icon">🖼️</span><div class="eo-text"><div class="eo-title">导出为图片</div><div class="eo-desc">可分享微信好友或保存相册</div></div></div>
+  <div class="export-option" id="exportCsv"><span class="eo-icon">📊</span><div class="eo-text"><div class="eo-title">导出为CSV表格</div><div class="eo-desc">适合电脑打开查看</div></div></div>
+  <button class="btn btn-secondary btn-full" id="exportCancel" style="margin-top:8px">取消</button>
+</div>
+
+<!-- 归档操作选择弹窗 -->
+<div class="action-modal" id="archiveModal">
+  <div class="action-modal-title">退租归档</div>
+  <div class="action-option" id="archiveDo"><span class="ao-icon">📤</span><div class="ao-text">归档现任租客</div></div>
+  <button class="btn btn-secondary btn-full" id="archiveCancel" style="margin-top:8px">取消</button>
+</div>
+
+<!-- 备份导出格式选择弹窗 -->
+<div class="action-modal" id="backupExportModal">
+  <div class="action-modal-title">选择备份格式</div>
+  <div class="action-option" id="backupJson"><span class="ao-icon">📦</span><div class="ao-text"><div style="font-size:14px;font-weight:600">导出JSON备份</div><div style="font-size:12px;color:var(--text-light)">完整数据，可用于恢复</div></div></div>
+  <div class="action-option" id="backupCsv"><span class="ao-icon">📊</span><div class="ao-text"><div style="font-size:14px;font-weight:600">导出CSV备份表格</div><div style="font-size:12px;color:var(--text-light)">可在Excel/WPS打开编辑</div></div></div>
+  <button class="btn btn-secondary btn-full" id="backupExportCancel" style="margin-top:8px">取消</button>
+</div>
+
+<!-- 清空数据确认弹窗 -->
+<div class="overlay" id="clearOverlay"></div>
+<div class="action-modal" id="clearDataModal" style="max-width:340px;width:90%">
+  <div class="action-modal-title">⚠️ 清空所有数据</div>
+  <div style="font-size:13px;color:var(--danger);text-align:center;margin-bottom:12px;line-height:1.6">
+    此操作将删除所有楼栋、租客、费用和归档记录，<strong>不可恢复</strong>！<br>建议先导出备份。
+  </div>
+  <div class="form-row" style="margin-bottom:10px">
+    <label style="font-size:13px;color:var(--text)">请输入"本人确定清空所有数据"</label>
+    <input type="text" id="clearConfirmInput" placeholder='本人确定清空所有数据' autocomplete="off" style="margin-top:4px">
+  </div>
+  <button class="btn btn-danger btn-full" id="clearConfirmBtn" disabled style="margin-bottom:8px;opacity:.5">请等待 5 秒</button>
+  <button class="btn btn-secondary btn-full" id="clearCancelBtn">取消</button>
+</div>
+
+<!-- 批量导出选择弹窗 -->
+<div class="overlay" id="batchOverlay"></div>
+<div class="sheet" id="batchSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><div class="sheet-title">批量导出</div><button class="sheet-close" id="batchClose">×</button></div>
+  <div class="sheet-body" id="batchBody"></div>
+</div>
+
+<!-- 单价设置弹窗 -->
+<div class="rate-popover" id="ratePopover">
+  <div class="rate-popover-title" id="ratePopoverTitle">设置单价</div>
+  <div class="form-row-2">
+    <div class="form-row"><label id="rpWLabel">水费单价 (元/方)</label><input type="number" id="rpWaterPrice" min="0" step="0.01" placeholder="6"></div>
+    <div class="form-row"><label id="rpELabel">电费单价 (元/度)</label><input type="number" id="rpElecPrice" min="0" step="0.01" placeholder="1.2"></div>
+  </div>
+  <div class="info-hint" id="rpHint">留空则使用全局默认单价</div>
+  <div class="btn-group" style="margin-top:8px">
+    <button class="btn btn-secondary" id="rateReset">重置默认</button>
+    <button class="btn btn-primary" id="rateSave">确定</button>
+  </div>
+</div>
+
+<!-- 楼栋编辑/添加弹窗（名称+楼层数+每层独立房间数） -->
+<div class="rate-popover" id="buildingEditPopover" style="max-height:80vh;overflow-y:auto">
+  <div class="rate-popover-title" id="beTitle">编辑楼栋</div>
+  <div class="form-row"><label>楼栋名称</label><input type="text" id="beName" placeholder="如：A栋" maxlength="20"></div>
+  <div class="form-row-2">
+    <div class="form-row"><label>楼层数 (1-30)</label><input type="number" id="beFloorCount" min="1" max="30" step="1" placeholder="5" value="5"></div>
+    <div class="form-row" style="display:flex;align-items:flex-end"><button class="btn btn-secondary" id="beApplyAll" style="width:100%;padding:10px 0;font-size:13px">统一设置房间数</button></div>
+  </div>
+  <div class="info-hint" id="beHint">每层房间数可单独设置</div>
+  <div id="beFloorList" style="max-height:240px;overflow-y:auto;margin-top:6px"></div>
+  <button class="btn btn-danger btn-full" id="beDelete" style="margin-top:8px;display:none">删除此楼栋</button>
+  <div class="btn-group" style="margin-top:8px">
+    <button class="btn btn-secondary" id="beCancel">取消</button>
+    <button class="btn btn-primary" id="beSave">确定</button>
+  </div>
+</div>
+
+<!-- 图片预览 -->
+<div class="img-viewer" id="imgViewer">
+  <button class="img-viewer-close" id="imgViewerClose">×</button>
+  <img id="imgViewerImg" src="">
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================ 数据层 ============================================================ */
+const STORAGE_KEY='building_workbench_v4';
+const OLD_KEY='building_workbench_v3';
+const STATUS_MAP={
+  empty:{label:'空置',cls:'room-empty',text:'空'},
+  occupied:{label:'已入住',cls:'room-occupied',text:'住'},
+  maintenance:{label:'维修中',cls:'room-maintenance',text:'修'},
+  unpaid:{label:'未缴费',cls:'room-unpaid',text:'欠'}
+};
+
+let state={
+  current:'A',
+  buildings:[
+    {id:'A',name:'A栋',floors:[{rooms:5},{rooms:5},{rooms:5},{rooms:5},{rooms:5}]},
+    {id:'B',name:'B栋',floors:[{rooms:5},{rooms:5},{rooms:5},{rooms:5},{rooms:5}]}
+  ],
+  globalRates:{waterPrice:6,electricPrice:1.2},
+  rooms:{}
+};
+
+function defaultRoom(){
+  return {
+    tenant:'',phone:'',idCard:'',idCardImg:null,moveInDate:'',
+    status:'empty',note:'',fixedRent:'',
+    roomRates:{waterPrice:'',electricPrice:''},
+    deposit:{amount:'',method:'',receiptImg:null},
+    months:{},archived:[]
+  };
+}
+
+function getBuilding(id){
+  return state.buildings.find(b=>b.id===id);
+}
+
+function initRooms(){
+  state.buildings.forEach(b=>{
+    (b.floors||[]).forEach((floor,fIdx)=>{
+      const f=fIdx+1;
+      for(let r=1;r<=floor.rooms;r++){
+        const key=`${b.id}-${f*100+r}`;
+        if(!state.rooms[key]){state.rooms[key]=defaultRoom();}
+        else{
+          const def=defaultRoom();
+          for(const k in def){if(state.rooms[key][k]===undefined)state.rooms[key][k]=def[k];}
+          if(state.rooms[key].idCardFrontImg&&!state.rooms[key].idCardImg)state.rooms[key].idCardImg=state.rooms[key].idCardFrontImg;
+          (state.rooms[key].archived||[]).forEach(a=>{if(a.idCardFrontImg&&!a.idCardImg)a.idCardImg=a.idCardFrontImg;});
+        }
+        // 自动状态修正
+        autoRoomStatus(state.rooms[key]);
+      }
+    });
+  });
+}
+
+function migrateV3(){
+  try{
+    const raw=localStorage.getItem(OLD_KEY);
+    if(!raw)return;
+    const old=JSON.parse(raw);
+    state.current=old.current||'A';
+    state.globalRates=old.globalRates||{waterPrice:6,electricPrice:1.2};
+    state.rooms=old.rooms||{};
+    // v3 buildings 格式为 {floors:5,roomsPerFloor:5}，v4 改为 floors 数组
+    if(old.buildings&&old.buildings.length){
+      state.buildings=old.buildings.map(b=>{
+        const floorsCount=b.floors||5;const rpf=b.roomsPerFloor||5;
+        const floors=[];for(let i=0;i<floorsCount;i++)floors.push({rooms:rpf});
+        return{id:b.id,name:b.name||b.id+'栋',floors};
+      });
+    }
+    initRooms();
+    localStorage.removeItem(OLD_KEY);
+    save();
+  }catch(e){console.warn('migrate failed',e);}
+}
+
+function load(){
+  let loaded=false;
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const d=JSON.parse(raw);
+      state.current=d.current||'A';
+      // 兼容旧v4格式(floors为数字)→新格式(floors为数组)
+      if(d.buildings&&d.buildings.length){
+        state.buildings=d.buildings.map(b=>{
+          if(Array.isArray(b.floors))return b;
+          const fc=b.floors||5,rpf=b.roomsPerFloor||5;
+          const floors=[];for(let i=0;i<fc;i++)floors.push({rooms:rpf});
+          return{id:b.id,name:b.name||b.id+'栋',floors};
+        });
+      }
+      state.globalRates=d.globalRates||{waterPrice:6,electricPrice:1.2};
+      state.rooms=d.rooms||{};
+      loaded=true;
+    }else{
+      // localStorage 为空，尝试从 IndexedDB 恢复
+      console.log('localStorage为空，尝试从IndexedDB恢复...');
+      loadFromIndexedDB().then(idbData=>{
+        if(idbData){
+          try{
+            const d=JSON.parse(idbData);
+            if(d&&d.rooms){
+              state.current=d.current||'A';
+              if(d.buildings&&d.buildings.length){
+                state.buildings=d.buildings.map(b=>{
+                  if(Array.isArray(b.floors))return b;
+                  const fc=b.floors||5,rpf=b.roomsPerFloor||5;
+                  const floors=[];for(let i=0;i<fc;i++)floors.push({rooms:rpf});
+                  return{id:b.id,name:b.name||b.id+'栋',floors};
+                });
+              }
+              state.globalRates=d.globalRates||{waterPrice:6,electricPrice:1.2};
+              state.rooms=d.rooms||{};
+              initRooms();save();renderAll();
+              console.log('已从IndexedDB恢复数据');
+              setTimeout(()=>toast('数据已从本地恢复'),500);
+              return;
+            }
+          }catch(e){console.warn('IndexedDB数据解析失败',e);}
+        }
+        // IndexedDB也没有，尝试从上一版本快照恢复
+        const prev=localStorage.getItem(STORAGE_KEY+'_prev');
+        if(prev){
+          try{
+            const d=JSON.parse(prev);
+            if(d&&d.rooms){
+              state.current=d.current||'A';
+              if(d.buildings&&d.buildings.length){
+                state.buildings=d.buildings.map(b=>{
+                  if(Array.isArray(b.floors))return b;
+                  const fc=b.floors||5,rpf=b.roomsPerFloor||5;
+                  const floors=[];for(let i=0;i<fc;i++)floors.push({rooms:rpf});
+                  return{id:b.id,name:b.name||b.id+'栋',floors};
+                });
+              }
+              state.globalRates=d.globalRates||{waterPrice:6,electricPrice:1.2};
+              state.rooms=d.rooms||{};
+              initRooms();save();renderAll();
+              console.log('已从快照恢复数据');
+              setTimeout(()=>toast('数据已从快照恢复'),500);
+              return;
+            }
+          }catch(e){console.warn('快照恢复失败',e);}
+        }
+        // 都没有，尝试迁移v3
+        migrateV3();
+      }).catch(()=>{migrateV3();});
+      initRooms();
+      return; // 异步恢复中，先返回
+    }
+  }catch(e){
+    console.warn('load failed',e);
+    // localStorage数据损坏，尝试从快照恢复
+    try{
+      const prev=localStorage.getItem(STORAGE_KEY+'_prev');
+      if(prev){
+        const d=JSON.parse(prev);
+        if(d&&d.rooms){
+          state.current=d.current||'A';
+          state.globalRates=d.globalRates||{waterPrice:6,electricPrice:1.2};
+          state.rooms=d.rooms||{};
+          if(d.buildings&&d.buildings.length){
+            state.buildings=d.buildings.map(b=>{
+              if(Array.isArray(b.floors))return b;
+              const fc=b.floors||5,rpf=b.roomsPerFloor||5;
+              const floors=[];for(let i=0;i<fc;i++)floors.push({rooms:rpf});
+              return{id:b.id,name:b.name||b.id+'栋',floors};
+            });
+          }
+          loaded=true;
+          console.log('数据损坏，已从快照恢复');
+          setTimeout(()=>toast('检测到数据异常，已自动恢复'),500);
+        }
+      }
+    }catch(e2){console.warn('snapshot restore also failed',e2);}
+  }
+  if(!loaded&&!state.rooms.length){migrateV3();}
+  initRooms();
+}
+function save(){
+  try{
+    const json=JSON.stringify(state);
+    // 1. 主存储：localStorage
+    localStorage.setItem(STORAGE_KEY,json);
+    // 2. 辅助存储：上一版本快照（用于意外损坏时恢复）
+    try{localStorage.setItem(STORAGE_KEY+'_prev',localStorage.getItem(STORAGE_KEY+'_curr')||json);}catch(e){}
+    try{localStorage.setItem(STORAGE_KEY+'_curr',json);}catch(e){}
+    // 3. 异步写入 IndexedDB（防清缓存丢失，容量更大）
+    saveToIndexedDB(json);
+    // 4. 记录最后保存时间
+    localStorage.setItem(STORAGE_KEY+'_lastSave',Date.now().toString());
+    // 5. 存储容量监控
+    checkStorageUsage();
+  }catch(e){
+    console.warn('save failed',e);
+    toast('存储空间不足，建议导出备份后清理旧数据');
+  }
+}
+
+/* ===== IndexedDB 双存储（localStorage 的补充，容量更大、不易被清） ===== */
+let _idb=null;
+function openIDB(){
+  return new Promise((resolve,reject)=>{
+    if(!window.indexedDB){reject('no IndexedDB');return;}
+    if(_idb){resolve(_idb);return;}
+    const req=indexedDB.open('building_workbench_db',1);
+    req.onupgradeneeded=(e)=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('kv')){
+        db.createObjectStore('kv');
+      }
+    };
+    req.onsuccess=(e)=>{_idb=e.target.result;resolve(_idb);};
+    req.onerror=()=>reject('IndexedDB open failed');
+  });
+}
+function saveToIndexedDB(json){
+  openIDB().then(db=>{
+    try{
+      const tx=db.transaction('kv','readwrite');
+      tx.objectStore('kv').put(json,'state');
+      tx.objectStore('kv').put(Date.now().toString(),'lastSave');
+      tx.oncomplete=()=>{};
+      tx.onerror=()=>console.warn('IDB save error');
+    }catch(e){console.warn('IDB save exception',e);}
+  }).catch(()=>{});
+}
+function loadFromIndexedDB(){
+  return new Promise((resolve)=>{
+    openIDB().then(db=>{
+      try{
+        const tx=db.transaction('kv','readonly');
+        const req=tx.objectStore('kv').get('state');
+        req.onsuccess=()=>resolve(req.result||null);
+        req.onerror=()=>resolve(null);
+      }catch(e){resolve(null);}
+    }).catch(()=>resolve(null));
+  });
+}
+
+/* ===== 存储容量监控 ===== */
+function checkStorageUsage(){
+  try{
+    const curr=localStorage.getItem(STORAGE_KEY+'_curr')||'';
+    const sizeMB=(curr.length/1024/1024).toFixed(2);
+    if(parseFloat(sizeMB)>4){ // 超过4MB警告（localStorage通常5-10MB上限）
+      console.warn('存储数据较大:',sizeMB,'MB');
+    }
+  }catch(e){}
+}
+
+/* ===== 获取最后保存时间 ===== */
+function getLastSaveTime(){
+  const t=localStorage.getItem(STORAGE_KEY+'_lastSave');
+  return t?parseInt(t):0;
+}
+function getLastSaveText(){
+  const t=getLastSaveTime();
+  if(!t)return '从未保存';
+  const diff=Date.now()-t;
+  if(diff<60000)return '刚刚保存';
+  if(diff<3600000)return Math.floor(diff/60000)+'分钟前保存';
+  if(diff<86400000)return Math.floor(diff/3600000)+'小时前保存';
+  return Math.floor(diff/86400000)+'天前保存';
+}
+/* ===== 获取上次备份时间 ===== */
+function getLastBackupTime(){
+  const t=localStorage.getItem(STORAGE_KEY+'_lastBackup');
+  return t?parseInt(t):0;
+}
+function setLastBackupTime(){
+  localStorage.setItem(STORAGE_KEY+'_lastBackup',Date.now().toString());
+}
+function shouldRemindBackup(){
+  const t=getLastBackupTime();
+  if(!t)return true; // 从未备份
+  const days=(Date.now()-t)/86400000;
+  return days>=7; // 超过7天未备份
+}
+
+/* ============================================================ 工具 ============================================================ */
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function val(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+function num(v){const n=parseFloat(v);return isNaN(n)?0:n;}
+function money(n){return '¥'+(num(n)).toFixed(2);}
+function currentYearMonth(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function formatYM(ym){if(!ym)return '';const parts=String(ym).split('-');if(parts.length<2)return ym;const y=parts[0];const m=parseInt(parts[1]);if(isNaN(m))return ym;return y+'年'+m+'月';}
+function monthKey(y,m){return y+'-'+String(m).padStart(2,'0');}
+
+function getRoomRates(room){
+  const wp=room.roomRates.waterPrice?num(room.roomRates.waterPrice):num(state.globalRates.waterPrice);
+  const ep=room.roomRates.electricPrice?num(room.roomRates.electricPrice):num(state.globalRates.electricPrice);
+  return{waterPrice:wp,electricPrice:ep};
+}
+
+function getRoomDisplayStatus(room){
+  if(room.status==='empty'||room.status==='maintenance')return room.status;
+  const ym=currentYearMonth();
+  const md=room.months[ym];
+  if(md&&!md.paid&&calcMonthFee(room,md).total>0)return'unpaid';
+  if(room.status==='occupied')return'occupied';
+  if(room.status==='unpaid')return'unpaid';
+  return room.status;
+}
+
+function calcMonthFee(room,monthData){
+  if(!monthData)return{waterUsed:0,waterFee:0,elecUsed:0,elecFee:0,rent:0,total:0};
+  const rates=getRoomRates(room);
+  const wUsed=num(monthData.waterCurr)-num(monthData.waterPrev);
+  const eUsed=num(monthData.electricCurr)-num(monthData.electricPrev);
+  const waterFee=(wUsed>0?wUsed:0)*rates.waterPrice;
+  const elecFee=(eUsed>0?eUsed:0)*rates.electricPrice;
+  const rent=num(monthData.rent);
+  return{waterUsed:wUsed>0?wUsed:0,waterFee,elecUsed:eUsed>0?eUsed:0,elecFee,rent,total:rent+waterFee+elecFee};
+}
+
+let toastTimer;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1800);}
+
+/* ============================================================ 图片 ============================================================ */
+function compressImage(file,cb,maxW,quality){
+  maxW=maxW||800;quality=quality||0.7;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const img=new Image();
+    img.onload=function(){
+      let w=img.width,h=img.height;
+      if(w>maxW){h=h*maxW/w;w=maxW;}
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      cb(canvas.toDataURL('image/jpeg',quality));
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function showImageViewer(src){document.getElementById('imgViewerImg').src=src;document.getElementById('imgViewer').classList.add('show');}
+
+/* ============================================================ Web Share API ============================================================ */
+// 通用文件分享：优先 navigator.share({files})，失败再降级下载
+// 注意：必须在用户手势的同步上下文里调用，否则移动端会拒绝
+// 对于 CSV 等微信不支持的类型，仍会弹出系统分享面板，用户可选择保存到文件、发到其他App等
+async function shareFile(blob,filename,mimeType,textTitle){
+  const title=textTitle||'水电费明细';
+  // 1. 优先尝试 Web Share API 分享文件（弹出系统分享面板，用户可选择微信/保存到文件/其他App）
+  if(navigator.share){
+    try{
+      const file=new File([blob],filename,{type:mimeType});
+      await navigator.share({files:[file],title,text:title});
+      return true;
+    }catch(e){
+      // AbortError 表示用户主动取消分享面板，不降级
+      if(e&&e.name==='AbortError')return true;
+      // 其它错误（如 NotAllowedError、NotSupportedError）继续降级
+    }
+  }
+  // 2. 降级：尝试用 share 不带 files（仅文本），让用户至少能看到分享面板
+  if(navigator.share){
+    try{
+      await navigator.share({title,text:title+'\n（请在分享面板选择"保存到文件"或其它应用）'});
+      return true;
+    }catch(e){
+      if(e&&e.name==='AbortError')return true;
+    }
+  }
+  // 3. 最终降级：直接下载文件
+  const link=document.createElement('a');
+  link.download=filename;
+  link.href=URL.createObjectURL(blob);
+  link.click();
+  return false;
+}
+
+// 分享图片：canvas → blob → shareFile（图片是微信最支持的分享类型）
+async function shareImage(canvas,filename,title){
+  return new Promise(resolve=>{
+    canvas.toBlob(async(blob)=>{
+      const shared=await shareFile(blob,filename,'image/png',title);
+      resolve(shared);
+    },'image/png');
+  });
+}
+
+// 下载文件（不尝试分享，直接下载）
+function downloadFile(blob,filename){
+  const link=document.createElement('a');
+  link.download=filename;
+  link.href=URL.createObjectURL(blob);
+  link.click();
+}
+
+/* ============================================================ 左侧楼栋导航 ============================================================ */
+function renderSidebar(){
+  const container=document.getElementById('sidebarBody');
+  container.innerHTML=state.buildings.map(b=>{
+    const isActive=state.current===b.id;
+    // 统计该栋信息
+    let totalRooms=0,occRooms=0,arrearsCount=0;
+    (b.floors||[]).forEach((floor,fIdx)=>{
+      const f=fIdx+1;
+      for(let r=1;r<=floor.rooms;r++){
+        const room=state.rooms[`${b.id}-${f*100+r}`];
+        if(room){
+          totalRooms++;
+          if(room.status!=='empty'&&room.status!=='maintenance')occRooms++;
+          const ds=getRoomDisplayStatus(room);
+          if(ds==='unpaid')arrearsCount++;
+        }
+      }
+    });
+    return `<div class="sb-building ${isActive?'active':''}" data-building="${b.id}">
+      <div class="sb-building-header" data-building="${b.id}">
+        <div class="sb-building-head-left">
+          <div class="sb-building-name">${esc(b.name)}</div>
+          <div class="sb-building-summary">共${totalRooms}间 · 已住${occRooms} · 欠费${arrearsCount}</div>
+        </div>
+        <button class="sb-building-edit" data-edit-building="${b.id}" title="编辑楼栋">✎</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 楼栋点击：选中该栋并自动收起侧栏
+  container.querySelectorAll('.sb-building-header').forEach(h=>{
+    h.addEventListener('click',(e)=>{
+      if(e.target.closest('.sb-building-edit'))return;
+      const bid=h.dataset.building;
+      if(state.current!==bid){
+        state.current=bid;save();
+        renderSidebar();renderAll();
+      }
+      // 选中后自动收起侧栏
+      collapseSidebar();
+    });
+  });
+  // 楼栋编辑按钮
+  container.querySelectorAll('[data-edit-building]').forEach(btn=>{
+    btn.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      openBuildingEdit(btn.dataset.editBuilding);
+    });
+  });
+
+  // 更新归档badge
+  updateArchiveBadge();
+  // 更新标题：楼栋名（大）+ 房租费用统计（小）
+  const b=getBuilding(state.current);
+  document.getElementById('headerBuildingName').textContent=b?b.name:state.current;
+  document.getElementById('headerTitle').textContent='房租费用统计';
+}
+
+/* ===== 侧栏收起/展开 ===== */
+function collapseSidebar(){
+  document.body.classList.add('sidebar-collapsed');
+  document.getElementById('btnOpenSidebar').style.display='flex';
+}
+function expandSidebar(){
+  document.body.classList.remove('sidebar-collapsed');
+  document.getElementById('btnOpenSidebar').style.display='none';
+}
+
+/* ===== 弹层下滑关闭手势 ===== */
+function enableSwipeToClose(sheetEl,closeFn){
+  if(!sheetEl)return;
+  let startY=0,startTop=0,dragging=false;
+  const handle=sheetEl.querySelector('.sheet-handle');
+  const target=handle||sheetEl;
+  target.addEventListener('touchstart',e=>{
+    if(!sheetEl.classList.contains('show'))return;
+    startY=e.touches[0].clientY;startTop=sheetEl.offsetTop;dragging=true;
+  },{passive:true});
+  target.addEventListener('touchmove',e=>{
+    if(!dragging)return;
+    const dy=e.touches[0].clientY-startY;
+    if(dy>0){sheetEl.style.transform='translateY('+dy+'px)';sheetEl.style.transition='none';}
+  },{passive:true});
+  target.addEventListener('touchend',e=>{
+    if(!dragging)return;dragging=false;
+    const dy=e.changedTouches[0].clientY-startY;
+    sheetEl.style.transition='';sheetEl.style.transform='';
+    if(dy>80){closeFn();}
+  },{passive:true});
+}
+
+function updateArchiveBadge(){
+  let totalArchived=0;
+  for(const key in state.rooms){
+    totalArchived+=(state.rooms[key].archived||[]).length;
+  }
+  const badge=document.getElementById('archiveBadge');
+  if(badge){
+    if(totalArchived>0){badge.textContent=totalArchived;badge.style.display='flex';}
+    else{badge.style.display='none';}
+  }
+}
+
+/* ============================================================ 首页渲染 ============================================================ */
+function renderOverview(){
+  const b=getBuilding(state.current);
+  if(!b)return;
+  const bid=b.id;
+  let total=0,occ=0,monthIncome=0,yearIncome=0,arrears=0;
+  let mRent=0,mWater=0,mElec=0,yRent=0,yWater=0,yElec=0;
+  const ym=currentYearMonth();
+  const curYear=ym.split('-')[0];
+  const arrearsList=[];
+  (b.floors||[]).forEach((floor,fIdx)=>{
+    const f=fIdx+1;
+    for(let r=1;r<=floor.rooms;r++){
+      const room=state.rooms[`${bid}-${f*100+r}`];
+      if(!room)continue;
+      total++;
+      if(room.status!=='empty'&&room.status!=='maintenance')occ++;
+      // 当前租客的费用
+      const md=room.months[ym];
+      if(md&&md.paid){const c=calcMonthFee(room,md);monthIncome+=c.total;mRent+=c.rent;mWater+=c.waterFee;mElec+=c.elecFee;}
+      for(const mym in room.months){
+        if(mym.startsWith(curYear)&&room.months[mym].paid){const c=calcMonthFee(room,room.months[mym]);yearIncome+=c.total;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;}
+      }
+      for(const mym in room.months){
+        if(mym.startsWith(curYear)&&!room.months[mym].paid){
+          const calc=calcMonthFee(room,room.months[mym]);
+          if(calc.total>0){arrears+=calc.total;arrearsList.push({key:`${bid}-${f*100+r}`,num2:f*100+r,ym:mym,tenant:room.tenant,calc});}
+        }
+      }
+      // 归档租客的已缴费用也要统计（租客虽然退租了，但费用是缴了的）
+      (room.archived||[]).forEach(a=>{
+        const archMd=a.months?a.months[ym]:null;
+        if(archMd&&archMd.paid){
+          // 用归档时保存的单价计算
+          const archRoom={roomRates:a.roomRates||{},months:{}};
+          const c=calcMonthFee(archRoom,archMd);
+          monthIncome+=c.total;mRent+=c.rent;mWater+=c.waterFee;mElec+=c.elecFee;
+        }
+        if(a.months){
+          for(const mym in a.months){
+            if(mym.startsWith(curYear)&&a.months[mym].paid){
+              const archRoom={roomRates:a.roomRates||{},months:{}};
+              const c=calcMonthFee(archRoom,a.months[mym]);
+              yearIncome+=c.total;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;
+            }
+          }
+        }
+      });
+    }
+  });
+  document.getElementById('overviewTitle').textContent=b.name+' · 概览';
+  document.getElementById('ovTotal').textContent=occ+'/'+total;
+  document.getElementById('ovMonthIncome').innerHTML='¥'+monthIncome+' <span id="ovMonthArrow" style="font-size:11px">▶</span>';
+  document.getElementById('ovYearIncome').innerHTML='¥'+yearIncome+' <span id="ovYearArrow" style="font-size:11px">▶</span>';
+  document.getElementById('ovArrears').textContent='¥'+arrears;
+  document.getElementById('ovMonthDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${mRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${mWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${mElec.toFixed(2)}</span></div>`;
+  document.getElementById('ovYearDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${yRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${yWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${yElec.toFixed(2)}</span></div>`;
+  // 绑定展开/收起
+  const mw=document.getElementById('ovMonthWrap');const nw=mw.cloneNode(true);mw.parentNode.replaceChild(nw,mw);
+  nw.addEventListener('click',()=>{const d=document.getElementById('ovMonthDetail');const a=document.getElementById('ovMonthArrow');d.style.display=d.style.display==='none'?'block':'none';a.textContent=d.style.display==='none'?'▶':'▼';});
+  const yw=document.getElementById('ovYearWrap');const nyw=yw.cloneNode(true);yw.parentNode.replaceChild(nyw,yw);
+  nyw.addEventListener('click',()=>{const d=document.getElementById('ovYearDetail');const a=document.getElementById('ovYearArrow');d.style.display=d.style.display==='none'?'block':'none';a.textContent=d.style.display==='none'?'▶':'▼';});
+  const wrap=document.getElementById('ovArrearsWrap');
+  const newWrap=wrap.cloneNode(true);
+  wrap.parentNode.replaceChild(newWrap,wrap);
+  if(arrearsList.length>0){
+    newWrap.addEventListener('click',()=>showArrearsDetail(arrearsList,b.name));
+  }
+}
+
+function showArrearsDetail(list,bname){
+  const body=document.getElementById('sheetBody');
+  document.getElementById('sheetTitle').textContent=bname+' · 欠缴明细';
+  body.innerHTML=`
+    <div class="section">
+      <div class="section-title">欠缴租金明细</div>
+      ${list.map(item=>`
+        <div class="month-list-item unpaid" style="cursor:pointer" data-room="${item.key}">
+          <div class="mli-header"><span class="mli-month">${item.num2}房 · ${item.tenant||'未命名'}</span><span class="mli-status unpaid">${formatYM(item.ym)}</span></div>
+          <div class="mli-detail">租金${money(item.calc.rent)} · 水费${money(item.calc.waterFee)} · 电费${money(item.calc.elecFee)}</div>
+          <div class="mli-total">合计：${money(item.calc.total)}</div>
+        </div>
+      `).join('')}
+      <div class="fee-calc" style="margin-top:8px"><div class="fee-calc-row total"><span class="fc-label">欠缴总计</span><span class="fc-value">${money(list.reduce((s,i)=>s+i.calc.total,0))}</span></div></div>
+    </div>
+    <div class="btn-group"><button class="btn btn-primary" id="btnArrearsBack">关闭</button></div>
+  `;
+  body.querySelectorAll('.month-list-item').forEach(item=>item.addEventListener('click',()=>openRoom(item.dataset.room)));
+  document.getElementById('btnArrearsBack').addEventListener('click',closeSheet);
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+}
+
+function renderFloors(){
+  const b=getBuilding(state.current);
+  if(!b)return;
+  const list=document.getElementById('floorList');
+  list.innerHTML='';
+  const ym=currentYearMonth();
+  const floorsCount=(b.floors||[]).length;
+  for(let fIdx=floorsCount-1;fIdx>=0;fIdx--){
+    const f=fIdx+1;
+    const floor=b.floors[fIdx];
+    let occCount=0,totalCount=0;
+    const rooms=[];
+    for(let r=1;r<=floor.rooms;r++){
+      const num2=f*100+r;
+      const room=state.rooms[`${b.id}-${num2}`];
+      if(!room)continue;
+      rooms.push({num:num2,room});
+      totalCount++;
+      if(room.status!=='empty'&&room.status!=='maintenance')occCount++;
+    }
+    const floorEl=document.createElement('div');
+    floorEl.className='floor'+(f===1?' expanded':'');
+    floorEl.innerHTML=`
+      <div class="floor-header">
+        <div class="floor-title"><span class="floor-badge">${f}F</span><span>${f} 楼</span></div>
+        <div class="floor-info">${occCount}/${totalCount} 入住 <span class="floor-arrow">▶</span></div>
+      </div>
+      <div class="floor-body">
+        <div class="rooms-grid">
+          ${rooms.map(({num:num2,room})=>{
+            const dispStatus=getRoomDisplayStatus(room);
+            const s=STATUS_MAP[dispStatus]||STATUS_MAP.empty;
+            // 计算该房间所有未缴费月份的合计欠费
+            let arrearsTotal=0;
+            for(const mym in room.months){
+              if(!room.months[mym].paid){
+                const c=calcMonthFee(room,room.months[mym]);
+                if(c.total>0)arrearsTotal+=c.total;
+              }
+            }
+            // 显示租客姓名，空置显示"空"
+            const tenantName=room.tenant||'';
+            const displayName=tenantName||'空';
+            // 限制姓名显示长度（超过3个字截断）
+            const shortName=displayName.length>3?displayName.slice(0,3):displayName;
+            return `<div class="room-cell ${s.cls}" data-room="${b.id}-${num2}">
+              <span class="r-num">${num2}</span>
+              ${arrearsTotal>0?`<span class="r-arrears">¥${arrearsTotal.toFixed(0)}</span>`:''}
+              <span class="r-tenant">${esc(shortName)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+    floorEl.querySelector('.floor-header').addEventListener('click',()=>floorEl.classList.toggle('expanded'));
+    floorEl.querySelectorAll('.room-cell').forEach(cell=>cell.addEventListener('click',()=>openRoom(cell.dataset.room)));
+    list.appendChild(floorEl);
+  }
+}
+
+function renderAll(){renderSidebar();renderOverview();renderFloors();}
+
+/* ============================================================ 搜索 ============================================================ */
+function doSearch(keyword){
+  const results=[];const kw=keyword.toLowerCase().trim();
+  if(!kw)return results;
+  for(const key in state.rooms){
+    const room=state.rooms[key];
+    if(room.tenant||room.phone||room.idCard){
+      if(room.tenant.toLowerCase().includes(kw)||(room.phone||'').includes(kw)||(room.idCard||'').toLowerCase().includes(kw)){
+        results.push({key,tenant:room.tenant,phone:room.phone,idCard:room.idCard,status:room.status,archived:false});
+      }
+    }
+    (room.archived||[]).forEach((a,i)=>{
+      if((a.tenant||'').toLowerCase().includes(kw)||(a.phone||'').includes(kw)||(a.idCard||'').toLowerCase().includes(kw)){
+        results.push({key,tenant:a.tenant,phone:a.phone,idCard:a.idCard,status:'archived',archived:true,archiveIdx:i});
+      }
+    });
+  }
+  return results;
+}
+function renderSearchResults(keyword){
+  const container=document.getElementById('searchResults');
+  const floorList=document.getElementById('floorList');
+  const overview=document.querySelector('.overview');
+  if(!keyword.trim()){
+    container.classList.remove('show');container.innerHTML='';
+    floorList.style.display='';overview.style.display='';
+    document.getElementById('main').classList.remove('searching');
+    return;
+  }
+  document.getElementById('main').classList.add('searching');
+  floorList.style.display='none';overview.style.display='none';
+  container.classList.add('show');
+  const results=doSearch(keyword);
+  if(results.length===0){container.innerHTML='<div class="empty-hint">未找到匹配的租客</div>';return;}
+  container.innerHTML=results.map(r=>{
+    const s=r.archived?{label:'已归档'}:(STATUS_MAP[r.status]||{label:''});
+    return `<div class="search-result-item" data-room="${r.key}" ${r.archived?`data-archive="${r.archiveIdx}"`:''}>
+      <div class="sr-room">${r.key.replace('-','')}</div>
+      <div class="sr-info">
+        <div class="sr-name">${esc(r.tenant)||'未命名'}<span class="sr-tag" style="background:${r.archived?'#cbd5e1':'var(--primary)'};color:#fff">${s.label}</span></div>
+        <div class="sr-detail">${r.phone||'无电话'} · ${r.idCard||'无身份证'}</div>
+      </div>
+    </div>`;
+  }).join('');
+  container.querySelectorAll('.search-result-item').forEach(item=>{
+    item.addEventListener('click',()=>{
+      const roomKey=item.dataset.room;const archiveIdx=item.dataset.archive;
+      closeSearch();openRoom(roomKey,archiveIdx!==undefined?parseInt(archiveIdx):null);
+    });
+  });
+}
+function openSearch(){document.getElementById('searchBar').classList.add('show');document.getElementById('main').classList.add('searching');setTimeout(()=>document.getElementById('searchInput').focus(),100);}
+function closeSearch(){document.getElementById('searchBar').classList.remove('show');document.getElementById('searchInput').value='';document.getElementById('searchClear').classList.remove('show');renderSearchResults('');}
+
+/* ============================================================ 房间详情 ============================================================ */
+let currentRoomKey=null,currentArchiveIdx=null;
+
+function openRoom(key,archiveIdx){
+  currentRoomKey=key;
+  currentArchiveIdx=(archiveIdx===undefined||archiveIdx===null)?null:archiveIdx;
+  if(currentArchiveIdx!==null){showArchivedTenant(key,currentArchiveIdx);return;}
+  const room=state.rooms[key];
+  const[b,num]=key.split('-');
+  const bld=getBuilding(b);
+  document.getElementById('sheetTitle').textContent=`${bld?bld.name:(b+'栋')} ${num} 房间`;
+  const body=document.getElementById('sheetBody');
+
+  body.innerHTML=`
+    <div class="section">
+      <div class="section-title">房间状态</div>
+      <div class="status-pills">
+        ${Object.entries(STATUS_MAP).map(([k,v])=>`<div class="pill ${room.status===k?'active':''}" data-status="${k}">${v.label}</div>`).join('')}
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">租客信息</div>
+      <div class="form-row-2">
+        <div class="form-row"><label>住户姓名</label><input type="text" id="fTenant" value="${esc(room.tenant)}" placeholder="输入姓名"></div>
+        <div class="form-row"><label>联系电话</label><input type="tel" id="fPhone" value="${esc(room.phone)}" placeholder="手机号"></div>
+      </div>
+      <div class="form-row">
+        <label>身份证号</label>
+        <div class="input-with-btn">
+          <button class="input-icon-btn ${room.idCardImg?'has-img':''}" id="idCardBtn" type="button"><img class="iib-thumb" src="${room.idCardImg||''}" alt=""><span class="iib-icon">🪪</span><span class="iib-del" id="idCardDel">×</span></button>
+          <input type="text" id="fIdCard" value="${esc(room.idCard)}" placeholder="18位身份证号" maxlength="18">
+          <button class="input-icon-btn" id="idScanBtn" type="button" title="扫描识别" style="width:44px;font-size:16px"><span class="iib-icon">📷</span></button>
+        </div>
+        <input type="file" accept="image/*" id="idCardInput" style="display:none">
+        <input type="file" accept="image/*" capture="environment" id="idScanInput" style="display:none">
+      </div>
+      <div class="form-row"><label>入住日期</label><input type="date" id="fDate" value="${esc(room.moveInDate)}"></div>
+      <div class="form-row"><label>固定月租金 (¥)</label><input type="number" id="fFixedRent" value="${esc(room.fixedRent)}" placeholder="0" min="0" step="0.01"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">押金</div>
+      <div class="form-row-3">
+        <div class="form-row"><label>金额 (¥)</label><input type="number" id="fDeposit" value="${esc(room.deposit.amount)}" placeholder="0" min="0" step="0.01"></div>
+        <div class="form-row"><label>支付方式</label><input type="text" id="fDepositMethod" value="${esc(room.deposit.method)}" placeholder="微信/现金"></div>
+        <div class="form-row"><label>凭证</label>
+          <button class="input-icon-btn ${room.deposit.receiptImg?'has-img':''}" id="receiptBtn" type="button" style="width:100%;height:42px"><img class="iib-thumb" src="${room.deposit.receiptImg||''}" alt=""><span class="iib-icon">🧾</span><span class="iib-del" id="receiptDel">×</span></button>
+        </div>
+      </div>
+      <input type="file" accept="image/*" id="receiptInput" style="display:none">
+    </div>
+    <div class="section">
+      <div class="section-title">月度费用记录 <span class="st-action" id="btnExport">导出</span></div>
+      <div id="monthList"></div>
+      <button class="btn-full" id="btnAddMonth">+ 录入本月费用</button>
+    </div>
+    <div class="section">
+      <div class="section-title">备注</div>
+      <div class="form-row"><textarea id="fNote" placeholder="维修记录、特殊事项...">${esc(room.note)}</textarea></div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-warn" id="btnArchive">退租归档</button>
+      <button class="btn btn-primary" id="btnSave">保存</button>
+    </div>
+  `;
+  renderMonthList(key);
+  bindRoomEvents(key);
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+}
+
+function bindRoomEvents(key){
+  const room=state.rooms[key];
+  const body=document.getElementById('sheetBody');
+  body.querySelectorAll('.pill').forEach(p=>p.addEventListener('click',()=>{body.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');}));
+
+  const idCardBtn=document.getElementById('idCardBtn');
+  const idCardInput=document.getElementById('idCardInput');
+  idCardBtn.addEventListener('click',(e)=>{if(e.target.id==='idCardDel'){e.stopPropagation();return;}if(room.idCardImg){showImageViewer(room.idCardImg);return;}idCardInput.click();});
+  idCardInput.addEventListener('change',()=>{if(idCardInput.files&&idCardInput.files[0]){compressImage(idCardInput.files[0],(b64)=>{room.idCardImg=b64;save();idCardBtn.classList.add('has-img');idCardBtn.querySelector('.iib-thumb').src=b64;toast('上传成功');});}});
+  document.getElementById('idCardDel').addEventListener('click',(e)=>{e.stopPropagation();if(!confirm('删除身份证照片？'))return;room.idCardImg=null;save();idCardBtn.classList.remove('has-img');idCardBtn.querySelector('.iib-thumb').src='';});
+
+  const idScanBtn=document.getElementById('idScanBtn');
+  const idScanInput=document.getElementById('idScanInput');
+  idScanBtn.addEventListener('click',()=>idScanInput.click());
+  idScanInput.addEventListener('change',()=>{if(idScanInput.files&&idScanInput.files[0]){toast('正在识别...');compressImage(idScanInput.files[0],(b64)=>{room.idCardImg=b64;save();idCardBtn.classList.add('has-img');idCardBtn.querySelector('.iib-thumb').src=b64;recognizeIdCard(b64,(idNum)=>{if(idNum){document.getElementById('fIdCard').value=idNum;toast('识别成功：'+idNum);}else{toast('未识别到身份证号，请手动输入');}});});}});
+  const fIdCard=document.getElementById('fIdCard');
+  fIdCard.addEventListener('input',()=>{let v=fIdCard.value.toUpperCase().replace(/[^0-9X]/g,'');if(v.length>18)v=v.slice(0,18);fIdCard.value=v;});
+
+  const receiptBtn=document.getElementById('receiptBtn');
+  const receiptInput=document.getElementById('receiptInput');
+  function triggerReceiptUpload(){if(room.deposit.receiptImg){showImageViewer(room.deposit.receiptImg);return;}receiptInput.click();}
+  receiptBtn.addEventListener('click',(e)=>{if(e.target.id==='receiptDel'){e.stopPropagation();return;}triggerReceiptUpload();});
+  receiptInput.addEventListener('change',()=>{if(receiptInput.files&&receiptInput.files[0]){compressImage(receiptInput.files[0],(b64)=>{room.deposit.receiptImg=b64;save();receiptBtn.classList.add('has-img');receiptBtn.querySelector('.iib-thumb').src=b64;toast('上传成功');});}});
+  document.getElementById('receiptDel').addEventListener('click',(e)=>{e.stopPropagation();if(!confirm('删除押金单照片？'))return;room.deposit.receiptImg=null;save();receiptBtn.classList.remove('has-img');receiptBtn.querySelector('.iib-thumb').src='';});
+
+  document.getElementById('btnAddMonth').addEventListener('click',()=>openMonthEdit(key,null));
+  document.getElementById('btnExport').addEventListener('click',()=>showExportModal(key));
+  document.getElementById('btnArchive').addEventListener('click',()=>doArchiveTenant(key));
+  document.getElementById('btnSave').addEventListener('click',()=>saveRoom(key));
+
+  // 自动保存（输入即保存，不关闭不提示）
+  let autoSaveTimer;
+  function autoSaveRoom(){
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer=setTimeout(()=>{
+      const r=state.rooms[key];if(!r)return;
+      r.tenant=val('fTenant');r.phone=val('fPhone');r.idCard=val('fIdCard');r.moveInDate=val('fDate');
+      r.note=val('fNote');r.fixedRent=val('fFixedRent');
+      const ap=document.querySelector('.pill.active');if(ap)r.status=ap.dataset.status;
+      autoRoomStatus(r);
+      r.deposit.amount=val('fDeposit');r.deposit.method=val('fDepositMethod');
+      save();renderAll();
+    },500);
+  }
+  ['fTenant','fPhone','fIdCard','fDate','fFixedRent','fDeposit','fDepositMethod','fNote'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener('input',autoSaveRoom);
+  });
+  body.querySelectorAll('.pill').forEach(p=>p.addEventListener('click',autoSaveRoom));
+}
+
+/* ============================================================ OCR ============================================================ */
+function recognizeIdCard(imgBase64,callback){
+  if(typeof Tesseract==='undefined'){
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    script.onload=()=>doOCR(imgBase64,callback);
+    script.onerror=()=>callback(null);
+    document.head.appendChild(script);
+  }else{doOCR(imgBase64,callback);}
+}
+function doOCR(imgBase64,callback){
+  try{
+    Tesseract.recognize(imgBase64,'chi_sim+eng',{logger:()=>{}}).then(({data:{text}})=>{
+      const match=text.match(/\d{17}[\dXx]/);
+      callback(match?match[0].toUpperCase():null);
+    }).catch(()=>callback(null));
+  }catch(e){callback(null);}
+}
+
+/* ============================================================ 月度记录 ============================================================ */
+function renderMonthList(key){
+  const room=state.rooms[key];
+  const container=document.getElementById('monthList');
+  const months=Object.keys(room.months).sort().reverse();
+  if(months.length===0){container.innerHTML='<div class="empty-hint">暂无月度记录</div>';return;}
+  // 最多显示3条，其余折叠
+  const SHOW_COUNT=3;
+  const visible=months.slice(0,SHOW_COUNT);
+  const hidden=months.slice(SHOW_COUNT);
+  let html=visible.map(ym=>{
+    const md=room.months[ym];
+    const calc=calcMonthFee(room,md);
+    return `<div class="month-list-item ${md.paid?'paid':'unpaid'}" data-month="${ym}">
+      <div class="mli-header"><span class="mli-month">${formatYM(ym)}</span><span class="mli-total">${money(calc.total)}</span></div>
+      <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}</div>
+      <span class="mli-status ${md.paid?'paid':'unpaid'}">${md.paid?'已缴费':'未缴费'}</span>
+    </div>`;
+  }).join('');
+  if(hidden.length>0){
+    html+=`<div id="hiddenMonths" style="display:none">${hidden.map(ym=>{
+      const md=room.months[ym];
+      const calc=calcMonthFee(room,md);
+      return `<div class="month-list-item ${md.paid?'paid':'unpaid'}" data-month="${ym}">
+        <div class="mli-header"><span class="mli-month">${formatYM(ym)}</span><span class="mli-total">${money(calc.total)}</span></div>
+        <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}</div>
+        <span class="mli-status ${md.paid?'paid':'unpaid'}">${md.paid?'已缴费':'未缴费'}</span>
+      </div>`;
+    }).join('')}</div>`;
+    html+=`<button class="btn-full" id="btnToggleMonths" style="background:var(--bg);color:var(--primary);font-size:13px;margin-top:4px">展开全部 (${hidden.length} 条) ▼</button>`;
+  }
+  container.innerHTML=html;
+  container.querySelectorAll('.month-list-item').forEach(item=>item.addEventListener('click',()=>openMonthEdit(key,item.dataset.month)));
+  const toggleBtn=document.getElementById('btnToggleMonths');
+  if(toggleBtn){
+    toggleBtn.addEventListener('click',()=>{
+      const hiddenEl=document.getElementById('hiddenMonths');
+      const isHidden=hiddenEl.style.display==='none';
+      hiddenEl.style.display=isHidden?'block':'none';
+      toggleBtn.textContent=isHidden?'收起 ▲':`展开全部 (${hidden.length} 条) ▼`;
+    });
+  }
+}
+
+let editingMonth=null,editingRoomKey=null;
+
+function openMonthEdit(key,ym){
+  editingRoomKey=key;editingMonth=ym;
+  const room=state.rooms[key];
+  const rates=getRoomRates(room);
+  if(!ym)ym=currentYearMonth();
+  // 如果该月没有记录，尝试从上月自动带出水表/电表上月读数
+  if(!room.months[ym]){
+    const[y,m]=ym.split('-').map(n=>parseInt(n));
+    let prevY=y,prevM=m-1;if(prevM<1){prevM=12;prevY--;}
+    const prevYm=monthKey(prevY,prevM);
+    const prevMd=room.months[prevYm];
+    room.months[ym]={
+      rent:room.fixedRent||(prevMd?prevMd.rent:''),
+      waterPrev:prevMd?prevMd.waterCurr:'',
+      waterCurr:'',
+      electricPrev:prevMd?prevMd.electricCurr:'',
+      electricCurr:'',
+      paid:false,note:''
+    };
+  }
+  const md=room.months[ym];
+  document.getElementById('monthSheetTitle').textContent=formatYM(ym)+' 费用录入';
+  const[y,m]=ym.split('-').map(n=>parseInt(n));
+  const body=document.getElementById('monthSheetBody');
+  body.innerHTML=`
+    <div class="section">
+      <div class="month-nav">
+        <button class="month-nav-btn" id="monthPrev">◀</button>
+        <span class="month-nav-current" id="monthDisplay">${formatYM(ym)}</span>
+        <button class="month-nav-btn" id="monthNext">▶</button>
+      </div>
+      <input type="hidden" id="monthYm" value="${ym}">
+      <div class="form-row"><label>月租金 (¥) <span style="font-size:11px;color:var(--text-lighter)">（默认固定租金，可调整）</span></label><input type="number" id="mRent" value="${esc(md.rent)}" placeholder="0" min="0" step="0.01"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">水费 <span class="st-action" id="btnWaterRate">单价 ${rates.waterPrice}元/方 ⚙</span></div>
+      <div class="form-row-2">
+        <div class="form-row"><label>上月水表读数</label><input type="number" id="mWaterPrev" value="${esc(md.waterPrev)}" placeholder="0" step="0.01"></div>
+        <div class="form-row"><label>本月水表读数</label><input type="number" id="mWaterCurr" value="${esc(md.waterCurr)}" placeholder="0" step="0.01"></div>
+      </div>
+      <div class="fee-calc">
+        <div class="fee-calc-row"><span class="fc-label">用水量</span><span class="fc-value" id="waterUsed">0 方</span></div>
+        <div class="fee-calc-row"><span class="fc-label">水费</span><span class="fc-value" id="waterFee">¥0.00</span></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">电费 <span class="st-action" id="btnElecRate">单价 ${rates.electricPrice}元/度 ⚙</span></div>
+      <div class="form-row-2">
+        <div class="form-row"><label>上月电表读数</label><input type="number" id="mElecPrev" value="${esc(md.electricPrev)}" placeholder="0" step="0.01"></div>
+        <div class="form-row"><label>本月电表读数</label><input type="number" id="mElecCurr" value="${esc(md.electricCurr)}" placeholder="0" step="0.01"></div>
+      </div>
+      <div class="fee-calc">
+        <div class="fee-calc-row"><span class="fc-label">用电量</span><span class="fc-value" id="elecUsed">0 度</span></div>
+        <div class="fee-calc-row"><span class="fc-label">电费</span><span class="fc-value" id="elecFee">¥0.00</span></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">合计</div>
+      <div class="fee-calc"><div class="fee-calc-row total"><span class="fc-label">本月应收</span><span class="fc-value" id="totalFee">¥0.00</span></div></div>
+      <div class="switch-row" style="margin-top:10px"><span class="switch-label">已缴费</span><div class="switch ${md.paid?'on':''}" id="paidSwitch"></div></div>
+      <div class="form-row" style="margin-top:10px"><label>备注</label><input type="text" id="mNote" value="${esc(md.note)}" placeholder="备注"></div>
+    </div>
+    <div class="btn-group"><button class="btn btn-danger" id="btnMonthDel">删除</button><button class="btn btn-primary" id="btnMonthSave">保存</button></div>
+  `;
+  updateMonthCalc();
+  ['mWaterPrev','mWaterCurr','mElecPrev','mElecCurr','mRent'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',updateMonthCalc);});
+  document.getElementById('paidSwitch').addEventListener('click',()=>document.getElementById('paidSwitch').classList.toggle('on'));
+  document.getElementById('btnWaterRate').addEventListener('click',()=>openRatePopover(key,'water'));
+  document.getElementById('btnElecRate').addEventListener('click',()=>openRatePopover(key,'elec'));
+  document.getElementById('monthPrev').addEventListener('click',()=>{let yy=y,mm=m-1;if(mm<1){mm=12;yy--;}switchMonth(key,monthKey(yy,mm));});
+  document.getElementById('monthNext').addEventListener('click',()=>{let yy=y,mm=m+1;if(mm>12){mm=1;yy++;}switchMonth(key,monthKey(yy,mm));});
+  document.getElementById('btnMonthSave').addEventListener('click',()=>saveMonth(key));
+  document.getElementById('btnMonthDel').addEventListener('click',()=>deleteMonth(key));
+  // 费用输入只实时计算，不自动保存（需点击保存按钮）
+  // paidSwitch 切换也只更新计算，不自动保存
+  document.getElementById('paidSwitch').addEventListener('click',()=>{
+    setTimeout(updateMonthCalc,10);
+  });
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('monthSheet').classList.add('show');
+}
+
+function switchMonth(key,ym){editingMonth=ym;openMonthEdit(key,ym);}
+
+function updateMonthCalc(){
+  if(!editingRoomKey)return;
+  const room=state.rooms[editingRoomKey];
+  const rates=getRoomRates(room);
+  const wUsed=num(val('mWaterCurr'))-num(val('mWaterPrev'));
+  const eUsed=num(val('mElecCurr'))-num(val('mElecPrev'));
+  const wFee=(wUsed>0?wUsed:0)*rates.waterPrice;
+  const eFee=(eUsed>0?eUsed:0)*rates.electricPrice;
+  const rent=num(val('mRent'));
+  const total=rent+wFee+eFee;
+  const wuEl=document.getElementById('waterUsed'),wfEl=document.getElementById('waterFee'),euEl=document.getElementById('elecUsed'),efEl=document.getElementById('elecFee'),tEl=document.getElementById('totalFee');
+  if(wuEl)wuEl.textContent=(wUsed>0?wUsed:0).toFixed(1)+' 方';
+  if(wfEl)wfEl.textContent=money(wFee);
+  if(euEl)euEl.textContent=(eUsed>0?eUsed:0).toFixed(1)+' 度';
+  if(efEl)efEl.textContent=money(eFee);
+  if(tEl)tEl.textContent=money(total);
+}
+
+function saveMonth(key){
+  const ym=val('monthYm');
+  const room=state.rooms[key];
+  // 水电表读数校验：本月读数必须大于等于上月读数
+  const wPrev=num(val('mWaterPrev')),wCurr=num(val('mWaterCurr'));
+  const ePrev=num(val('mElecPrev')),eCurr=num(val('mElecCurr'));
+  if(wCurr<wPrev){
+    toast('⚠️ 本月水表读数('+wCurr+')小于上月('+wPrev+')，请检查');return;
+  }
+  if(eCurr<ePrev){
+    toast('⚠️ 本月电表读数('+eCurr+')小于上月('+ePrev+')，请检查');return;
+  }
+  room.months[ym]={rent:val('mRent'),waterPrev:val('mWaterPrev'),waterCurr:val('mWaterCurr'),electricPrev:val('mElecPrev'),electricCurr:val('mElecCurr'),paid:document.getElementById('paidSwitch').classList.contains('on'),note:val('mNote')};
+  autoRoomStatus(room);
+  save();renderMonthList(key);renderAll();closeMonthSheet();toast('保存成功');
+}
+function deleteMonth(key){if(!confirm('确定删除该月记录？'))return;const ym=val('monthYm');delete state.rooms[key].months[ym];save();renderMonthList(key);renderAll();closeMonthSheet();toast('已删除');}
+function closeMonthSheet(){document.getElementById('monthSheet').classList.remove('show');editingMonth=null;editingRoomKey=null;}
+
+/* ============================================================ 单价设置弹窗 ============================================================ */
+let ratePopoverRoomKey=null,ratePopoverType=null;
+function openRatePopover(key,type){
+  ratePopoverRoomKey=key;ratePopoverType=type;
+  const room=state.rooms[key];const rates=getRoomRates(room);
+  if(type==='water'){
+    document.getElementById('ratePopoverTitle').textContent='设置水费单价';
+    document.getElementById('rpWLabel').textContent='水费单价 (元/方)';
+    document.getElementById('rpWaterPrice').value=room.roomRates.waterPrice||'';
+    document.getElementById('rpELabel').style.display='none';document.getElementById('rpElecPrice').style.display='none';
+    document.getElementById('rpHint').textContent='当前单价：'+rates.waterPrice+'元/方，留空使用全局默认';
+  }else{
+    document.getElementById('ratePopoverTitle').textContent='设置电费单价';
+    document.getElementById('rpELabel').textContent='电费单价 (元/度)';
+    document.getElementById('rpElecPrice').value=room.roomRates.electricPrice||'';
+    document.getElementById('rpWLabel').style.display='none';document.getElementById('rpWaterPrice').style.display='none';
+    document.getElementById('rpHint').textContent='当前单价：'+rates.electricPrice+'元/度，留空使用全局默认';
+  }
+  document.getElementById('exportOverlay').classList.add('show');
+  document.getElementById('ratePopover').classList.add('show');
+}
+function closeRatePopover(){
+  document.getElementById('ratePopover').classList.remove('show');
+  document.getElementById('exportOverlay').classList.add('show');
+  document.getElementById('rpWLabel').style.display='';document.getElementById('rpELabel').style.display='';
+  document.getElementById('rpWaterPrice').style.display='';document.getElementById('rpElecPrice').style.display='';
+  ratePopoverRoomKey=null;ratePopoverType=null;
+}
+
+/* ============================================================ 楼栋编辑（名称+楼层+每层独立房间数）/ 添加楼栋 ============================================================ */
+let buildingEditId=null,buildingEditMode=null;
+let beFloorRooms=[]; // 编辑时各层房间数的临时数组
+
+function renderBeFloorList(){
+  const list=document.getElementById('beFloorList');
+  if(!list)return;
+  list.innerHTML=beFloorRooms.map((cnt,i)=>`
+    <div class="form-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:13px;color:var(--text-light);min-width:48px;font-weight:500">${i+1}层</span>
+      <input type="number" class="be-floor-input" data-fidx="${i}" value="${cnt}" min="1" max="50" step="1" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px">
+      <span style="font-size:12px;color:var(--text-lighter)">间</span>
+    </div>
+  `).join('');
+  list.querySelectorAll('.be-floor-input').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      const idx=parseInt(inp.dataset.fidx);
+      beFloorRooms[idx]=parseInt(inp.value)||1;
+    });
+  });
+}
+
+function syncBeFloorCount(){
+  const fc=parseInt(document.getElementById('beFloorCount').value)||1;
+  const cur=beFloorRooms.length;
+  if(fc>cur){
+    for(let i=cur;i<fc;i++)beFloorRooms.push(5);
+  }else if(fc<cur){
+    beFloorRooms=beFloorRooms.slice(0,fc);
+  }
+  renderBeFloorList();
+}
+
+function openBuildingEdit(bid){
+  buildingEditId=bid;buildingEditMode='edit';
+  const b=getBuilding(bid);if(!b)return;
+  beFloorRooms=(b.floors||[]).map(f=>f.rooms);
+  document.getElementById('beTitle').textContent='编辑楼栋';
+  document.getElementById('beName').value=b.name;
+  document.getElementById('beFloorCount').value=beFloorRooms.length;
+  document.getElementById('beHint').textContent='每层房间数可单独设置；减少楼层/房间数会删除对应数据';
+  document.getElementById('beDelete').style.display=state.buildings.length>1?'block':'none';
+  renderBeFloorList();
+  document.getElementById('exportOverlay').classList.add('show');
+  document.getElementById('buildingEditPopover').classList.add('show');
+  setTimeout(()=>document.getElementById('beName').focus(),100);
+}
+function openBuildingAdd(){
+  buildingEditId=null;buildingEditMode='add';
+  beFloorRooms=[5,5,5,5,5];
+  document.getElementById('beTitle').textContent='添加楼栋';
+  document.getElementById('beName').value='';
+  document.getElementById('beFloorCount').value=5;
+  document.getElementById('beHint').textContent='设置楼栋名称、楼层数，每层房间数可单独调整';
+  document.getElementById('beDelete').style.display='none';
+  renderBeFloorList();
+  document.getElementById('exportOverlay').classList.add('show');
+  document.getElementById('buildingEditPopover').classList.add('show');
+  setTimeout(()=>document.getElementById('beName').focus(),100);
+}
+function closeBuildingEdit(){
+  document.getElementById('buildingEditPopover').classList.remove('show');
+  document.getElementById('exportOverlay').classList.remove('show');
+  buildingEditId=null;buildingEditMode=null;beFloorRooms=[];
+}
+function saveBuildingEdit(){
+  const name=val('beName');
+  const fc=parseInt(document.getElementById('beFloorCount').value);
+  if(!name){toast('请输入楼栋名称');return;}
+  if(!fc||fc<1){toast('楼层数至少为1');return;}
+  if(fc>30){toast('楼层数不能超过30');return;}
+  // 同步最新楼层列表（防止用户改了楼层数没触发change）
+  if(beFloorRooms.length!==fc)syncBeFloorCount();
+  // 校验每层房间数
+  for(let i=0;i<beFloorRooms.length;i++){
+    const rc=beFloorRooms[i];
+    if(!rc||rc<1){toast(`第${i+1}层房间数至少为1`);return;}
+    if(rc>50){toast(`第${i+1}层房间数不能超过50`);return;}
+  }
+
+  if(buildingEditMode==='add'){
+    const usedIds=state.buildings.map(b=>b.id);
+    let newId='A';
+    for(let i=65;i<=90;i++){const c=String.fromCharCode(i);if(!usedIds.includes(c)){newId=c;break;}}
+    const floors=beFloorRooms.map(r=>({rooms:r}));
+    state.buildings.push({id:newId,name:name,floors});
+    state.current=newId;
+    save();initRooms();renderSidebar();renderAll();
+    closeBuildingEdit();toast('已添加 '+name);
+  }else{
+    const b=getBuilding(buildingEditId);if(!b){closeBuildingEdit();return;}
+    const oldFloors=(b.floors||[]).map(f=>f.rooms);
+    b.name=name;
+    // 处理楼层增减
+    const newLen=beFloorRooms.length;
+    if(newLen>oldFloors.length){
+      // 增加楼层
+      for(let i=oldFloors.length;i<newLen;i++)b.floors.push({rooms:beFloorRooms[i]});
+    }else if(newLen<oldFloors.length){
+      // 减少楼层：检查数据
+      let hasData=false;
+      for(let fIdx=newLen;fIdx<oldFloors.length;fIdx++){
+        const f=fIdx+1;
+        for(let r=1;r<=b.floors[fIdx].rooms;r++){
+          const key=`${b.id}-${f*100+r}`;
+          if(state.rooms[key]&&state.rooms[key].status!=='empty'){hasData=true;break;}
+        }
+        if(hasData)break;
+      }
+      if(hasData){
+        if(!confirm('减少楼层数将删除被移除楼层的房间数据，确定继续？'))return;
+      }
+      for(let fIdx=newLen;fIdx<oldFloors.length;fIdx++){
+        const f=fIdx+1;
+        for(let r=1;r<=b.floors[fIdx].rooms;r++){
+          const key=`${b.id}-${f*100+r}`;
+          delete state.rooms[key];
+        }
+      }
+      b.floors=b.floors.slice(0,newLen);
+    }
+    // 逐层调整房间数
+    b.floors.forEach((floor,fIdx)=>{
+      const newRc=beFloorRooms[fIdx];
+      const oldRc=floor.rooms;
+      if(newRc<oldRc){
+        let hasData=false;
+        for(let r=newRc+1;r<=oldRc;r++){
+          const key=`${b.id}-${(fIdx+1)*100+r}`;
+          if(state.rooms[key]&&state.rooms[key].status!=='empty'){hasData=true;break;}
+        }
+        if(hasData){
+          if(!confirm(`${fIdx+1}层减少房间数将删除多余房间数据，确定继续？`))return;
+        }
+        for(let r=newRc+1;r<=oldRc;r++){
+          const key=`${b.id}-${(fIdx+1)*100+r}`;
+          delete state.rooms[key];
+        }
+      }
+      floor.rooms=newRc;
+    });
+    save();initRooms();renderSidebar();renderAll();
+    closeBuildingEdit();toast(name+' 已更新');
+  }
+}
+function deleteBuilding(){
+  if(buildingEditMode!=='edit'||!buildingEditId){return;}
+  const b=getBuilding(buildingEditId);if(!b)return;
+  if(state.buildings.length<=1){toast('至少保留一栋楼');return;}
+  if(!confirm(`确定删除${b.name}？该栋所有房间数据将被删除！`))return;
+  for(const key in state.rooms){if(key.startsWith(b.id+'-'))delete state.rooms[key];}
+  const idx=state.buildings.findIndex(x=>x.id===b.id);
+  state.buildings.splice(idx,1);
+  if(state.current===b.id)state.current=state.buildings[0].id;
+  save();renderSidebar();renderAll();closeBuildingEdit();toast('已删除'+b.name);
+}
+
+/* ============================================================ 保存/归档 ============================================================ */
+// 自动判断房间状态：有租客信息或费用记录且非维修中，则自动设为已入住
+function autoRoomStatus(room){
+  if(room.status==='maintenance')return;
+  const hasTenant=room.tenant||room.phone||room.idCard;
+  const hasMonths=room.months&&Object.keys(room.months).length>0;
+  if(hasTenant||hasMonths){room.status='occupied';}
+  else if(room.status==='occupied'){room.status='empty';}
+}
+function saveRoom(key){
+  const room=state.rooms[key];
+  room.tenant=val('fTenant');room.phone=val('fPhone');room.idCard=val('fIdCard');room.moveInDate=val('fDate');
+  room.note=val('fNote');room.fixedRent=val('fFixedRent');
+  const activePill=document.querySelector('.pill.active');if(activePill)room.status=activePill.dataset.status;
+  autoRoomStatus(room);
+  room.deposit.amount=val('fDeposit');room.deposit.method=val('fDepositMethod');
+  room.updatedAt=new Date().toISOString();save();renderAll();closeSheet();toast('保存成功');
+}
+
+function showArchiveModal(key){
+  document.getElementById('exportOverlay').classList.add('show');
+  document.getElementById('archiveModal').classList.add('show');
+}
+function closeArchiveModal(){document.getElementById('archiveModal').classList.remove('show');document.getElementById('exportOverlay').classList.remove('show');}
+
+function doArchiveTenant(key){
+  const room=state.rooms[key];
+  if(!room.tenant&&!room.phone){toast('该房间无租客可归档');return;}
+  if(!confirm('确定将当前租客归档？归档后房间将变为空置状态，可入住新租客。\n（房间的固定月租金和单价设置将保留）'))return;
+  // 归档对象保存租客的所有信息，包括固定月租金和房间单价
+  const archive={
+    tenant:room.tenant,phone:room.phone,idCard:room.idCard,idCardImg:room.idCardImg,
+    moveInDate:room.moveInDate,leaveDate:new Date().toISOString().slice(0,10),
+    deposit:JSON.parse(JSON.stringify(room.deposit)),note:room.note,
+    months:JSON.parse(JSON.stringify(room.months)),
+    fixedRent:room.fixedRent,  // 保存归档时的固定月租金
+    roomRates:JSON.parse(JSON.stringify(room.roomRates))  // 保存归档时的房间单价
+  };
+  room.archived=room.archived||[];room.archived.unshift(archive);
+  // 保留 fixedRent 和 roomRates（租客退租了但费用设置不变，方便新租客入住）
+  const def=defaultRoom();
+  def.archived=room.archived;
+  def.fixedRent=room.fixedRent;  // 保留固定月租金
+  def.roomRates=JSON.parse(JSON.stringify(room.roomRates));  // 保留房间单价
+  state.rooms[key]=def;
+  save();renderAll();closeSheet();toast('已归档，月租金和单价已保留');
+}
+
+function showArchiveList(key){
+  const room=state.rooms[key];const[b,roomNum]=key.split('-');const bld=getBuilding(b);const bName=bld?bld.name:(b+'栋');
+  document.getElementById('sheetTitle').textContent=`${bName} ${roomNum}房 · 历史租客`;
+  const body=document.getElementById('sheetBody');
+  if(!room.archived||room.archived.length===0){
+    body.innerHTML=`<div class="empty-hint">暂无历史租客记录</div><div class="btn-group"><button class="btn btn-primary" id="btnBackToRoom">返回房间</button></div>`;
+    document.getElementById('btnBackToRoom').addEventListener('click',()=>{closeSheet();setTimeout(()=>openRoom(key),300);});
+    document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');return;
+  }
+  body.innerHTML=`
+    <div id="archiveListContainer">${room.archived.map((a,i)=>`<div class="archive-item" data-idx="${i}"><div class="archive-icon">📁</div><div class="archive-info"><div class="archive-name">${esc(a.tenant)||'未命名'}</div><div class="archive-date">${a.moveInDate||'?'} ~ ${a.leaveDate||'?'}</div></div></div>`).join('')}</div>
+    <div class="btn-group"><button class="btn btn-primary" id="btnBackToRoom">返回房间</button></div>
+  `;
+  body.querySelectorAll('.archive-item').forEach(item=>item.addEventListener('click',()=>showArchivedTenant(key,parseInt(item.dataset.idx))));
+  document.getElementById('btnBackToRoom').addEventListener('click',()=>{closeSheet();setTimeout(()=>openRoom(key),300);});
+  document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');
+}
+
+function showArchivedTenant(key,idx){
+  const room=state.rooms[key];const a=room.archived[idx];if(!a){toast('归档信息不存在');return;}
+  const[b,roomNum]=key.split('-');const bld=getBuilding(b);const bName=bld?bld.name:(b+'栋');
+  document.getElementById('sheetTitle').textContent=`${bName} ${roomNum}房 · 已归档`;
+  let totalMonths=0,totalRent=0,totalWater=0,totalElec=0,totalAll=0;
+  if(a.months){
+    for(const ym in a.months){
+      totalMonths++;
+      const md=a.months[ym];
+      // 用归档时保存的单价计算，若无则用房间当前单价
+      const rates=a.roomRates?(a.roomRates.waterPrice?{waterPrice:num(a.roomRates.waterPrice),electricPrice:num(a.roomRates.electricPrice)}:getRoomRates({roomRates:a.roomRates})):getRoomRates(room);
+      const wUsed=num(md.waterCurr)-num(md.waterPrev);
+      const eUsed=num(md.electricCurr)-num(md.electricPrev);
+      const wFee=(wUsed>0?wUsed:0)*rates.waterPrice;
+      const eFee=(eUsed>0?eUsed:0)*rates.electricPrice;
+      totalRent+=num(md.rent);totalWater+=wFee;totalElec+=eFee;totalAll+=num(md.rent)+wFee+eFee;
+    }
+  }
+  // 获取归档时的单价信息
+  const archRates=a.roomRates&&a.roomRates.waterPrice?a.roomRates:(a.roomRates?a.roomRates:{waterPrice:'',electricPrice:''});
+  const archWaterPrice=archRates.waterPrice||state.globalRates.waterPrice;
+  const archElecPrice=archRates.electricPrice||state.globalRates.electricPrice;
+  // 月度费用明细列表
+  const archMonths=a.months?Object.keys(a.months).sort().reverse():[];
+  const body=document.getElementById('sheetBody');
+  body.innerHTML=`
+    <div class="section"><div class="section-title">归档租客信息</div>
+      <div class="form-row-2"><div class="form-row"><label>住户姓名</label><input type="text" value="${esc(a.tenant)}" readonly></div><div class="form-row"><label>联系电话</label><input type="text" value="${esc(a.phone)}" readonly></div></div>
+      <div class="form-row"><label>身份证号</label><input type="text" value="${esc(a.idCard)}" readonly></div>
+      <div class="form-row-2"><div class="form-row"><label>入住日期</label><input type="text" value="${esc(a.moveInDate)}" readonly></div><div class="form-row"><label>退租日期</label><input type="text" value="${esc(a.leaveDate)}" readonly></div></div>
+    </div>
+    ${a.idCardImg?`<div class="section"><div class="section-title">身份证照片</div><div class="input-with-btn"><button class="input-icon-btn has-img" id="archIdImg" type="button"><img class="iib-thumb" src="${esc(a.idCardImg)}"></button></div></div>`:''}
+    <div class="section"><div class="section-title">押金信息</div><div class="fee-calc"><div class="fee-calc-row"><span class="fc-label">押金金额</span><span class="fc-value">${money(a.deposit?.amount)}</span></div><div class="fee-calc-row"><span class="fc-label">支付方式</span><span class="fc-value">${esc(a.deposit?.method)||'-'}</span></div></div>${a.deposit?.receiptImg?`<div class="input-with-btn" style="margin-top:8px"><button class="input-icon-btn has-img" id="archReceiptImg" type="button"><img class="iib-thumb" src="${esc(a.deposit.receiptImg)}"></button></div>`:''}</div>
+    <div class="section"><div class="section-title">租金与单价</div><div class="fee-calc">
+      <div class="fee-calc-row"><span class="fc-label">固定月租金</span><span class="fc-value">${a.fixedRent?money(a.fixedRent):'-'}</span></div>
+      <div class="fee-calc-row"><span class="fc-label">水费单价</span><span class="fc-value">${archWaterPrice} 元/方</span></div>
+      <div class="fee-calc-row"><span class="fc-label">电费单价</span><span class="fc-value">${archElecPrice} 元/度</span></div>
+    </div></div>
+    <div class="section"><div class="section-title">租住统计</div><div class="fee-calc">
+      <div class="fee-calc-row"><span class="fc-label">记录月数</span><span class="fc-value">${totalMonths} 个月</span></div>
+      <div class="fee-calc-row"><span class="fc-label">累计租金</span><span class="fc-value">${money(totalRent)}</span></div>
+      <div class="fee-calc-row"><span class="fc-label">累计水费</span><span class="fc-value">${money(totalWater)}</span></div>
+      <div class="fee-calc-row"><span class="fc-label">累计电费</span><span class="fc-value">${money(totalElec)}</span></div>
+      <div class="fee-calc-row"><span class="fc-label">累计合计</span><span class="fc-value" style="color:var(--danger);font-weight:600">${money(totalAll)}</span></div>
+    </div></div>
+    ${archMonths.length>0?`<div class="section"><div class="section-title">月度费用明细 (${archMonths.length})</div>
+      <div id="archMonthList">${archMonths.map(ym=>{
+        const md=a.months[ym];
+        const rates=a.roomRates&&a.roomRates.waterPrice?{waterPrice:num(a.roomRates.waterPrice),electricPrice:num(a.roomRates.electricPrice)}:getRoomRates(room);
+        const wUsed=num(md.waterCurr)-num(md.waterPrev);
+        const eUsed=num(md.electricCurr)-num(md.electricPrev);
+        const wFee=(wUsed>0?wUsed:0)*rates.waterPrice;
+        const eFee=(eUsed>0?eUsed:0)*rates.electricPrice;
+        const total=num(md.rent)+wFee+eFee;
+        return `<div class="month-list-item ${md.paid?'paid':'unpaid'}"><div class="mli-header"><span class="mli-month">${formatYM(ym)}</span><span class="mli-total">${money(total)}</span></div><div class="mli-detail">租金${money(md.rent)} · 水费${money(wFee)} · 电费${money(eFee)}</div><span class="mli-status ${md.paid?'paid':'unpaid'}">${md.paid?'已缴费':'未缴费'}</span>${md.note?'<div style="font-size:12px;color:var(--text-light);margin-top:4px">📝 '+esc(md.note)+'</div>':''}</div>`;
+      }).join('')}</div>
+    </div>`:''}
+    ${a.note?`<div class="section"><div class="section-title">备注</div><div class="form-row"><textarea readonly>${esc(a.note)}</textarea></div></div>`:''}
+    <div class="btn-group"><button class="btn btn-danger" id="btnDelArchive">删除归档</button><button class="btn btn-primary" id="btnBackToRoom">返回</button></div>
+  `;
+  const archIdImg=document.getElementById('archIdImg');if(archIdImg)archIdImg.addEventListener('click',()=>showImageViewer(a.idCardImg));
+  const archReceiptImg=document.getElementById('archReceiptImg');if(archReceiptImg)archReceiptImg.addEventListener('click',()=>showImageViewer(a.deposit.receiptImg));
+  document.getElementById('btnDelArchive').addEventListener('click',()=>{if(!confirm('确定删除此归档记录？此操作不可恢复。'))return;room.archived.splice(idx,1);save();renderAll();closeSheet();toast('已删除归档');});
+  document.getElementById('btnBackToRoom').addEventListener('click',()=>{closeSheet();});
+  document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');
+}
+
+function closeSheet(){document.getElementById('overlay').classList.remove('show');document.getElementById('sheet').classList.remove('show');currentRoomKey=null;currentArchiveIdx=null;}
+
+/* ============================================================ 导出 ============================================================ */
+let exportRoomKey=null;
+function showExportModal(key){exportRoomKey=key;document.getElementById('exportOverlay').classList.add('show');document.getElementById('exportModal').classList.add('show');}
+function closeExportModal(){document.getElementById('exportOverlay').classList.remove('show');document.getElementById('exportModal').classList.remove('show');}
+function closeBackupExportModal(){document.getElementById('backupExportModal').classList.remove('show');if(!document.getElementById('exportModal').classList.contains('show')&&!document.getElementById('archiveModal').classList.contains('show')&&!document.getElementById('ratePopover').classList.contains('show')&&!document.getElementById('buildingEditPopover').classList.contains('show')){document.getElementById('exportOverlay').classList.remove('show');}}
+
+function generateRoomCanvas(key){
+  const room=state.rooms[key];const[b,num]=key.split('-');
+  const bld=getBuilding(b);const bName=bld?bld.name:(b+'栋');
+  const months=Object.keys(room.months).sort().reverse();
+  if(months.length===0)return null;
+  const canvas=document.createElement('canvas');
+  const W=600,rowH=50,headerH=140,footerH=40;
+  const monthCount=Math.min(months.length,12);
+  canvas.width=W;canvas.height=headerH+monthCount*rowH+footerH+30;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  const grad=ctx.createLinearGradient(0,0,W,0);grad.addColorStop(0,'#5C6DFF');grad.addColorStop(1,'#4B5BF0');
+  ctx.fillStyle=grad;ctx.fillRect(0,0,W,90);
+  ctx.fillStyle='#ffffff';ctx.font='bold 22px sans-serif';ctx.textAlign='center';
+  const tenantName=room.tenant||'未命名';
+  ctx.fillText(`${bName} ${num}房 ${tenantName}`,W/2,38);
+  ctx.font='13px sans-serif';ctx.fillStyle='rgba(255,255,255,.85)';
+  const now=new Date();
+  ctx.fillText(`水电费明细 · 电话：${room.phone||'-'}  ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,W/2,66);
+  ctx.fillStyle='#f1f5f9';ctx.fillRect(0,90,W,50);
+  ctx.fillStyle='#1e293b';ctx.font='bold 13px sans-serif';
+  [{l:'月份',x:50},{l:'租金',x:140},{l:'用水(方)',x:215},{l:'水费',x:300},{l:'用电(度)',x:380},{l:'电费',x:465},{l:'合计',x:540}].forEach(c=>ctx.fillText(c.l,c.x,120));
+  ctx.strokeStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(0,140);ctx.lineTo(W,140);ctx.stroke();
+  ctx.font='12px sans-serif';
+  months.slice(0,monthCount).forEach((ym,i)=>{
+    const md=room.months[ym];const calc=calcMonthFee(room,md);const y=140+(i+1)*rowH-18;
+    if(i%2===1){ctx.fillStyle='#f8fafc';ctx.fillRect(0,140+i*rowH,W,rowH);}
+    ctx.fillStyle='#1e293b';ctx.fillText(formatYM(ym),50,y);ctx.fillText(money(calc.rent),140,y);
+    ctx.fillText(calc.waterUsed>0?calc.waterUsed.toFixed(1):'-',215,y);ctx.fillText(money(calc.waterFee),300,y);
+    ctx.fillText(calc.elecUsed>0?calc.elecUsed.toFixed(1):'-',380,y);ctx.fillText(money(calc.elecFee),465,y);
+    ctx.fillStyle='#ef4444';ctx.font='bold 13px sans-serif';ctx.fillText(money(calc.total),540,y);ctx.font='12px sans-serif';
+  });
+  let totalAll=0;months.forEach(ym=>totalAll+=calcMonthFee(room,room.months[ym]).total);
+  ctx.fillStyle='#f8fafc';ctx.fillRect(0,140+monthCount*rowH,W,40);
+  ctx.fillStyle='#1e293b';ctx.font='bold 14px sans-serif';ctx.textAlign='left';ctx.fillText(`共计 ${months.length} 个月记录`,20,140+monthCount*rowH+25);
+  ctx.textAlign='right';ctx.fillStyle='#ef4444';ctx.fillText(`累计合计：${money(totalAll)}`,W-20,140+monthCount*rowH+25);
+  return canvas;
+}
+
+async function exportAsImage(key){
+  const canvas=generateRoomCanvas(key);
+  if(!canvas){toast('暂无月度记录可导出');return;}
+  const[b,num]=key.split('-');const bld=getBuilding(b);const bName=bld?bld.name:(b+'栋');const now=new Date();
+  const room=state.rooms[key];const tenantName=room.tenant||'未命名';
+  const filename=`${bName}${num}房_${tenantName}_水电费明细_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}.png`;
+  const shared=await shareImage(canvas,filename,`${bName} ${num}房 ${tenantName} 水电费明细`);
+  toast(shared?'已分享/保存':'文件已下载');
+}
+
+async function exportAsCSV(key){
+  const room=state.rooms[key];const[b,num]=key.split('-');
+  const bld=getBuilding(b);const bName=bld?bld.name:(b+'栋');
+  const months=Object.keys(room.months).sort();
+  if(months.length===0){toast('暂无月度记录可导出');return;}
+  const rates=getRoomRates(room);
+  const tenantName=room.tenant||'未命名';
+  let csv='\uFEFF';
+  csv+=`${bName} ${num}房 ${tenantName} 水电费明细\n`;
+  csv+=`租客,${room.tenant||''},电话,${room.phone||''},身份证,${room.idCard||''}\n`;
+  csv+=`单价,水费 ${rates.waterPrice}元/方,电费 ${rates.electricPrice}元/度\n\n`;
+  csv+='月份,租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,合计,缴费状态,备注\n';
+  months.forEach(ym=>{const md=room.months[ym];const calc=calcMonthFee(room,md);csv+=[formatYM(ym),calc.rent.toFixed(2),md.waterPrev||'',md.waterCurr||'',calc.waterUsed.toFixed(1),calc.waterFee.toFixed(2),md.electricPrev||'',md.electricCurr||'',calc.elecUsed.toFixed(1),calc.elecFee.toFixed(2),calc.total.toFixed(2),md.paid?'已缴费':'未缴费',md.note||''].join(',')+'\n';});
+  let tRent=0,tWater=0,tElec=0,tTotal=0;months.forEach(ym=>{const c=calcMonthFee(room,room.months[ym]);tRent+=c.rent;tWater+=c.waterFee;tElec+=c.elecFee;tTotal+=c.total;});
+  csv+=`合计,${tRent.toFixed(2)},,,${tWater.toFixed(2)},,,,${tElec.toFixed(2)},${tTotal.toFixed(2)},,\n`;
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const now=new Date();const filename=`${bName}${num}房_${tenantName}_水电费明细_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}.csv`;
+  const shared=await shareFile(blob,filename,'text/csv',`${bName} ${num}房 ${tenantName} 水电费明细`);
+  toast(shared?'已分享/保存':'文件已下载');
+}
+
+// 批量导出：选择月份+房间+格式
+function openBatchExport(){
+  const b=getBuilding(state.current);if(!b)return;
+  const body=document.getElementById('batchBody');
+  // 收集所有有数据的月份和房间
+  const allMonths=new Set();const allRooms=[];
+  (b.floors||[]).forEach((floor,fIdx)=>{
+    const f=fIdx+1;
+    for(let r=1;r<=floor.rooms;r++){
+      const key=`${b.id}-${f*100+r}`;const room=state.rooms[key];
+      if(!room)return;
+      const num2=f*100+r;
+      let hasData=false;
+      for(const ym in room.months){allMonths.add(ym);hasData=true;}
+      if(room.tenant||room.phone||hasData)allRooms.push({key,num2,room});
+    }
+  });
+  const months=Array.from(allMonths).sort().reverse();
+  if(allRooms.length===0){toast('当前栋暂无房间数据');return;}
+  if(months.length===0){toast('当前栋暂无月度记录');return;}
+  const curYm=currentYearMonth();
+  if(!months.includes(curYm))months.unshift(curYm);
+  window._batchState={months,rooms:allRooms,selectedMonths:new Set([curYm]),selectedRooms:new Set(allRooms.map(r=>r.key))};
+  body.innerHTML=`
+    <div class="section">
+      <div class="section-title">选择月份 <span class="st-action" id="bmAll">全选</span> <span class="st-action" id="bmNone">清空</span></div>
+      <div class="status-pills" id="bmPills">
+        ${months.map(ym=>`<div class="pill ${window._batchState.selectedMonths.has(ym)?'active':''}" data-ym="${ym}">${formatYM(ym)}</div>`).join('')}
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">选择房间 <span class="st-action" id="brAll">全选</span> <span class="st-action" id="brNone">清空</span></div>
+      <div class="status-pills" id="brPills">
+        ${allRooms.map(r=>`<div class="pill ${window._batchState.selectedRooms.has(r.key)?'active':''}" data-room-key="${r.key}">${r.num2}${r.room.tenant?('·'+esc(r.room.tenant)):''}</div>`).join('')}
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">导出格式</div>
+      <div class="status-pills">
+        <div class="pill active" data-fmt="image">🖼️ 图片（高清）</div>
+        <div class="pill" data-fmt="csv">📊 CSV表格</div>
+      </div>
+    </div>
+    <button class="btn-full" id="btnBatchGo" style="background:var(--success);color:#fff;margin-top:8px">开始导出</button>
+  `;
+  document.getElementById('batchOverlay').classList.add('show');
+  document.getElementById('batchSheet').classList.add('show');
+  // 月份选择
+  body.querySelectorAll('#bmPills .pill').forEach(p=>p.addEventListener('click',()=>{
+    const ym=p.dataset.ym;
+    if(window._batchState.selectedMonths.has(ym))window._batchState.selectedMonths.delete(ym);
+    else window._batchState.selectedMonths.add(ym);
+    p.classList.toggle('active');
+  }));
+  document.getElementById('bmAll').addEventListener('click',()=>{window._batchState.selectedMonths=new Set(months);body.querySelectorAll('#bmPills .pill').forEach(p=>p.classList.add('active'));});
+  document.getElementById('bmNone').addEventListener('click',()=>{window._batchState.selectedMonths.clear();body.querySelectorAll('#bmPills .pill').forEach(p=>p.classList.remove('active'));});
+  // 房间选择
+  body.querySelectorAll('#brPills .pill').forEach(p=>p.addEventListener('click',()=>{
+    const k=p.dataset.roomKey;
+    if(window._batchState.selectedRooms.has(k))window._batchState.selectedRooms.delete(k);
+    else window._batchState.selectedRooms.add(k);
+    p.classList.toggle('active');
+  }));
+  document.getElementById('brAll').addEventListener('click',()=>{window._batchState.selectedRooms=new Set(allRooms.map(r=>r.key));body.querySelectorAll('#brPills .pill').forEach(p=>p.classList.add('active'));});
+  document.getElementById('brNone').addEventListener('click',()=>{window._batchState.selectedRooms.clear();body.querySelectorAll('#brPills .pill').forEach(p=>p.classList.remove('active'));});
+  // 格式选择
+  body.querySelectorAll('[data-fmt]').forEach(p=>p.addEventListener('click',()=>{body.querySelectorAll('[data-fmt]').forEach(x=>x.classList.remove('active'));p.classList.add('active');}));
+  // 导出
+  document.getElementById('btnBatchGo').addEventListener('click',()=>{
+    const fmt=body.querySelector('[data-fmt].active').dataset.fmt;
+    const selMonths=months.filter(ym=>window._batchState.selectedMonths.has(ym));
+    const selRooms=allRooms.filter(r=>window._batchState.selectedRooms.has(r.key));
+    if(selMonths.length===0){toast('请选择至少一个月份');return;}
+    if(selRooms.length===0){toast('请选择至少一个房间');return;}
+    // 不关闭弹窗，让 share 在用户手势上下文里发起
+    doBatchExport(b,selMonths,selRooms,fmt);
+  });
+}
+function closeBatchExport(){document.getElementById('batchSheet').classList.remove('show');document.getElementById('batchOverlay').classList.remove('show');}
+
+async function doBatchExport(b,selMonths,selRooms,fmt){
+  const bName=b.name||(b.id+'栋');
+  if(fmt==='image'){
+    // 所有房间画在一张高清大图上，纵向排列
+    const dpr=3; // 高清：3倍像素密度
+    const W=520*dpr,cardH=200*dpr,gap=10*dpr;
+    const totalCards=selRooms.length*selMonths.length;
+    const totalH=totalCards*cardH+(totalCards-1)*gap;
+    const canvas=document.createElement('canvas');
+    canvas.width=W;canvas.height=Math.max(totalH,cardH);
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+    const wLogic=W/dpr,hCard=cardH/dpr,gGap=gap/dpr;
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,wLogic,canvas.height/dpr);
+    let idx=0;
+    for(const item of selRooms){
+      const{key,room}=item;const num2=key.split('-')[1];
+      for(const ym of selMonths){
+        const md=room.months[ym];const calc=md?calcMonthFee(room,md):{rent:0,waterUsed:0,waterFee:0,elecUsed:0,elecFee:0,total:0};
+        const rates=getRoomRates(room);const dispStatus=getRoomDisplayStatus(room);
+        const statusText=dispStatus==='empty'?'空置':(dispStatus==='unpaid'?'未缴':(dispStatus==='occupied'?'已缴':'未缴'));
+        const tenantName=room.tenant||'空置';
+        const yOff=idx*(hCard+gGap);
+        // 卡片背景
+        ctx.fillStyle='#fff';ctx.fillRect(0,yOff,wLogic,hCard);
+        // 标题栏（蓝色渐变）
+        const grad=ctx.createLinearGradient(0,yOff,wLogic,yOff);grad.addColorStop(0,'#5C6DFF');grad.addColorStop(1,'#4B5BF0');
+        ctx.fillStyle=grad;ctx.fillRect(0,yOff,wLogic,48);
+        ctx.fillStyle='#fff';ctx.font='bold 18px sans-serif';ctx.textAlign='left';
+        ctx.fillText(`${bName} ${num2}房 ${tenantName}`,14,yOff+32);
+        ctx.font='14px sans-serif';ctx.textAlign='right';
+        ctx.fillText(formatYM(ym),wLogic-14,yOff+32);
+        // 费用明细
+        ctx.font='14px sans-serif';
+        [{l:'月租金',v:money(calc.rent),y:yOff+72},{l:'水费 ('+calc.waterUsed+'方 × ¥'+rates.waterPrice+')',v:money(calc.waterFee),y:yOff+96},{l:'电费 ('+calc.elecUsed+'度 × ¥'+rates.electricPrice+')',v:money(calc.elecFee),y:yOff+120}].forEach(d=>{ctx.fillStyle='#64748b';ctx.textAlign='left';ctx.fillText(d.l,14,d.y);ctx.fillStyle='#1e293b';ctx.textAlign='right';ctx.fillText(d.v,wLogic-14,d.y);});
+        // 合计行
+        ctx.fillStyle='#f8fafc';ctx.fillRect(0,yOff+140,wLogic,44);
+        ctx.fillStyle='#1e293b';ctx.font='bold 16px sans-serif';ctx.textAlign='left';ctx.fillText('合计应收',14,yOff+170);
+        ctx.fillStyle='#ef4444';ctx.font='bold 20px sans-serif';ctx.textAlign='right';ctx.fillText(money(calc.total),wLogic-14,yOff+170);
+        // 状态
+        const sc=statusText==='未缴'?'#ef4444':(statusText==='已缴'?'#22c55e':'#94a3b8');
+        ctx.fillStyle=sc;ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText('状态：'+statusText,14,yOff+192);
+        idx++;
+      }
+    }
+    const filename=`${bName}_费用明细_${selMonths[0]}${selMonths.length>1?'-'+selMonths[selMonths.length-1]:''}.png`;
+    canvas.toBlob(async(blob)=>{
+      const shared=await shareFile(blob,filename,'image/png',`${bName} 费用明细`);
+      closeBatchExport();
+      toast(shared?'已分享/保存':'文件已下载');
+    },'image/png');
+  }else{
+    // CSV
+    let csv='\uFEFF';
+    csv+=`${bName} 费用明细\n`;
+    csv+=`导出时间,${new Date().toISOString().slice(0,10)}\n\n`;
+    csv+='房间号,租客,月份,月租金,用水量(方),水费,用电量(度),电费,合计,缴费状态,备注\n';
+    selRooms.forEach(item=>{
+      const{key,room}=item;const num2=key.split('-')[1];
+      selMonths.forEach(ym=>{
+        const md=room.months[ym];
+        if(md){const c=calcMonthFee(room,md);csv+=[num2,room.tenant||'',formatYM(ym),c.rent.toFixed(2),c.waterUsed.toFixed(1),c.waterFee.toFixed(2),c.elecUsed.toFixed(1),c.elecFee.toFixed(2),c.total.toFixed(2),md.paid?'已缴费':'未缴费',md.note||''].join(',')+'\n';}
+      });
+    });
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    const filename=`${bName}_费用明细_${selMonths[0]}${selMonths.length>1?'-'+selMonths[selMonths.length-1]:''}.csv`;
+    shareFile(blob,filename,'text/csv',`${bName} 费用明细`).then(shared=>{
+      closeBatchExport();
+      toast(shared?'已分享/保存':'文件已下载');
+    });
+  }
+}
+
+/* ============================================================ CSV 备份/导入/模板 ============================================================ */
+// CSV 表头定义（顺序固定）
+const CSV_HEADERS=[
+  '楼栋名称','楼层','房间号','租客姓名','电话','身份证号','入住日期',
+  '固定月租金','押金金额','押金方式','费用月份','月租金',
+  '上月水表','本月水表','上月电表','本月电表','缴费状态','备注','水费单价','电费单价'
+];
+// 转义 CSV 单元格（含逗号/引号/换行时加引号转义）
+function csvCell(v){
+  const s=String(v==null?'':v);
+  if(/[",\n\r]/.test(s))return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function csvRow(arr){return arr.map(csvCell).join(',')+'\n';}
+
+// 导出当前 state 为 CSV
+function exportStateAsCSV(){
+  let csv='\uFEFF';
+  csv+=csvRow(CSV_HEADERS);
+  state.buildings.forEach(b=>{
+    (b.floors||[]).forEach((floor,fIdx)=>{
+      const f=fIdx+1;
+      for(let r=1;r<=floor.rooms;r++){
+        const num2=f*100+r;
+        const key=`${b.id}-${num2}`;
+        const room=state.rooms[key];
+        if(!room)continue;
+        const months=Object.keys(room.months||{}).sort();
+        if(months.length===0){
+          csv+=csvRow([b.name,f,num2,room.tenant,room.phone,room.idCard,room.moveInDate,room.fixedRent,room.deposit&&room.deposit.amount,room.deposit&&room.deposit.method,'','','','','','','',room.note,room.roomRates&&room.roomRates.waterPrice,room.roomRates&&room.roomRates.electricPrice]);
+        }else{
+          months.forEach(ym=>{
+            const md=room.months[ym];
+            csv+=csvRow([b.name,f,num2,room.tenant,room.phone,room.idCard,room.moveInDate,room.fixedRent,room.deposit&&room.deposit.amount,room.deposit&&room.deposit.method,ym,md.rent,md.waterPrev,md.waterCurr,md.electricPrev,md.electricCurr,md.paid?'已缴费':'未缴费',md.note||'',room.roomRates&&room.roomRates.waterPrice,room.roomRates&&room.roomRates.electricPrice]);
+          });
+        }
+      }
+    });
+  });
+  csv+='\n';
+  csv+=csvRow(['#全局配置','','','','','','','','','','','','','','','','','','','']);
+  csv+=csvRow(['globalRates.waterPrice','','','','','','','','','','','','','','','','','','',state.globalRates.waterPrice]);
+  csv+=csvRow(['globalRates.electricPrice','','','','','','','','','','','','','','','','','','',state.globalRates.electricPrice]);
+  return csv;
+}
+
+// 获取 CSV 模板（表头 + 示例行）
+function getCSVTemplate(){
+  let csv='\uFEFF';
+  csv+=csvRow(CSV_HEADERS);
+  // 示例行（无楼栋ID、无房间状态，费用月份直接填年月）
+  csv+=csvRow(['A栋','1','101','张三','13800138000','110101199001011234','2024-01-01','2000','1000','微信','2024-01','2000','100','105','200','220','已缴费','','6','1.2']);
+  csv+=csvRow(['A栋','1','102','李四','13900139000','','2024-02-15','2500','2000','支付宝','2024-01','2500','50','60','300','350','未缴费','按月付','','']);
+  csv+='\n';
+  csv+='#说明：通过楼栋名称+楼层+房间号定位房间（自动识别或创建）；费用月份直接填年月如2024-01；同一房间多条费用记录用相同楼栋名称+楼层+房间号关联；有租客入住会自动设为已入住状态；缴费状态：已缴费/未缴费\n';
+  return csv;
+}
+
+// 简易 CSV 解析（支持引号转义、逗号分隔、换行）
+function parseCSV(text){
+  const rows=[];let row=[];let cell='';let inQuote=false;
+  text=text.replace(/^\uFEFF/,''); // 去 BOM
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(inQuote){
+      if(ch==='"'){
+        if(text[i+1]==='"'){cell+='"';i++;}
+        else{inQuote=false;}
+      }else{cell+=ch;}
+    }else{
+      if(ch==='"'){inQuote=true;}
+      else if(ch===','){row.push(cell);cell='';}
+      else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+      else if(ch==='\r'){/* skip */}
+      else{cell+=ch;}
+    }
+  }
+  if(cell!==''||row.length>0){row.push(cell);rows.push(row);}
+  return rows;
+}
+
+// 从 CSV 文本导入到 state（合并，不覆盖已有数据）
+function importStateFromCSV(text){
+  const rows=parseCSV(text);
+  if(rows.length<2)return{success:false,message:'CSV文件为空或格式不正确'};
+  // 找表头行（兼容新旧格式：新格式无"楼栋ID"，旧格式有）
+  let headerIdx=-1;
+  for(let i=0;i<Math.min(rows.length,5);i++){
+    if(rows[i].includes('楼栋名称')&&rows[i].includes('房间号')){headerIdx=i;break;}
+    if(rows[i].includes('楼栋ID')&&rows[i].includes('房间号')){headerIdx=i;break;}
+  }
+  if(headerIdx<0)return{success:false,message:'未找到CSV表头（需含楼栋名称、房间号等列）'};
+  const header=rows[headerIdx];
+  const colMap={};
+  header.forEach((h,i)=>{colMap[h.trim()]=i;});
+  // 必须包含的列：楼栋名称、楼层、房间号
+  const need=['楼栋名称','楼层','房间号'];
+  for(const k of need){if(colMap[k]===undefined)return{success:false,message:'CSV缺少必要列：'+k};}
+
+  const get=(row,key)=>{const idx=colMap[key];return idx===undefined?'':(row[idx]||'').trim();};
+  // 解析楼栋名称为楼栋ID（自动匹配或创建）
+  function getOrCreateBuilding(bname){
+    if(!bname)return null;
+    // 先按名称匹配
+    let b=state.buildings.find(x=>x.name===bname);
+    if(b)return b;
+    // 再按ID匹配（兼容旧格式中楼栋名称可能就是ID）
+    b=state.buildings.find(x=>x.id===bname);
+    if(b)return b;
+    // 创建新楼栋，ID用名称第一个字符或递增字母
+    let newId=bname.charAt(0).toUpperCase();
+    // 确保ID不重复
+    let suffix=1;
+    while(state.buildings.find(x=>x.id===newId)){
+      newId=bname.charAt(0).toUpperCase()+suffix;
+      suffix++;
+    }
+    b={id:newId,name:bname,floors:[]};
+    state.buildings.push(b);
+    return b;
+  }
+
+  let buildingCount=0,roomCount=0,monthCount=0;
+  for(let i=headerIdx+1;i<rows.length;i++){
+    const row=rows[i];
+    if(!row||row.length<3)continue;
+    const firstCell=(row[0]||'').trim();
+    if(!firstCell||firstCell.startsWith('#')||firstCell.startsWith('说明')||firstCell.startsWith('globalRates'))continue;
+
+    const bname=get(row,'楼栋名称');
+    // 兼容旧格式：如果有楼栋ID列，优先用楼栋ID
+    const bidOld=colMap['楼栋ID']!==undefined?get(row,'楼栋ID'):'';
+    const fIdx=parseInt(get(row,'楼层'))-1;
+    const num2=parseInt(get(row,'房间号'));
+    if(isNaN(fIdx)||isNaN(num2))continue;
+
+    // 确定楼栋
+    let b;
+    if(bidOld){
+      b=state.buildings.find(x=>x.id===bidOld);
+      if(!b){b={id:bidOld,name:bname||bidOld+'栋',floors:[]};state.buildings.push(b);buildingCount++;}
+      else if(bname&&!b.name){b.name=bname;}
+    }else if(bname){
+      b=getOrCreateBuilding(bname);
+      if(!b)continue;
+      // 检查是否是新建的
+      if(state.buildings.indexOf(b)===state.buildings.length-1&&b.floors.length===0){buildingCount++;}
+    }else continue;
+
+    // 确保楼层存在
+    while(b.floors.length<fIdx+1){b.floors.push({rooms:5});}
+    const floor=b.floors[fIdx];
+    const roomNum=num2%100;
+    if(floor.rooms<roomNum)floor.rooms=roomNum;
+
+    // 生成房间 key
+    const key=`${b.id}-${num2}`;
+    if(!state.rooms[key]){state.rooms[key]=defaultRoom();roomCount++;}
+    const room=state.rooms[key];
+    // 更新房间信息（有值才更新，不覆盖已有数据）
+    const tenant=get(row,'租客姓名');if(tenant)room.tenant=tenant;
+    const phone=get(row,'电话');if(phone)room.phone=phone;
+    const idCard=get(row,'身份证号');if(idCard)room.idCard=idCard;
+    const moveIn=get(row,'入住日期');if(moveIn)room.moveInDate=moveIn;
+    // 房间状态已去掉，有租客自动设为已入住
+    if(room.tenant&&room.status==='empty')room.status='occupied';
+    const fixedRent=get(row,'固定月租金');if(fixedRent)room.fixedRent=fixedRent;
+    const depAmt=get(row,'押金金额');if(depAmt)room.deposit.amount=depAmt;
+    const depMtd=get(row,'押金方式');if(depMtd)room.deposit.method=depMtd;
+    const wp=get(row,'水费单价');if(wp)room.roomRates.waterPrice=wp;
+    const ep=get(row,'电费单价');if(ep)room.roomRates.electricPrice=ep;
+    const note=get(row,'备注');if(note)room.note=note;
+    // 费用记录
+    const ym=get(row,'费用月份');
+    if(ym){
+      // 自动识别各种年月格式：2024-01, 2024/01, 2024年1月, 20241
+      let normalizedYm=ym;
+      // 处理"2024年1月"格式
+      const cnMatch=ym.match(/(\d{4})年(\d{1,2})月?/);
+      if(cnMatch){normalizedYm=cnMatch[1]+'-'+cnMatch[2].padStart(2,'0');}
+      // 处理"2024/01"格式
+      else if(ym.includes('/')){const[y,m]=ym.split('/');normalizedYm=y+'-'+m.padStart(2,'0');}
+      // 处理"2024-1"格式（补零）
+      else if(ym.includes('-')){const[y,m]=ym.split('-');normalizedYm=y+'-'+m.padStart(2,'0');}
+      const md={rent:get(row,'月租金'),waterPrev:get(row,'上月水表'),waterCurr:get(row,'本月水表'),electricPrev:get(row,'上月电表'),electricCurr:get(row,'本月电表'),paid:get(row,'缴费状态')==='已缴费',note:get(row,'备注')||''};
+      room.months[normalizedYm]=md;monthCount++;
+      if(room.status==='empty')room.status='occupied';
+    }
+  }
+  // 解析全局配置（兼容新旧列数）
+  for(let i=headerIdx+1;i<rows.length;i++){
+    const row=rows[i];
+    if(!row||!row[0])continue;
+    if(row[0]==='globalRates.waterPrice'){
+      // 找最后一列有值的
+      for(let j=row.length-1;j>=0;j--){if(row[j]&&row[j].trim()){state.globalRates.waterPrice=num(row[j]);break;}}
+    }
+    if(row[0]==='globalRates.electricPrice'){
+      for(let j=row.length-1;j>=0;j--){if(row[j]&&row[j].trim()){state.globalRates.electricPrice=num(row[j]);break;}}
+    }
+  }
+  return{success:true,buildingCount,roomCount,monthCount};
+}
+
+// 解析 CSV 到临时数据（不写入 state），用于核对界面
+function parseCSVForReview(text){
+  const rows=parseCSV(text);
+  if(rows.length<2)return{success:false,message:'CSV文件为空或格式不正确'};
+  let headerIdx=-1;
+  for(let i=0;i<Math.min(rows.length,5);i++){
+    if(rows[i].includes('楼栋名称')&&rows[i].includes('房间号')){headerIdx=i;break;}
+    if(rows[i].includes('楼栋ID')&&rows[i].includes('房间号')){headerIdx=i;break;}
+  }
+  if(headerIdx<0)return{success:false,message:'未找到CSV表头（需含楼栋名称、房间号等列）'};
+  const header=rows[headerIdx];
+  const colMap={};
+  header.forEach((h,i)=>{colMap[h.trim()]=i;});
+  const need=['楼栋名称','楼层','房间号'];
+  for(const k of need){if(colMap[k]===undefined)return{success:false,message:'CSV缺少必要列：'+k};}
+  const get=(row,key)=>{const idx=colMap[key];return idx===undefined?'':(row[idx]||'').trim();};
+
+  const reviewData=[]; // 每行一个对象
+  for(let i=headerIdx+1;i<rows.length;i++){
+    const row=rows[i];
+    if(!row||row.length<3)continue;
+    const firstCell=(row[0]||'').trim();
+    if(!firstCell||firstCell.startsWith('#')||firstCell.startsWith('说明')||firstCell.startsWith('globalRates'))continue;
+    const bname=get(row,'楼栋名称');
+    const fIdx=parseInt(get(row,'楼层'));
+    const num2=parseInt(get(row,'房间号'));
+    if(isNaN(fIdx)||isNaN(num2))continue;
+    const ym=get(row,'费用月份');
+    let normalizedYm=ym;
+    if(ym){
+      const cnMatch=ym.match(/(\d{4})年(\d{1,2})月?/);
+      if(cnMatch){normalizedYm=cnMatch[1]+'-'+cnMatch[2].padStart(2,'0');}
+      else if(ym.includes('/')){const[y,m]=ym.split('/');normalizedYm=y+'-'+m.padStart(2,'0');}
+      else if(ym.includes('-')){const[y,m]=ym.split('-');normalizedYm=y+'-'+m.padStart(2,'0');}
+    }
+    reviewData.push({
+      bname:bname,
+      floor:fIdx,
+      roomNum:num2,
+      tenant:get(row,'租客姓名'),
+      phone:get(row,'电话'),
+      idCard:get(row,'身份证号'),
+      moveIn:get(row,'入住日期'),
+      fixedRent:get(row,'固定月租金'),
+      depAmt:get(row,'押金金额'),
+      depMtd:get(row,'押金方式'),
+      ym:normalizedYm,
+      rent:get(row,'月租金'),
+      waterPrev:get(row,'上月水表'),
+      waterCurr:get(row,'本月水表'),
+      elecPrev:get(row,'上月电表'),
+      elecCurr:get(row,'本月电表'),
+      paid:get(row,'缴费状态'),
+      note:get(row,'备注')
+    });
+  }
+  return{success:true,data:reviewData};
+}
+
+// 显示导入核对界面
+function showImportReview(result){
+  const data=result.data;
+  closeSettings();
+  const body=document.getElementById('sheetBody');
+  document.getElementById('sheetTitle').textContent='导入核对（共'+data.length+'条）';
+  // 统计
+  let rooms=new Set(),months=0,buildings=new Set();
+  data.forEach(r=>{buildings.add(r.bname);rooms.add(r.bname+'-'+r.roomNum);if(r.ym)months++;});
+  body.innerHTML=`
+    <div class="section">
+      <div class="section-title">导入预览</div>
+      <div class="fee-calc">
+        <div class="fee-calc-row"><span class="fc-label">楼栋数</span><span class="fc-value">${buildings.size} 栋</span></div>
+        <div class="fee-calc-row"><span class="fc-label">房间数</span><span class="fc-value">${rooms.size} 间</span></div>
+        <div class="fee-calc-row"><span class="fc-label">费用记录</span><span class="fc-value">${months} 条</span></div>
+        <div class="fee-calc-row"><span class="fc-label">总行数</span><span class="fc-value">${data.length} 行</span></div>
+      </div>
+      <div class="info-hint">请核对以下数据，如有错误可在导入后到对应房间修改</div>
+    </div>
+    <div class="section">
+      <div class="section-title">数据明细（可编辑后导入）</div>
+      <div id="reviewList" style="max-height:50vh;overflow-y:auto">
+        ${data.map((r,i)=>`
+          <div class="building-mgmt-item" style="padding:10px;margin-bottom:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-weight:600;font-size:14px">${esc(r.bname)} ${r.floor}楼 ${r.roomNum}房</span>
+              <span style="font-size:12px;color:${r.ym?'var(--success)':'var(--text-lighter)'}">${r.ym?formatYM(r.ym):'仅房间信息'}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px;color:var(--text-light)">
+              <div>租客: <input type="text" class="rv-input" data-idx="${i}" data-field="tenant" value="${esc(r.tenant)}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
+              <div>电话: <input type="text" class="rv-input" data-idx="${i}" data-field="phone" value="${esc(r.phone)}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
+              <div>月租: <input type="text" class="rv-input" data-idx="${i}" data-field="rent" value="${esc(r.rent)}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
+              <div>缴费: <select class="rv-input" data-idx="${i}" data-field="paid" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"><option ${r.paid==='已缴费'?'selected':''}>已缴费</option><option ${r.paid!=='已缴费'?'selected':''}>未缴费</option></select></div>
+              ${r.ym?`
+              <div>水表(上/本): <input type="text" class="rv-input" data-idx="${i}" data-field="waterPrev" value="${esc(r.waterPrev)}" style="width:40px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px">/<input type="text" class="rv-input" data-idx="${i}" data-field="waterCurr" value="${esc(r.waterCurr)}" style="width:40px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
+              <div>电表(上/本): <input type="text" class="rv-input" data-idx="${i}" data-field="elecPrev" value="${esc(r.elecPrev)}" style="width:40px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px">/<input type="text" class="rv-input" data-idx="${i}" data-field="elecCurr" value="${esc(r.elecCurr)}" style="width:40px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
+              `:''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-secondary" id="btnReviewCancel">取消</button>
+      <button class="btn btn-primary" id="btnReviewConfirm">确认导入</button>
+    </div>
+  `;
+  // 绑定编辑事件——更新临时数据
+  body.querySelectorAll('.rv-input').forEach(input=>{
+    input.addEventListener('change',()=>{
+      const idx=parseInt(input.dataset.idx);
+      const field=input.dataset.field;
+      data[idx][field]=input.value;
+    });
+  });
+  document.getElementById('btnReviewCancel').addEventListener('click',closeSheet);
+  document.getElementById('btnReviewConfirm').addEventListener('click',()=>{
+    // 将核对后的数据写入 state
+    applyImportedData(data);
+  });
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+}
+
+// 将核对后的数据应用到 state
+function applyImportedData(data){
+  let buildingCount=0,roomCount=0,monthCount=0;
+  function getOrCreateBuilding(bname){
+    let b=state.buildings.find(x=>x.name===bname);
+    if(b)return b;
+    b=state.buildings.find(x=>x.id===bname);
+    if(b)return b;
+    let newId=bname.charAt(0).toUpperCase();
+    let suffix=1;
+    while(state.buildings.find(x=>x.id===newId)){newId=bname.charAt(0).toUpperCase()+suffix;suffix++;}
+    b={id:newId,name:bname,floors:[]};
+    state.buildings.push(b);buildingCount++;
+    return b;
+  }
+  data.forEach(r=>{
+    const b=getOrCreateBuilding(r.bname);
+    const fIdx=r.floor-1;
+    while(b.floors.length<fIdx+1){b.floors.push({rooms:5});}
+    const floor=b.floors[fIdx];
+    const roomNum=r.roomNum%100;
+    if(floor.rooms<roomNum)floor.rooms=roomNum;
+    const key=`${b.id}-${r.roomNum}`;
+    if(!state.rooms[key]){state.rooms[key]=defaultRoom();roomCount++;}
+    const room=state.rooms[key];
+    if(r.tenant)room.tenant=r.tenant;
+    if(r.phone)room.phone=r.phone;
+    if(r.idCard)room.idCard=r.idCard;
+    if(r.moveIn)room.moveInDate=r.moveIn;
+    if(room.tenant&&room.status==='empty')room.status='occupied';
+    if(r.fixedRent)room.fixedRent=r.fixedRent;
+    if(r.depAmt)room.deposit.amount=r.depAmt;
+    if(r.depMtd)room.deposit.method=r.depMtd;
+    if(r.note)room.note=r.note;
+    if(r.ym){
+      room.months[r.ym]={rent:r.rent,waterPrev:r.waterPrev,waterCurr:r.waterCurr,electricPrev:r.elecPrev,electricCurr:r.elecCurr,paid:r.paid==='已缴费',note:r.note||''};
+      monthCount++;
+      if(room.status==='empty')room.status='occupied';
+    }
+  });
+  initRooms();save();renderAll();closeSheet();
+  toast(`导入成功：${buildingCount}栋、${roomCount}间房、${monthCount}条费用`);
+}
+
+/* ============================================================ 设置页 ============================================================ */
+function openSettings(){
+  const body=document.getElementById('settingsBody');
+  const lastSaveText=getLastSaveText();
+  const lastBackupTime=getLastBackupTime();
+  const lastBackupText=lastBackupTime?new Date(lastBackupTime).toLocaleString('zh-CN'):'从未备份';
+  const backupDays=lastBackupTime?Math.floor((Date.now()-lastBackupTime)/86400000):0;
+  const backupWarn=(!lastBackupTime)||backupDays>=7;
+  // 统计数据量
+  let totalRooms=0,totalTenants=0,totalMonths=0,totalArchives=0;
+  for(const key in state.rooms){
+    const r=state.rooms[key];
+    totalRooms++;
+    if(r.tenant||r.phone)totalTenants++;
+    totalMonths+=Object.keys(r.months||{}).length;
+    totalArchives+=(r.archived||[]).length;
+  }
+  body.innerHTML=`
+    <div class="section">
+      <div class="section-title">数据存档状态</div>
+      <div class="fee-calc">
+        <div class="fee-calc-row"><span class="fc-label">最后保存</span><span class="fc-value" style="color:var(--success)">${esc(lastSaveText)}</span></div>
+        <div class="fee-calc-row"><span class="fc-label">上次备份</span><span class="fc-value" style="color:${backupWarn?'var(--danger)':'var(--success)'}">${esc(lastBackupText)}${backupDays>0?' ('+backupDays+'天前)':''}</span></div>
+        <div class="fee-calc-row"><span class="fc-label">房间数</span><span class="fc-value">${totalRooms} 间</span></div>
+        <div class="fee-calc-row"><span class="fc-label">在住租客</span><span class="fc-value">${totalTenants} 人</span></div>
+        <div class="fee-calc-row"><span class="fc-label">费用记录</span><span class="fc-value">${totalMonths} 条</span></div>
+        <div class="fee-calc-row"><span class="fc-label">归档记录</span><span class="fc-value">${totalArchives} 条</span></div>
+      </div>
+      ${backupWarn?'<div class="info-hint" style="color:var(--danger)">⚠️ 建议尽快导出备份，防止数据丢失</div>':'<div class="info-hint" style="color:var(--success)">✓ 数据已备份，请保持定期备份习惯</div>'}
+      <div class="info-hint">数据自动保存在本地浏览器，每次操作即时存档；页面关闭/切后台时也会自动保存</div>
+    </div>
+    <div class="section">
+      <div class="section-title">水电费单价</div>
+      <div class="form-row-2">
+        <div class="form-row"><label>水费单价 (元/方)</label><input type="number" id="setWaterPrice" min="0" step="0.01" placeholder="6" value="${state.globalRates.waterPrice}"></div>
+        <div class="form-row"><label>电费单价 (元/度)</label><input type="number" id="setElecPrice" min="0" step="0.01" placeholder="1.2" value="${state.globalRates.electricPrice}"></div>
+      </div>
+      <div class="info-hint">全局默认单价，单个房间可在录入费用时单独设置</div>
+    </div>
+    <div class="section">
+      <div class="section-title">批量导出</div>
+      <button class="btn-full" id="btnBatchExport" style="background:var(--success);color:#fff">批量导出费用明细（可选月份/房间/格式）</button>
+      <div class="info-hint">导出当前栋每个房间单独的当月费用图片，可逐张分享给租客</div>
+    </div>
+    <div class="section">
+      <div class="section-title">数据备份与恢复</div>
+      <button class="btn btn-secondary btn-full" id="btnExportBackup" style="background:var(--success-bg);color:var(--success)">导出数据备份</button>
+      <div class="info-hint">可选择导出JSON（完整备份）或CSV表格（Excel可编辑），建议每周备份一次</div>
+      <button class="btn btn-secondary btn-full" id="btnDownloadTemplate" style="background:var(--warning-bg);color:var(--warning);margin-top:8px">下载CSV模板</button>
+      <div class="info-hint">下载空模板填入数据，再导入即可批量录入房间和费用</div>
+      <div style="margin-top:10px">
+        <label style="display:block;font-size:13px;color:var(--text-light);margin-bottom:4px;font-weight:500">从CSV或JSON文件导入数据</label>
+        <button class="btn-full" id="btnImportBackup" style="background:var(--primary);color:#fff">选择文件导入</button>
+        <input type="file" accept=".csv,.json,.txt" id="importBackupInput" style="display:none">
+        <div class="info-hint">CSV文件会自动识别楼栋/房间/租客/费用信息并合并；JSON文件会覆盖当前数据</div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">其他</div>
+      <button class="btn btn-danger btn-full" id="btnClearAll">清空所有数据</button>
+    </div>
+  `;
+  document.getElementById('setWaterPrice').addEventListener('input',()=>{state.globalRates.waterPrice=num(val('setWaterPrice'))||6;save();});
+  document.getElementById('setElecPrice').addEventListener('input',()=>{state.globalRates.electricPrice=num(val('setElecPrice'))||1.2;save();});
+  document.getElementById('btnBatchExport').addEventListener('click',()=>{closeSettings();openBatchExport();});
+  document.getElementById('btnExportBackup').addEventListener('click',()=>{
+    // 弹出格式选择弹窗
+    document.getElementById('exportOverlay').classList.add('show');
+    document.getElementById('backupExportModal').classList.add('show');
+  });
+  document.getElementById('backupJson').addEventListener('click',()=>{
+    // 导出 JSON 备份（完整数据）
+    const json=JSON.stringify(state,null,2);
+    const blob=new Blob([json],{type:'application/json'});
+    const filename=`楼房管理备份_${new Date().toISOString().slice(0,10)}.json`;
+    document.getElementById('backupExportModal').classList.remove('show');
+    document.getElementById('exportOverlay').classList.remove('show');
+    shareFile(blob,filename,'application/json','楼房管理数据备份').then(shared=>{
+      setLastBackupTime(); // 记录备份时间
+      toast(shared?'已分享/保存，备份时间已更新':'文件已下载，备份时间已更新');
+    });
+  });
+  document.getElementById('backupCsv').addEventListener('click',()=>{
+    // 导出 CSV 备份表格
+    const csv=exportStateAsCSV();
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    const filename=`楼房管理备份_${new Date().toISOString().slice(0,10)}.csv`;
+    document.getElementById('backupExportModal').classList.remove('show');
+    document.getElementById('exportOverlay').classList.remove('show');
+    shareFile(blob,filename,'text/csv','楼房管理CSV备份表格').then(shared=>{
+      setLastBackupTime(); // 记录备份时间
+      toast(shared?'已分享/保存，备份时间已更新':'文件已下载，备份时间已更新');
+    });
+  });
+  document.getElementById('backupExportCancel').addEventListener('click',()=>{
+    document.getElementById('exportOverlay').classList.remove('show');
+    document.getElementById('backupExportModal').classList.remove('show');
+  });
+  document.getElementById('btnDownloadTemplate').addEventListener('click',()=>{
+    // 下载 CSV 模板，通过 shareFile 让用户选择保存位置
+    const csv=getCSVTemplate();
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    shareFile(blob,'楼房管理模板.csv','text/csv','楼房管理CSV模板').then(shared=>{
+      toast(shared?'已分享/保存':'文件已下载');
+    });
+  });
+  document.getElementById('btnImportBackup').addEventListener('click',()=>document.getElementById('importBackupInput').click());
+  document.getElementById('importBackupInput').addEventListener('change',(e)=>{
+    const file=e.target.files[0];if(!file)return;
+    e.target.value='';
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      const text=ev.target.result;
+      if(text.trim().startsWith('{')||text.trim().startsWith('[')){
+        // JSON 备份
+        try{
+          const data=JSON.parse(text);
+          if(!data.rooms){toast('JSON文件格式不正确');return;}
+          if(!confirm('JSON恢复将覆盖当前所有数据，确定继续？'))return;
+          state=data;initRooms();save();renderAll();closeSettings();toast('数据恢复成功');
+        }catch(err){toast('JSON解析失败');}
+      }else{
+        // CSV 导入：先解析到临时数据，显示核对界面
+        try{
+          const result=parseCSVForReview(text);
+          if(!result.success){toast(result.message);return;}
+          showImportReview(result);
+        }catch(err){toast('CSV解析失败：'+err.message);}
+      }
+    };
+    reader.readAsText(file);
+  });
+  let clearCountdownTimer=null;
+  document.getElementById('btnClearAll').addEventListener('click',()=>{
+    // 弹出自定义清空确认弹窗
+    document.getElementById('clearConfirmInput').value='';
+    const confirmBtn=document.getElementById('clearConfirmBtn');
+    confirmBtn.disabled=true;
+    confirmBtn.style.opacity='.5';
+    confirmBtn.textContent='请等待 5 秒';
+    document.getElementById('clearOverlay').classList.add('show');
+    document.getElementById('clearDataModal').classList.add('show');
+    // 5秒倒计时
+    let countdown=5;
+    if(clearCountdownTimer)clearInterval(clearCountdownTimer);
+    clearCountdownTimer=setInterval(()=>{
+      countdown--;
+      if(countdown>0){
+        confirmBtn.textContent=`请等待 ${countdown} 秒`;
+      }else{
+        clearInterval(clearCountdownTimer);clearCountdownTimer=null;
+        confirmBtn.textContent='确认清空';
+        // 只有输入了正确文字才启用
+        if(document.getElementById('clearConfirmInput').value==='本人确定清空所有数据'){
+          confirmBtn.disabled=false;
+          confirmBtn.style.opacity='1';
+        }else{
+          confirmBtn.disabled=true;
+          confirmBtn.style.opacity='.5';
+        }
+      }
+    },1000);
+  });
+  // 输入验证
+  document.getElementById('clearConfirmInput').addEventListener('input',()=>{
+    const confirmBtn=document.getElementById('clearConfirmBtn');
+    const v=document.getElementById('clearConfirmInput').value;
+    // 倒计时结束后才检查输入
+    if(!clearCountdownTimer){
+      if(v==='本人确定清空所有数据'){
+        confirmBtn.disabled=false;
+        confirmBtn.style.opacity='1';
+      }else{
+        confirmBtn.disabled=true;
+        confirmBtn.style.opacity='.5';
+      }
+    }
+  });
+  document.getElementById('clearConfirmBtn').addEventListener('click',()=>{
+    if(document.getElementById('clearConfirmInput').value!=='本人确定清空所有数据'){toast('请输入正确的确认文字');return;}
+    if(document.getElementById('clearConfirmBtn').disabled)return;
+    if(clearCountdownTimer){clearInterval(clearCountdownTimer);clearCountdownTimer=null;}
+    localStorage.removeItem(STORAGE_KEY);
+    state={current:'A',buildings:[{id:'A',name:'A栋',floors:[{rooms:5},{rooms:5},{rooms:5},{rooms:5},{rooms:5}]},{id:'B',name:'B栋',floors:[{rooms:5},{rooms:5},{rooms:5},{rooms:5},{rooms:5}]}],globalRates:{waterPrice:6,electricPrice:1.2},rooms:{}};
+    initRooms();save();renderAll();closeSettings();
+    document.getElementById('clearOverlay').classList.remove('show');
+    document.getElementById('clearDataModal').classList.remove('show');
+    toast('已清空所有数据');
+  });
+  document.getElementById('clearCancelBtn').addEventListener('click',()=>{
+    if(clearCountdownTimer){clearInterval(clearCountdownTimer);clearCountdownTimer=null;}
+    document.getElementById('clearOverlay').classList.remove('show');
+    document.getElementById('clearDataModal').classList.remove('show');
+  });
+  document.getElementById('clearOverlay').addEventListener('click',()=>{
+    if(clearCountdownTimer){clearInterval(clearCountdownTimer);clearCountdownTimer=null;}
+    document.getElementById('clearOverlay').classList.remove('show');
+    document.getElementById('clearDataModal').classList.remove('show');
+  });
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('settingsSheet').classList.add('show');
+}
+
+// 归档记录查看
+function showAllArchives(){
+  const body=document.getElementById('sheetBody');
+  document.getElementById('sheetTitle').textContent='归档记录';
+  const allArchives=[];
+  for(const key in state.rooms){
+    const room=state.rooms[key];
+    const[bId,num]=key.split('-');
+    const bld=getBuilding(bId);const bName=bld?bld.name:(bId+'栋');
+    (room.archived||[]).forEach((a,i)=>{
+      allArchives.push({key,archiveIdx:i,bName,num,...a});
+    });
+  }
+  // 按退租日期倒序排列
+  allArchives.sort((x,y)=>(y.leaveDate||'').localeCompare(x.leaveDate||''));
+  if(allArchives.length===0){
+    body.innerHTML=`<div class="empty-hint">暂无归档记录</div><div class="btn-group"><button class="btn btn-primary" id="btnArrearsBack">关闭</button></div>`;
+    document.getElementById('btnArrearsBack').addEventListener('click',closeSheet);
+  }else{
+    body.innerHTML=`
+      <div class="section">
+        <div class="section-title">全部归档租客 (${allArchives.length})</div>
+        ${allArchives.map(a=>`
+          <div class="archive-item" data-room="${a.key}" data-idx="${a.archiveIdx}">
+            <div class="archive-icon">📁</div>
+            <div class="archive-info">
+              <div class="archive-name">${esc(a.tenant)||'未命名'} · ${esc(a.bName)} ${esc(a.num)}房</div>
+              <div class="archive-date">${a.moveInDate||'?'} ~ ${a.leaveDate||'?'}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="btn-group"><button class="btn btn-primary" id="btnArrearsBack">关闭</button></div>
+    `;
+    body.querySelectorAll('.archive-item').forEach(item=>{
+      item.addEventListener('click',()=>{
+        const roomKey=item.dataset.room;
+        const archIdx=parseInt(item.dataset.idx);
+        showArchivedTenant(roomKey,archIdx);
+      });
+    });
+    document.getElementById('btnArrearsBack').addEventListener('click',closeSheet);
+  }
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+}
+
+function closeSettings(){
+  document.getElementById('settingsSheet').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+/* ============================================================ 事件绑定 ============================================================ */
+document.getElementById('btnSearch').addEventListener('click',()=>{
+  const sb=document.getElementById('searchBar');
+  if(sb.classList.contains('show'))closeSearch();else openSearch();
+});
+document.getElementById('searchInput').addEventListener('input',e=>{
+  const v=e.target.value;document.getElementById('searchClear').classList.toggle('show',v.length>0);renderSearchResults(v);
+});
+document.getElementById('searchClear').addEventListener('click',()=>{document.getElementById('searchInput').value='';document.getElementById('searchClear').classList.remove('show');renderSearchResults('');document.getElementById('searchInput').focus();});
+document.getElementById('btnSettings').addEventListener('click',openSettings);
+document.getElementById('settingsClose').addEventListener('click',closeSettings);
+document.getElementById('batchClose').addEventListener('click',closeBatchExport);
+document.getElementById('batchOverlay').addEventListener('click',closeBatchExport);
+document.getElementById('batchSheet').addEventListener('click',e=>e.stopPropagation());
+document.getElementById('btnAddBuilding').addEventListener('click',openBuildingAdd);
+document.getElementById('btnCollapseSidebar').addEventListener('click',collapseSidebar);
+document.getElementById('btnOpenSidebar').addEventListener('click',expandSidebar);
+document.getElementById('btnArchiveList').addEventListener('click',showAllArchives);
+// 侧栏展开时，点击右侧主区域任意位置收起侧栏
+document.getElementById('main').addEventListener('click',(e)=>{
+  if(!document.body.classList.contains('sidebar-collapsed')){
+    // 排除点击交互元素（房间格子、概览等仍可正常响应，但侧栏会收起）
+    collapseSidebar();
+  }
+});
+document.querySelector('.header').addEventListener('click',(e)=>{
+  // 点击 header 非按钮区域时也收起侧栏（但不拦截按钮点击）
+  if(!document.body.classList.contains('sidebar-collapsed')&&!e.target.closest('button')){
+    collapseSidebar();
+  }
+});
+document.getElementById('sheetClose').addEventListener('click',closeSheet);
+document.getElementById('monthClose').addEventListener('click',closeMonthSheet);
+document.getElementById('overlay').addEventListener('click',()=>{closeSheet();closeMonthSheet();closeSettings();closeExportModal();closeArchiveModal();closeRatePopover();});
+document.getElementById('sheet').addEventListener('click',e=>e.stopPropagation());
+document.getElementById('monthSheet').addEventListener('click',e=>e.stopPropagation());
+document.getElementById('settingsSheet').addEventListener('click',e=>e.stopPropagation());
+
+document.getElementById('exportImg').addEventListener('click',()=>{
+  // 不在这里关闭弹窗，让 share 在用户手势上下文里发起
+  const key=exportRoomKey;
+  const canvas=generateRoomCanvas(key);
+  if(!canvas){toast('暂无月度记录可导出');return;}
+  const[b,num]=key.split('-');const bld=getBuilding(b);const bName=bld?bld.name:(b+'栋');const now=new Date();
+  const room=state.rooms[key];const tenantName=room.tenant||'未命名';
+  const filename=`${bName}${num}房_${tenantName}_水电费明细_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}.png`;
+  canvas.toBlob(async(blob)=>{
+    const shared=await shareFile(blob,filename,'image/png',`${bName} ${num}房 ${tenantName} 水电费明细`);
+    closeExportModal();
+    toast(shared?'已分享/保存':'文件已下载');
+  },'image/png');
+});
+document.getElementById('exportCsv').addEventListener('click',()=>{
+  const key=exportRoomKey;
+  const room=state.rooms[key];const[b,num]=key.split('-');
+  const bld=getBuilding(b);const bName=bld?bld.name:(b+'栋');
+  const months=Object.keys(room.months).sort();
+  if(months.length===0){toast('暂无月度记录可导出');return;}
+  const rates=getRoomRates(room);
+  const tenantName=room.tenant||'未命名';
+  let csv='\uFEFF';
+  csv+=`${bName} ${num}房 ${tenantName} 水电费明细\n`;
+  csv+=`租客,${room.tenant||''},电话,${room.phone||''},身份证,${room.idCard||''}\n`;
+  csv+=`单价,水费 ${rates.waterPrice}元/方,电费 ${rates.electricPrice}元/度\n\n`;
+  csv+='月份,租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,合计,缴费状态,备注\n';
+  months.forEach(ym=>{const md=room.months[ym];const calc=calcMonthFee(room,md);csv+=[formatYM(ym),calc.rent.toFixed(2),md.waterPrev||'',md.waterCurr||'',calc.waterUsed.toFixed(1),calc.waterFee.toFixed(2),md.electricPrev||'',md.electricCurr||'',calc.elecUsed.toFixed(1),calc.elecFee.toFixed(2),calc.total.toFixed(2),md.paid?'已缴费':'未缴费',md.note||''].join(',')+'\n';});
+  let tRent=0,tWater=0,tElec=0,tTotal=0;months.forEach(ym=>{const c=calcMonthFee(room,room.months[ym]);tRent+=c.rent;tWater+=c.waterFee;tElec+=c.elecFee;tTotal+=c.total;});
+  csv+=`合计,${tRent.toFixed(2)},,,${tWater.toFixed(2)},,,,${tElec.toFixed(2)},${tTotal.toFixed(2)},,\n`;
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const now=new Date();const filename=`${bName}${num}房_${tenantName}_水电费明细_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}.csv`;
+  // CSV 也通过 shareFile 弹出系统分享面板，用户可选择保存到文件或分享到其他App
+  shareFile(blob,filename,'text/csv',`${bName} ${num}房 ${tenantName} 水电费明细`).then(shared=>{
+    closeExportModal();
+    toast(shared?'已分享/保存':'文件已下载');
+  });
+});
+document.getElementById('exportCancel').addEventListener('click',closeExportModal);
+document.getElementById('exportOverlay').addEventListener('click',()=>{closeExportModal();closeArchiveModal();closeRatePopover();closeBuildingEdit();closeBackupExportModal();});
+
+document.getElementById('beCancel').addEventListener('click',closeBuildingEdit);
+document.getElementById('beSave').addEventListener('click',saveBuildingEdit);
+document.getElementById('beDelete').addEventListener('click',deleteBuilding);
+document.getElementById('beFloorCount').addEventListener('input',syncBeFloorCount);
+document.getElementById('beApplyAll').addEventListener('click',()=>{
+  const v=parseInt(prompt('输入统一房间数（1-50）','5'));
+  if(!v||v<1||v>50){toast('请输入1-50之间的数字');return;}
+  beFloorRooms=beFloorRooms.map(()=>v);
+  renderBeFloorList();
+});
+document.getElementById('beName').addEventListener('keydown',e=>{if(e.key==='Enter')saveBuildingEdit();});
+
+document.getElementById('archiveDo').addEventListener('click',()=>{closeArchiveModal();doArchiveTenant(currentRoomKey);});
+document.getElementById('archiveCancel').addEventListener('click',closeArchiveModal);
+
+document.getElementById('rateSave').addEventListener('click',()=>{
+  const room=state.rooms[ratePopoverRoomKey];if(!room){closeRatePopover();return;}
+  if(ratePopoverType==='water')room.roomRates.waterPrice=val('rpWaterPrice');
+  else room.roomRates.electricPrice=val('rpElecPrice');
+  save();closeRatePopover();if(editingRoomKey)openMonthEdit(editingRoomKey,val('monthYm'));toast('单价已更新');
+});
+document.getElementById('rateReset').addEventListener('click',()=>{
+  const room=state.rooms[ratePopoverRoomKey];if(!room){closeRatePopover();return;}
+  if(ratePopoverType==='water')room.roomRates.waterPrice='';else room.roomRates.electricPrice='';
+  save();closeRatePopover();if(editingRoomKey)openMonthEdit(editingRoomKey,val('monthYm'));toast('已重置为默认单价');
+});
+
+document.getElementById('imgViewer').addEventListener('click',()=>document.getElementById('imgViewer').classList.remove('show'));
+document.getElementById('imgViewerClose').addEventListener('click',e=>{e.stopPropagation();document.getElementById('imgViewer').classList.remove('show');});
+
+/* ============================================================ 启动 ============================================================ */
+load();renderAll();collapseSidebar();
+// 绑定弹层下滑关闭
+enableSwipeToClose(document.getElementById('sheet'),closeSheet);
+enableSwipeToClose(document.getElementById('monthSheet'),closeMonthSheet);
+enableSwipeToClose(document.getElementById('settingsSheet'),closeSettings);
+
+/* ============================================================ 数据保护：页面关闭/切后台时强制保存 + 定期备份提醒 ============================================================ */
+// 页面切到后台或关闭时，强制保存一次（防止自动保存定时器未执行就退出）
+let _isUnloading=false;
+function flushSave(){
+  if(_isUnloading)return;
+  _isUnloading=true;
+  try{
+    // 如果当前正在编辑房间，先收集表单数据
+    if(currentRoomKey&&state.rooms[currentRoomKey]){
+      const r=state.rooms[currentRoomKey];
+      const fTenant=document.getElementById('fTenant');
+      if(fTenant){
+        r.tenant=val('fTenant');r.phone=val('fPhone');r.idCard=val('fIdCard');
+        r.moveInDate=val('fDate');r.note=val('fNote');r.fixedRent=val('fFixedRent');
+        r.deposit.amount=val('fDeposit');r.deposit.method=val('fDepositMethod');
+      }
+    }
+    save();
+  }catch(e){console.warn('flushSave failed',e);}
+  _isUnloading=false;
+}
+// 页面隐藏时保存（切后台、最小化等）
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){flushSave();}
+});
+// 页面关闭前保存
+window.addEventListener('beforeunload',()=>{flushSave();});
+window.addEventListener('pagehide',()=>{flushSave();});
+
+// 定期保存（每30秒自动保存一次，防止意外）
+setInterval(()=>{flushSave();},30000);
+
+// 启动后检查是否需要备份提醒
+setTimeout(()=>{
+  if(shouldRemindBackup()){
+    const lastBackup=getLastBackupTime();
+    let msg='建议定期导出数据备份，防止数据丢失';
+    if(lastBackup){
+      const days=Math.floor((Date.now()-lastBackup)/86400000);
+      msg=`已 ${days} 天未导出备份，建议及时备份`;
+    }
+    // 非首次打开时才提醒（有数据时）
+    let hasData=false;
+    for(const key in state.rooms){
+      const r=state.rooms[key];
+      if(r.tenant||r.phone||Object.keys(r.months||{}).length>0||(r.archived||[]).length>0){
+        hasData=true;break;
+      }
+    }
+    if(hasData){
+      toast(msg);
+      // 5秒后再提示一次（让用户看清楚）
+      setTimeout(()=>toast('可在 设置→数据备份与恢复 中导出'),3000);
+    }
+  }
+},2000);
+
+/* ============================================================ Service Worker 离线缓存 ============================================================ */
+// 注册 Service Worker，让应用页面本身缓存到手机本地
+// 添加到主屏幕后，即使断网或链接失效，应用仍可离线打开使用
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/sw.js').then(reg=>{
+      console.log('✅ Service Worker 已注册，应用支持离线使用');
+      // 每次打开页面时检查 SW 更新
+      reg.update();
+      // 监听新 SW 激活后自动刷新页面
+      let refreshing=false;
+      navigator.serviceWorker.addEventListener('controllerchange',()=>{
+        if(refreshing)return;
+        refreshing=true;
+        window.location.reload();
+      });
+    }).catch(err=>{
+      console.warn('Service Worker 注册失败（不影响正常使用，仅影响离线缓存）',err);
+    });
+  });
+}
+</script>
+
+
+<!-- Cloud Sync Inline -->
+<script>
+(function(){
+  "use strict";
+  var CKEY="supabase_config";
+  function loadCfg(){try{var r=localStorage.getItem(CKEY);return r?JSON.parse(r):{url:"",key:"",autoSync:false};}catch(e){return{url:"",key:"",autoSync:false};}}
+  function saveCfg(c){localStorage.setItem(CKEY,JSON.stringify(c));}
+  var cfg=loadCfg(),sbClient=null,ready=false;
+  function initSB(){if(!cfg.url||!cfg.key){ready=false;return false;}if(typeof window.supabase==="undefined"){ready=false;return false;}try{sbClient=window.supabase.createClient(cfg.url,cfg.key);ready=true;return true;}catch(e){ready=false;return false;}}
+  function lastSync(){return parseInt(localStorage.getItem(STORAGE_KEY+"_lastCloudSync")||"0");}
+  function setSync(){localStorage.setItem(STORAGE_KEY+"_lastCloudSync",Date.now().toString());}
+  async function upload(){if(!ready){toast("请先配置云同步");return;}try{var j=JSON.stringify(state);var r=await sbClient.from("rent_data").upsert({id:1,data:j,updated_at:new Date().toISOString()});if(r.error)throw r.error;setSync();toast("已同步到云端");updUI();}catch(e){toast("同步失败: "+(e.message||e));}}
+  async function download(){if(!ready){toast("请先配置云同步");return;}try{var r=await sbClient.from("rent_data").select("data,updated_at").eq("id",1).single();if(r.error)throw r.error;if(!r.data||!r.data.data){toast("云端暂无数据");return;}var cs=JSON.parse(r.data.data);if(!cs.rooms){toast("数据格式错误");return;}var t=new Date(r.data.updated_at).toLocaleString("zh-CN");if(!confirm("云端更新于: "+t+"\n\n用云端数据覆盖本地吗?\n(建议先导出备份)"))return;state=cs;initRooms();save();renderAll();toast("已从云端恢复");}catch(e){toast("下载失败: "+(e.message||e));}}
+  var _os=null,_st=null;
+  function hookSave(){if(typeof window.save!=="function"||_os)return;_os=window.save;window.save=function(){_os.apply(this,arguments);if(ready&&cfg.autoSync){clearTimeout(_st);_st=setTimeout(function(){upload().catch(function(){});},3000);}};}
+  function updUI(){var s=document.getElementById("cloudSyncSection");if(!s)return;var t=lastSync();var ts=t?new Date(t).toLocaleString("zh-CN"):"从未同步";var e=s.querySelector("[data-lastsync]");if(e)e.textContent=ts;}
+  function inject(){
+    var sb=document.getElementById("settingsBody");if(!sb)return;if(document.getElementById("cloudSyncSection"))return;
+    var ok=cfg.url&&cfg.key;var ls=lastSync();var lst=ls?new Date(ls).toLocaleString("zh-CN"):"从未同步";
+    var sec=document.createElement("div");sec.className="section";sec.id="cloudSyncSection";
+    sec.innerHTML='<div class="section-title">☁️ 云端同步 (Supabase)</div>'+
+    '<div class="fee-calc">'+
+      '<div class="fee-calc-row"><span class="fc-label">同步状态</span><span class="fc-value" style="color:'+(ok?'var(--success)':'var(--text-lighter)')+'">'+(ok?'已配置':'未配置')+'</span></div>'+
+      '<div class="fee-calc-row"><span class="fc-label">上次同步</span><span class="fc-value" data-lastsync>'+lst+'</span></div>'+
+      '<div class="fee-calc-row"><span class="fc-label">自动同步</span><span class="fc-value">'+(cfg.autoSync?'已开启':'未开启')+'</span></div>'+
+    '</div>'+(ok?'':'<div class="info-hint" style="color:var(--warning)">⚠️ 请配置 Supabase</div>')+
+    '<div class="switch-row" style="margin-top:10px"><span class="switch-label">自动同步到云端</span><div class="switch '+(cfg.autoSync?'on':'')+'" id="swAuto"></div></div>'+
+    '<div class="btn-group"><button class="btn btn-primary" id="btnUp" '+(ok?'':'disabled style="opacity:.5"')+'>⬆️ 上传到云端</button><button class="btn btn-secondary" id="btnDown" '+(ok?'':'disabled style="opacity:.5"')+'>⬇️ 从云端恢复</button></div>'+
+    '<button class="btn btn-secondary btn-full" id="btnCfg" style="margin-top:8px;background:var(--purple-bg);color:var(--purple)">⚙️ 配置 Supabase</button>'+
+    '<div class="info-hint">云端同步可实现多设备数据共享</div>';
+    var secs=sb.querySelectorAll(".section");if(secs.length>0){sb.insertBefore(sec,secs[secs.length-1]);}else{sb.appendChild(sec);}
+    document.getElementById("swAuto").addEventListener("click",function(){cfg.autoSync=!cfg.autoSync;saveCfg(cfg);this.classList.toggle("on");var e=sec.querySelectorAll(".fc-value")[2];if(e)e.textContent=cfg.autoSync?"已开启":"未开启";toast(cfg.autoSync?"已开启自动同步":"已关闭自动同步");});
+    document.getElementById("btnUp").addEventListener("click",upload);
+    document.getElementById("btnDown").addEventListener("click",download);
+    document.getElementById("btnCfg").addEventListener("click",cfgDlg);
+  }
+  function cfgDlg(){
+    var ss=document.getElementById("settingsSheet");
+    var st=ss.querySelector(".sheet-title");
+    var sb=document.getElementById("settingsBody");
+    var orig=sb.innerHTML;
+    if(st)st.textContent="☁️ 配置 Supabase";
+    sb.innerHTML='<div class="section"><div class="section-title">连接配置</div>'+
+      '<div class="form-row"><label>Project URL</label><input type="text" id="cfgUrl" placeholder="https://xxxx.supabase.co" value="'+(cfg.url||'')+'"></div>'+
+      '<div class="form-row"><label>Anon Public Key</label><textarea id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIs..." style="min-height:72px;font-size:12px">'+(cfg.key||'')+'</textarea></div>'+
+      '<div class="info-hint">获取: supabase.com → 项目 → Settings → API Keys + Data API</div>'+
+      '<div class="info-hint" style="color:var(--danger);margin-top:6px">⚠️ 需先执行 supabase-setup.sql</div></div>'+
+      '<div class="section"><div class="section-title">说明</div>'+
+      '<div class="info-hint" style="line-height:1.8">• 上传: 推送数据到云端<br>• 恢复: 从云端拉取数据<br>• 自动同步: 修改后自动上传</div></div>'+
+      '<div class="btn-group"><button class="btn btn-primary" id="btnSaveC">保存</button><button class="btn btn-secondary" id="btnBackC">返回</button><button class="btn btn-danger" id="btnClrC" style="flex:0 0 auto;padding:12px 16px">清除</button></div>';
+    function restore(){sb.innerHTML=orig;if(st)st.textContent="全局设置";if(typeof openSettings==="function")openSettings();}
+    document.getElementById("btnSaveC").addEventListener("click",function(){var u=document.getElementById("cfgUrl").value.trim();var k=document.getElementById("cfgKey").value.trim();if(!u||!k){toast("请填写完整");return;}cfg.url=u;cfg.key=k;saveCfg(cfg);initSB();toast("配置已启用");restore();});
+    document.getElementById("btnBackC").addEventListener("click",restore);
+    document.getElementById("btnClrC").addEventListener("click",function(){if(!confirm("确定清除?"))return;cfg={url:"",key:"",autoSync:false};saveCfg(cfg);ready=false;sbClient=null;toast("已清除");restore();});
+  }function watchSB(){var sb=document.getElementById("settingsBody");if(!sb)return;var ob=new MutationObserver(function(){if(sb.children.length>0&&!document.getElementById("cloudSyncSection"))inject();});ob.observe(sb,{childList:true,subtree:true});}
+  if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",function(){initSB();hookSave();watchSB();});}else{initSB();hookSave();watchSB();}
+  window.CloudSync={upload:upload,download:download,isReady:function(){return ready;}};
+})();
+</script>
+</body>
+</html>
