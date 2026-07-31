@@ -1,0 +1,16 @@
+﻿{
+  "name": "房租费用统计工作台",
+  "short_name": "房租统计",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#F7FBFC",
+  "theme_color": "#5C6DFF",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
