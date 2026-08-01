@@ -190,17 +190,19 @@
   .room-unpaid{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
   .room-maintenance{background:#fefce8;color:#a16207;border-color:#fde68a}
 
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:201;display:none;opacity:0;transition:opacity .15s}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:210;display:none;opacity:0;transition:opacity .15s}
   .overlay.show{display:block;opacity:1}
   .overlay.closing{opacity:0}
-  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:202;background:var(--bg);border-radius:16px 16px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom)}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:230;background:var(--bg);border-radius:16px 16px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom)}
   .sheet.fullscreen-mode{border-radius:0;max-height:none;height:100vh;top:0}
   .sheet.show{transform:translateY(0)}
-  .page-fullscreen{position:fixed;inset:0;z-index:201;background:var(--bg);transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom)}
+  .page-fullscreen{position:fixed;inset:0;z-index:220;background:var(--bg);transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom)}
   .page-fullscreen.show{transform:translateY(0)}
   .page-fullscreen .sheet-header{position:sticky;top:0;z-index:5;background:#fff;border-radius:0}
-  /* monthSheet 需要在 sheet(全屏房间详情) 之上显示 */
-  #monthSheet{z-index:203}
+  /* 后打开的全屏页面层级更高 */
+  #batchSheet{z-index:224}
+  #sheet.fullscreen-mode{z-index:228}
+  #monthSheet{z-index:232}
   .sheet-handle{width:36px;height:4px;background:#cbd5e1;border-radius:2px;margin:10px auto 0;touch-action:pan-y}
   .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;border-radius:16px 16px 0 0;z-index:5;touch-action:pan-y}
   .swipe-grab{cursor:grab;touch-action:pan-y}
@@ -300,13 +302,18 @@
   .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 22px;border-radius:10px;font-size:14px;z-index:999;opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap}
   .toast.show{opacity:1}
 
-  .img-viewer{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:300;display:none;align-items:center;justify-content:center;cursor:pointer}
+  .img-viewer{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:320;display:none;align-items:center;justify-content:center;cursor:pointer}
   .img-viewer.show{display:flex}
   .img-viewer img{max-width:95%;max-height:90vh;border-radius:8px}
   .img-viewer-close{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;border:none;font-size:22px;cursor:pointer}
 
-  .export-modal,.action-modal,.rate-popover{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:14px;padding:20px;z-index:301;width:85%;max-width:320px;display:none}
+  /* 小弹窗（费用格式选择、归档、备份格式选择、单价设置、楼栋编辑）统一 z-index:311 在全屏页面之上 */
+  .export-modal,.action-modal,.rate-popover{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:14px;padding:20px;z-index:311;width:85%;max-width:320px;display:none}
   .export-modal.show,.action-modal.show,.rate-popover.show{display:block}
+  #exportOverlay{z-index:310}
+  #clearOverlay{z-index:315}
+  #clearDataModal{z-index:316}
+  #batchOverlay{z-index:223}
   .export-modal-title,.action-modal-title,.rate-popover-title{font-size:16px;font-weight:600;text-align:center;margin-bottom:14px}
   .export-option,.action-option{display:flex;align-items:center;gap:10px;padding:14px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer}
   .export-option:active,.action-option:active{background:#f8fafc}
@@ -1522,7 +1529,6 @@ function showArrearsDetail(list,bname){
       `).join('')}
       <div class="fee-calc" style="margin-top:8px"><div class="fee-calc-row total"><span class="fc-label">欠缴总计</span><span class="fc-value">${money(list.reduce((s,i)=>s+i.calc.total,0))}</span></div></div>
     </div>
-    <div class="btn-group"><button class="btn btn-primary" id="btnArrearsBack">关闭</button></div>
   `;
   // 绑定左滑
   body.querySelectorAll('.swipe-item-content').forEach(el=>{
@@ -1577,7 +1583,6 @@ function showArrearsDetail(list,bname){
     if(newList.length===0){closeSheet();toast('已删除');}
     else{showArrearsDetail(newList,bname);toast('已删除');}
   }));
-  document.getElementById('btnArrearsBack').addEventListener('click',closeSheet);
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
 }
@@ -2152,11 +2157,13 @@ function deleteMonth(key){if(!confirm('确定删除该月记录？'))return;cons
 function closeMonthSheet(){
   const ms=document.getElementById('monthSheet');
   if(!ms.classList.contains('show'))return;
+  // 清理嵌入式月份选择器
+  closeInlineMonthPicker();
   ms.classList.remove('show');
   editingMonth=null;editingRoomKey=null;
 }
 
-// 月份选择器 - 使用原生年月选择器（与入住时间同款弹出风格）
+// 月份选择器 - 嵌入在费用录入页面内弹出（像齿轮选择一样），不再用独立的#sheet弹窗
 let monthPickerRoomKey=null,monthPickerCurYm=null,monthPickerCallback=null;
 function openMonthPicker(key,curY,curM){
   monthPickerRoomKey=key;
@@ -2164,48 +2171,60 @@ function openMonthPicker(key,curY,curM){
   monthPickerCurYm=curYm;
   monthPickerCallback=(newYm)=>{switchMonth(key,newYm);};
   const now=new Date();const maxY=now.getFullYear()+1;const minY=now.getFullYear()-8;
-  // 构建年份和月份选项
   const years=[];for(let y=minY;y<=maxY;y++)years.push(y);
   const months=[1,2,3,4,5,6,7,8,9,10,11,12];
-  let html='<div style="text-align:center;font-size:15px;font-weight:600;margin-bottom:16px">选择月份</div>';
-  // 齿轮滚轮选择器
-  html+=`<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px">
-    <div style="position:relative;flex:1;max-width:120px">
-      <select id="mpYear" style="width:100%;height:160px;-webkit-appearance:none;appearance:none;background:transparent;border:none;font-size:18px;text-align:center;color:var(--text);outline:none">
-        ${years.map(y=>`<option value="${y}" ${y===curY?'selected':''}>${y}年</option>`).join('')}
-      </select>
-    </div>
-    <div style="position:relative;flex:1;max-width:120px">
-      <select id="mpMonth" style="width:100%;height:160px;-webkit-appearance:none;appearance:none;background:transparent;border:none;font-size:18px;text-align:center;color:var(--text);outline:none">
-        ${months.map(m=>`<option value="${m}" ${m===curM?'selected':''}>${String(m).padStart(2,'0')}月</option>`).join('')}
-      </select>
+  // 在monthSheetBody末尾追加一个嵌入式弹出层
+  let html=`<div id="mpInlineOverlay" style="position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:10;display:flex;align-items:flex-end;justify-content:center;animation:mpFade .18s ease">
+    <div id="mpInlineBox" style="width:100%;background:#fff;border-radius:16px 16px 0 0;padding:20px 16px 24px;box-shadow:0 -6px 24px rgba(0,0,0,.12)">
+      <div style="width:36px;height:4px;background:#cbd5e1;border-radius:2px;margin:0 auto 10px"></div>
+      <div style="text-align:center;font-size:15px;font-weight:600;margin-bottom:16px">选择月份</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px">
+        <div style="position:relative;flex:1;max-width:130px">
+          <select id="mpYear" size="5" style="width:100%;height:220px;-webkit-appearance:none;appearance:none;background:#f8fafc;border:none;border-radius:12px;font-size:20px;text-align:center;color:var(--text);outline:none;scrollbar-width:none;padding:8px 4px">
+            ${years.map(y=>`<option value="${y}" ${y===curY?'selected':''}>${y}年</option>`).join('')}
+          </select>
+        </div>
+        <div style="position:relative;flex:1;max-width:130px">
+          <select id="mpMonth" size="5" style="width:100%;height:220px;-webkit-appearance:none;appearance:none;background:#f8fafc;border:none;border-radius:12px;font-size:20px;text-align:center;color:var(--text);outline:none;scrollbar-width:none;padding:8px 4px">
+            ${months.map(m=>`<option value="${m}" ${m===curM?'selected':''}>${String(m).padStart(2,'0')}月</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <style>
+        #mpYear::-webkit-scrollbar,#mpMonth::-webkit-scrollbar{display:none}
+        #mpYear option,#mpMonth option{padding:10px 0;font-weight:500}
+        #mpYear option:checked,#mpMonth option:checked{background:rgba(75,91,240,.1);color:var(--primary);font-weight:700;border-radius:8px}
+        @keyframes mpFade{from{opacity:0}to{opacity:1}}
+        @keyframes mpSlideUp{from{transform:translateY(60%)}to{transform:translateY(0)}}
+        #mpInlineBox{animation:mpSlideUp .22s cubic-bezier(.32,.72,0,1)}
+      </style>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="btn btn-secondary" style="flex:1" id="btnMonthPickCancel">取消</button>
+        <button class="btn btn-primary" style="flex:1" id="btnMonthPickOK">确定</button>
+      </div>
     </div>
   </div>`;
-  // 用CSS让select显示多个选项（齿轮效果）
-  html+=`<style>
-    #mpYear, #mpMonth {
-      background: #f8fafc; border-radius: 10px; padding: 8px;
-      scrollbar-width: none;
-    }
-    #mpYear::-webkit-scrollbar, #mpMonth::-webkit-scrollbar { display: none; }
-    #mpYear option, #mpMonth option { padding: 8px 0; }
-  </style>`;
-  html+=`<div style="display:flex;gap:8px;margin-top:20px"><button class="btn btn-secondary" style="flex:1" id="btnMonthPickCancel">取消</button><button class="btn btn-primary" style="flex:1" id="btnMonthPickOK">确定</button></div>`;
-  const body=document.getElementById('sheetBody');
-  document.getElementById('sheetTitle').textContent='选择月份';
-  body.innerHTML=html;
-  document.getElementById('btnMonthPickCancel').addEventListener('click',closeSheet);
+  // 给monthSheet设置position:relative，确保absolute定位生效
+  const ms=document.getElementById('monthSheet');
+  ms.style.position='relative';
+  const body=document.getElementById('monthSheetBody');
+  body.insertAdjacentHTML('beforeend',html);
+  // 事件绑定
+  const overlayEl=document.getElementById('mpInlineOverlay');
+  overlayEl.addEventListener('click',e=>{if(e.target.id==='mpInlineOverlay')closeInlineMonthPicker();});
+  document.getElementById('btnMonthPickCancel').addEventListener('click',closeInlineMonthPicker);
   document.getElementById('btnMonthPickOK').addEventListener('click',()=>{
     const y=document.getElementById('mpYear').value;
     const m=document.getElementById('mpMonth').value;
     if(!y||!m){toast('请选择月份');return;}
     const newYm=monthKey(parseInt(y),parseInt(m));
-    closeSheet();
-    setTimeout(()=>{if(monthPickerCallback)monthPickerCallback(newYm);},200);
+    closeInlineMonthPicker();
+    setTimeout(()=>{if(monthPickerCallback)monthPickerCallback(newYm);},160);
   });
-  // 月份选择器用弹窗形式（非全屏）
-  document.getElementById('sheet').classList.remove('fullscreen-mode');
-  document.getElementById('sheet').classList.add('show');
+}
+function closeInlineMonthPicker(){
+  const el=document.getElementById('mpInlineOverlay');
+  if(el)el.remove();
 }
 let ratePopoverRoomKey=null,ratePopoverType=null;
 function openRatePopover(key,type){
@@ -2229,7 +2248,7 @@ function openRatePopover(key,type){
 }
 function closeRatePopover(){
   document.getElementById('ratePopover').classList.remove('show');
-  document.getElementById('exportOverlay').classList.add('show');
+  document.getElementById('exportOverlay').classList.remove('show');
   document.getElementById('rpWLabel').style.display='';document.getElementById('rpELabel').style.display='';
   document.getElementById('rpWaterPrice').style.display='';document.getElementById('rpElecPrice').style.display='';
   ratePopoverRoomKey=null;ratePopoverType=null;
@@ -3329,7 +3348,7 @@ function openBackupManager(){
     </div>
     <div class="section">
       <div class="section-title" id="bkOpsToggle" style="cursor:pointer;display:flex;align-items:center">
-        <span>备份操作</span> <span style="font-size:12px;color:var(--text-lighter);font-weight:400;margin-left:auto">点击展开 ▼</span>
+        <span>备份操作</span> <span class="toggle-hint" style="font-size:12px;color:var(--text-lighter);font-weight:400;margin-left:auto">点击展开 ▼</span>
       </div>
       <div id="bkOpsBody" style="display:none">
         <button class="btn-full" id="bkManualBtn" style="background:var(--primary);color:#fff">📥 立即手动备份</button>
@@ -3339,13 +3358,8 @@ function openBackupManager(){
       </div>
     </div>
     <div class="section">
-      <div class="section-title">CSV模板</div>
-      <button class="btn btn-secondary btn-full" id="bkDownloadTpl" style="background:var(--warning-bg);color:var(--warning)">📋 下载CSV模板</button>
-      <div class="info-hint">下载模板填入数据后可批量导入</div>
-    </div>
-    <div class="section">
       <div class="section-title" id="bkDbToggle" style="cursor:pointer;display:flex;align-items:center">
-        <span>数据库导入 / 导出</span> <span style="font-size:12px;color:var(--text-lighter);font-weight:400;margin-left:auto">点击展开 ▼</span>
+        <span>数据库导入 / 导出</span> <span class="toggle-hint" style="font-size:12px;color:var(--text-lighter);font-weight:400;margin-left:auto">点击展开 ▼</span>
       </div>
       <div id="bkDbBody" style="display:none">
         <button class="btn-full" id="bkExportJson" style="background:var(--success);color:#fff">📤 导出数据库 (JSON)</button>
@@ -3361,22 +3375,21 @@ function openBackupManager(){
       </div>
     </div>
     <div class="section">
+      <div class="section-title">CSV模板</div>
+      <button class="btn btn-secondary btn-full" id="bkDownloadTpl" style="background:var(--warning-bg);color:var(--warning)">📋 下载CSV模板</button>
+      <div class="info-hint">下载模板填入数据后可批量导入</div>
+    </div>
+    <div class="section">
       <div class="section-title" style="color:var(--danger)">⚠️ 危险操作</div>
       <button class="btn btn-danger btn-full" id="bkClearAll">清空所有数据</button>
       <div class="info-hint" style="color:var(--danger)">将删除所有楼栋、租客、费用和归档记录，不可恢复</div>
     </div>
-    <div class="btn-group" style="margin-top:16px">
-      <button class="btn btn-secondary" id="bkBackBtn">← 关闭</button>
-    </div>
+    <div style="height:20px"></div>
   `;
   // 显示弹窗
   document.getElementById('overlay').classList.add('show');
   document.getElementById('settingsSheet').classList.add('show');
   // === 事件绑定 ===
-  // 返回设置
-  document.getElementById('bkBackBtn').addEventListener('click',()=>{
-    closeSettings();
-  });
   // 自动备份开关
   document.getElementById('swAutoBackup').addEventListener('click',()=>{
     const cur=getBackupCfg();
@@ -3462,13 +3475,13 @@ function openBackupManager(){
     const body2=document.getElementById('bkOpsBody');
     const isHidden=body2.style.display==='none';
     body2.style.display=isHidden?'':'none';
-    document.getElementById('bkOpsToggle').querySelector('span').textContent=isHidden?'点击收起 ▲':'点击展开 ▼';
+    document.getElementById('bkOpsToggle').querySelector('.toggle-hint').textContent=isHidden?'点击收起 ▲':'点击展开 ▼';
   });
   document.getElementById('bkDbToggle').addEventListener('click',()=>{
     const body2=document.getElementById('bkDbBody');
     const isHidden=body2.style.display==='none';
     body2.style.display=isHidden?'':'none';
-    document.getElementById('bkDbToggle').querySelector('span').textContent=isHidden?'点击收起 ▲':'点击展开 ▼';
+    document.getElementById('bkDbToggle').querySelector('.toggle-hint').textContent=isHidden?'点击收起 ▲':'点击展开 ▼';
   });
   // === 清空数据 ===
   clearCountdownTimer=null;
@@ -3655,8 +3668,7 @@ function showAllArchives(){
   // 按退租日期倒序排列
   allArchives.sort((x,y)=>(y.leaveDate||'').localeCompare(x.leaveDate||''));
   if(allArchives.length===0){
-    body.innerHTML=`<div class="empty-hint">暂无归档记录</div><div class="btn-group"><button class="btn btn-primary" id="btnArrearsBack">关闭</button></div>`;
-    document.getElementById('btnArrearsBack').addEventListener('click',closeSheet);
+    body.innerHTML=`<div class="empty-hint">暂无归档记录</div>`;
   }else{
     body.innerHTML=`
       <div class="section">
@@ -3671,7 +3683,6 @@ function showAllArchives(){
           </div>
         `).join('')}
       </div>
-      <div class="btn-group"><button class="btn btn-primary" id="btnArrearsBack">关闭</button></div>
     `;
     body.querySelectorAll('.archive-item').forEach(item=>{
       item.addEventListener('click',()=>{
@@ -3680,7 +3691,6 @@ function showAllArchives(){
         showArchivedTenant(roomKey,archIdx);
       });
     });
-    document.getElementById('btnArrearsBack').addEventListener('click',closeSheet);
   }
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
