@@ -517,6 +517,7 @@
 /* ============================================================ 数据层 ============================================================ */
 const STORAGE_KEY='building_workbench_v4';
 const OLD_KEY='building_workbench_v3';
+const APP_VERSION='000.00.01';
 const STATUS_MAP={
   empty:{label:'空置',cls:'room-empty',text:'空'},
   occupied:{label:'已入住',cls:'room-occupied',text:'住'},
@@ -3280,6 +3281,7 @@ function openSettings(){
       <button class="btn-full" id="btnBatchExport" style="background:var(--success);color:#fff">批量导出费用明细（可选月份/房间/格式）</button>
       <div class="info-hint">导出当前栋每个房间单独的当月费用图片，可逐张分享给租客</div>
     </div>
+    <div style="text-align:center;font-size:11px;color:var(--text-lighter);padding:12px 0 8px">版本号 ${APP_VERSION}</div>
   `;
   document.getElementById('setWaterPrice').addEventListener('input',()=>{state.globalRates.waterPrice=num(val('setWaterPrice'))||6;save();});
   document.getElementById('setElecPrice').addEventListener('input',()=>{state.globalRates.electricPrice=num(val('setElecPrice'))||1.2;save();});
