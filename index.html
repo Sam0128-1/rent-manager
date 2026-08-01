@@ -398,7 +398,7 @@
 </div>
 
 <!-- 设置弹层 -->
-<div class="sheet" id="settingsSheet">
+<div class="page-fullscreen" id="settingsSheet">
   <div class="sheet-handle swipe-grab" data-swipe-close="closeSettings"></div>
   <div class="sheet-header swipe-grab" data-swipe-close="closeSettings"><div class="sheet-title">全局设置</div><button class="sheet-close" id="settingsClose">×</button></div>
   <div class="sheet-body" id="settingsBody"></div>
@@ -456,7 +456,7 @@
 
 <!-- 批量导出选择弹窗 -->
 <div class="overlay" id="batchOverlay"></div>
-<div class="sheet" id="batchSheet">
+<div class="page-fullscreen" id="batchSheet">
   <div class="sheet-handle swipe-grab" data-swipe-close="closeBatchExport"></div>
   <div class="sheet-header swipe-grab" data-swipe-close="closeBatchExport"><div class="sheet-title">批量导出</div><button class="sheet-close" id="batchClose">×</button></div>
   <div class="sheet-body" id="batchBody"></div>
@@ -2689,16 +2689,23 @@ function openBatchExport(){
     document.getElementById('brToggle').textContent=expanded?'收起▲':'展开▼';
     body.querySelectorAll('.br-floor-body').forEach(el=>{el.style.display=expanded?'':'none';});
   });
+  // 更新房间卡片视觉样式
+  function updCardStyle(card,isSelected){
+    card.classList.toggle('active',isSelected);
+    card.style.borderColor=isSelected?'var(--primary)':'var(--border)';
+    card.style.background=isSelected?'rgba(75,91,240,0.06)':'#fff';
+  }
   // 房间点击多选（卡片式）
   body.querySelectorAll('.br-room-card').forEach(c=>{
     c.addEventListener('click',()=>{
       const k=c.dataset.key;
-      if(window._batchState.selectedRooms.has(k)){
+      const isSelected=window._batchState.selectedRooms.has(k);
+      if(isSelected){
         window._batchState.selectedRooms.delete(k);
-        c.classList.remove('active');
+        updCardStyle(c,false);
       }else{
         window._batchState.selectedRooms.add(k);
-        c.classList.add('active');
+        updCardStyle(c,true);
       }
     });
   });
@@ -2709,18 +2716,19 @@ function openBatchExport(){
       const cards=body.querySelectorAll(`.br-room-card[data-fidx="${fIdx}"]`);
       const anyOff=Array.from(cards).some(c=>!window._batchState.selectedRooms.has(c.dataset.key));
       cards.forEach(c=>{
-        if(anyOff){window._batchState.selectedRooms.add(c.dataset.key);c.classList.add('active');}
-        else{window._batchState.selectedRooms.delete(c.dataset.key);c.classList.remove('active');}
+        updCardStyle(c,anyOff);
+        if(anyOff)window._batchState.selectedRooms.add(c.dataset.key);
+        else window._batchState.selectedRooms.delete(c.dataset.key);
       });
     });
   });
   document.getElementById('brAll').addEventListener('click',()=>{
     window._batchState.selectedRooms=new Set(allRooms.map(r=>r.key));
-    body.querySelectorAll('.br-room-card').forEach(c=>c.classList.add('active'));
+    body.querySelectorAll('.br-room-card').forEach(c=>updCardStyle(c,true));
   });
   document.getElementById('brNone').addEventListener('click',()=>{
     window._batchState.selectedRooms.clear();
-    body.querySelectorAll('.br-room-card').forEach(c=>c.classList.remove('active'));
+    body.querySelectorAll('.br-room-card').forEach(c=>updCardStyle(c,false));
   });
   // 格式选择
   body.querySelectorAll('[data-fmt]').forEach(p=>p.addEventListener('click',()=>{body.querySelectorAll('[data-fmt]').forEach(x=>x.classList.remove('active'));p.classList.add('active');}));
@@ -3217,34 +3225,7 @@ function applyImportedData(data){
 /* ============================================================ 设置页 ============================================================ */
 function openSettings(){
   const body=document.getElementById('settingsBody');
-  const lastSaveText=getLastSaveText();
-  const lastBackupTime=getLastBackupTime();
-  const lastBackupText=lastBackupTime?new Date(lastBackupTime).toLocaleString('zh-CN'):'从未备份';
-  const backupDays=lastBackupTime?Math.floor((Date.now()-lastBackupTime)/86400000):0;
-  const backupWarn=(!lastBackupTime)||backupDays>=7;
-  // 统计数据量
-  let totalRooms=0,totalTenants=0,totalMonths=0,totalArchives=0;
-  for(const key in state.rooms){
-    const r=state.rooms[key];
-    totalRooms++;
-    if(r.tenant||r.phone)totalTenants++;
-    totalMonths+=Object.keys(r.months||{}).length;
-    totalArchives+=(r.archived||[]).length;
-  }
   body.innerHTML=`
-    <div class="section">
-      <div class="section-title">数据存档状态</div>
-      <div class="fee-calc">
-        <div class="fee-calc-row"><span class="fc-label">最后保存</span><span class="fc-value" style="color:var(--success)">${esc(lastSaveText)}</span></div>
-        <div class="fee-calc-row"><span class="fc-label">上次备份</span><span class="fc-value" style="color:${backupWarn?'var(--danger)':'var(--success)'}">${esc(lastBackupText)}${backupDays>0?' ('+backupDays+'天前)':''}</span></div>
-        <div class="fee-calc-row"><span class="fc-label">房间数</span><span class="fc-value">${totalRooms} 间</span></div>
-        <div class="fee-calc-row"><span class="fc-label">在住租客</span><span class="fc-value">${totalTenants} 人</span></div>
-        <div class="fee-calc-row"><span class="fc-label">费用记录</span><span class="fc-value">${totalMonths} 条</span></div>
-        <div class="fee-calc-row"><span class="fc-label">归档记录</span><span class="fc-value">${totalArchives} 条</span></div>
-      </div>
-      ${backupWarn?'<div class="info-hint" style="color:var(--danger)">⚠️ 建议尽快导出备份，防止数据丢失</div>':'<div class="info-hint" style="color:var(--success)">✓ 数据已备份，请保持定期备份习惯</div>'}
-      <div class="info-hint">数据自动保存在本地浏览器，每次操作即时存档；页面关闭/切后台时也会自动保存</div>
-    </div>
     <div class="section">
       <div class="section-title">水电费单价</div>
       <div class="form-row-2">
@@ -3673,6 +3654,8 @@ function showAllArchives(){
 
 function closeSettings(){
   document.getElementById('settingsSheet').classList.remove('show');
+  // 重置标题为全局设置（备份管理页会改标题）
+  document.getElementById('settingsSheet').querySelector('.sheet-title').textContent='全局设置';
   const ov=document.getElementById('overlay');
   if(!ov.classList.contains('closing')){ov.classList.add('closing');setTimeout(()=>{ov.classList.remove('show');ov.classList.remove('closing');},150);}
 }
