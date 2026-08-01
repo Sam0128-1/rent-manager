@@ -2174,7 +2174,7 @@ function openMonthPicker(key,curY,curM){
   const years=[];for(let y=minY;y<=maxY;y++)years.push(y);
   const months=[1,2,3,4,5,6,7,8,9,10,11,12];
   // 在monthSheetBody末尾追加一个嵌入式弹出层
-  let html=`<div id="mpInlineOverlay" style="position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:10;display:flex;align-items:flex-end;justify-content:center;animation:mpFade .18s ease">
+  let html=`<div id="mpInlineOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:300;display:flex;align-items:flex-end;justify-content:center;animation:mpFade .18s ease">
     <div id="mpInlineBox" style="width:100%;background:#fff;border-radius:16px 16px 0 0;padding:20px 16px 24px;box-shadow:0 -6px 24px rgba(0,0,0,.12)">
       <div style="width:36px;height:4px;background:#cbd5e1;border-radius:2px;margin:0 auto 10px"></div>
       <div style="text-align:center;font-size:15px;font-weight:600;margin-bottom:16px">选择月份</div>
@@ -2204,9 +2204,7 @@ function openMonthPicker(key,curY,curM){
       </div>
     </div>
   </div>`;
-  // 给monthSheet设置position:relative，确保absolute定位生效
-  const ms=document.getElementById('monthSheet');
-  ms.style.position='relative';
+  // 弹出层使用 position:fixed，无需修改 monthSheet 的定位
   const body=document.getElementById('monthSheetBody');
   body.insertAdjacentHTML('beforeend',html);
   // 事件绑定
@@ -2225,6 +2223,9 @@ function openMonthPicker(key,curY,curM){
 function closeInlineMonthPicker(){
   const el=document.getElementById('mpInlineOverlay');
   if(el)el.remove();
+  // 恢复 monthSheet 的定位（旧代码可能已将其改为 relative）
+  const ms=document.getElementById('monthSheet');
+  if(ms&&ms.style.position==='relative'){ms.style.position='';}
 }
 let ratePopoverRoomKey=null,ratePopoverType=null;
 function openRatePopover(key,type){
