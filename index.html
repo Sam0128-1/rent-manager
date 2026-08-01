@@ -1140,6 +1140,15 @@ function editExp(id){
   const ex=(state.expenses||[]).find(e=>e.id===id);if(!ex)return;
   showExpForm(ex.type,ex);
 }
+let _expDetailId=null;
+function toggleExpDetail(id){
+  const sec=document.getElementById('expFormSection');
+  if(_expDetailId===id){
+    sec.style.display='none';sec.innerHTML='';_expDetailId=null;return;
+  }
+  _expDetailId=id;
+  showExpDetail(id);
+}
 function showExpDetail(id){
   const ex=(state.expenses||[]).find(e=>e.id===id);if(!ex)return;
   const labels={repair:'维修',clean:'清洁',supply:'耗材'};
@@ -1156,8 +1165,8 @@ function showExpDetail(id){
     </div>
     <div class="btn-group" style="margin-top:10px"><button class="btn btn-primary" id="btnEditExp">编辑</button><button class="btn btn-danger" id="btnDelDetail">删除</button></div>`;
   sec.style.display='';
-  document.getElementById('btnEditExp').addEventListener('click',()=>editExp(id));
-  document.getElementById('btnDelDetail').addEventListener('click',()=>{if(confirm('确定删除此支出记录？')){deleteExp(id);sec.style.display='none';sec.innerHTML='';}});
+  document.getElementById('btnEditExp').addEventListener('click',()=>{_expDetailId=null;editExp(id);});
+  document.getElementById('btnDelDetail').addEventListener('click',()=>{if(confirm('确定删除此支出记录？')){_expDetailId=null;deleteExp(id);sec.style.display='none';sec.innerHTML='';}});
   sec.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function showExpForm(type,editEx){
@@ -1254,11 +1263,11 @@ function renderExpList(bid){
       const dx=e.changedTouches[0].clientX-startX;
       if(dx<-50){card.style.transform='translateX(-112px)';}
       else{card.style.transform='translateX(0)';}
-      if(!moved){showExpDetail(card.dataset.id);}
+      if(!moved){toggleExpDetail(card.dataset.id);}
     });
     // PC端点击
     card.addEventListener('click',e=>{
-      if(!moved&&'ontouchstart' in window===false){showExpDetail(card.dataset.id);}
+      if(!moved&&'ontouchstart' in window===false){toggleExpDetail(card.dataset.id);}
     });
   });
   // 绑定编辑/删除按钮
