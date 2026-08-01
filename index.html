@@ -361,7 +361,7 @@
       <div class="overview-item clickable" id="ovMonthWrap"><div class="overview-num" id="ovMonthIncome" style="color:var(--success)">¥0 <span id="ovMonthArrow" style="font-size:11px">▶</span></div><div class="overview-label">月租金(已收)</div><div class="ov-detail" id="ovMonthDetail" style="display:none"></div></div>
       <div class="overview-item clickable" id="ovYearWrap"><div class="overview-num" id="ovYearIncome" style="color:var(--primary)">¥0 <span id="ovYearArrow" style="font-size:11px">▶</span></div><div class="overview-label">年租金(已收)</div><div class="ov-detail" id="ovYearDetail" style="display:none"></div></div>
       <div class="overview-item clickable" id="ovArrearsWrap"><div class="overview-num" id="ovArrears" style="color:var(--danger)">¥0</div><div class="overview-label">欠缴租金 ▶</div></div>
-      <div class="overview-item clickable" id="ovExpenseWrap" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:12px 16px"><span style="color:#e6a700;font-weight:600;font-size:14px">支出 ▶</span><span class="overview-num" id="ovExpense" style="color:#e6a700">¥0</span></div>
+      <div class="overview-item clickable" id="ovExpenseWrap" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center"><span class="overview-label" style="margin-top:0">支出 ▶</span><span class="overview-num" id="ovExpense" style="color:#e6a700">¥0</span></div>
     </div>
   </div>
   <div id="floorList"></div>
@@ -1092,9 +1092,7 @@ function openExpenses(bid){
   const body=document.getElementById('sheetBody');
   body.innerHTML=`
     <div class="section">
-      <div class="section-title">📊 ${curYear}年支出总览</div>
-      <div class="fee-calc"><div class="fee-calc-row total"><span class="fc-label">年度合计</span><span class="fc-value" style="color:#e6a700">¥${totalYear.toFixed(2)}</span></div></div>
-      <div class="btn-group" style="margin-top:10px">
+      <div class="btn-group">
         <button class="btn btn-primary" id="btnAddRepair" style="flex:1">🔧 维修</button>
         <button class="btn btn-primary" id="btnAddClean" style="flex:1;background:var(--success)">🧹 清洁</button>
         <button class="btn btn-primary" id="btnAddSupply" style="flex:1;background:#e6a700">📦 耗材</button>
@@ -1110,37 +1108,7 @@ function openExpenses(bid){
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
 }
-function showExpForm(type){
-  const sec=document.getElementById('expFormSection');
-  const labels={repair:'维修',clean:'清洁',supply:'耗材'};
-  const today=new Date().toISOString().slice(0,10);
-  let fields='';
-  if(type==='repair'){
-    fields=`<div class="form-row"><label>维修日期</label><input type="date" id="expDate" value="${today}"></div>
-    <div class="form-row"><label>维修位置</label><input type="text" id="expLocation" placeholder="如：3楼走廊灯"></div>
-    <div class="form-row"><label>维修人</label><input type="text" id="expPerson" placeholder="维修师傅姓名"></div>
-    <div class="form-row"><label>维修金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01"></div>
-    <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px"></textarea></div>`;
-  }else if(type==='clean'){
-    fields=`<div class="form-row"><label>清洁日期</label><input type="date" id="expDate" value="${today}"></div>
-    <div class="form-row"><label>清洁位置</label><input type="text" id="expLocation" placeholder="如：5楼公共区域"></div>
-    <div class="form-row"><label>清洁人</label><input type="text" id="expPerson" placeholder="清洁人员姓名"></div>
-    <div class="form-row"><label>清洁费用 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01"></div>
-    <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px"></textarea></div>`;
-  }else{
-    fields=`<div class="form-row"><label>购买日期</label><input type="date" id="expDate" value="${today}"></div>
-    <div class="form-row"><label>耗材名称</label><input type="text" id="expLocation" placeholder="如：灯泡x10"></div>
-    <div class="form-row"><label>购买渠道</label><input type="text" id="expPerson" placeholder="如：淘宝/五金店"></div>
-    <div class="form-row"><label>购买金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01"></div>
-    <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px"></textarea></div>`;
-  }
-  sec.innerHTML=`<div class="section-title">➕ 添加${labels[type]}支出</div>${fields}
-    <div class="btn-group"><button class="btn btn-primary" id="btnSaveExp">保存</button><button class="btn btn-secondary" id="btnCancelExp">取消</button></div>`;
-  sec.style.display='';
-  document.getElementById('btnSaveExp').addEventListener('click',()=>saveExp(type));
-  document.getElementById('btnCancelExp').addEventListener('click',()=>{sec.style.display='none';sec.innerHTML='';});
-}
-function saveExp(type){
+function saveExp(type,editId){
   const date=val('expDate');
   const location=val('expLocation');
   const person=val('expPerson');
@@ -1149,19 +1117,78 @@ function saveExp(type){
   if(!date){toast('请选择日期');return;}
   if(!amount||num(amount)<=0){toast('请输入金额');return;}
   if(!state.expenses)state.expenses=[];
-  state.expenses.push({id:'exp'+Date.now()+Math.random().toString(36).slice(2,6),bid:_expBuildingId,type,date,location:location||'',person:person||'',amount:num(amount),note:note||''});
+  if(editId){
+    const idx=state.expenses.findIndex(e=>e.id===editId);
+    if(idx>=0){state.expenses[idx]={...state.expenses[idx],type,date,location:location||'',person:person||'',amount:num(amount),note:note||''};}
+    toast('已更新');
+  }else{
+    state.expenses.push({id:'exp'+Date.now()+Math.random().toString(36).slice(2,6),bid:_expBuildingId,type,date,location:location||'',person:person||'',amount:num(amount),note:note||''});
+    toast('支出已保存');
+  }
   save();renderExpList(_expBuildingId);
   document.getElementById('expFormSection').style.display='none';
   document.getElementById('expFormSection').innerHTML='';
-  // 更新概览
   renderAll();
-  toast('支出已保存');
 }
 function deleteExp(id){
-  if(!confirm('确定删除此支出记录？'))return;
   state.expenses=(state.expenses||[]).filter(e=>e.id!==id);
   save();renderExpList(_expBuildingId);renderAll();
   toast('已删除');
+}
+function editExp(id){
+  const ex=(state.expenses||[]).find(e=>e.id===id);if(!ex)return;
+  showExpForm(ex.type,ex);
+}
+function showExpDetail(id){
+  const ex=(state.expenses||[]).find(e=>e.id===id);if(!ex)return;
+  const labels={repair:'维修',clean:'清洁',supply:'耗材'};
+  const fieldLabels={repair:['维修日期','维修位置','维修人','维修金额'],clean:['清洁日期','清洁位置','清洁人','清洁费用'],supply:['购买日期','耗材名称','购买渠道','购买金额']};
+  const fl=fieldLabels[ex.type]||[];
+  const sec=document.getElementById('expFormSection');
+  sec.innerHTML=`<div class="section-title">📋 ${labels[ex.type]}支出详情</div>
+    <div class="fee-calc">
+      <div class="fee-calc-row"><span class="fc-label">${fl[0]}</span><span class="fc-value">${ex.date||'-'}</span></div>
+      <div class="fee-calc-row"><span class="fc-label">${fl[1]}</span><span class="fc-value">${esc(ex.location)||'-'}</span></div>
+      <div class="fee-calc-row"><span class="fc-label">${fl[2]}</span><span class="fc-value">${esc(ex.person)||'-'}</span></div>
+      <div class="fee-calc-row total"><span class="fc-label">${fl[3]}</span><span class="fc-value" style="color:#e6a700">¥${num(ex.amount).toFixed(2)}</span></div>
+      ${ex.note?`<div class="fee-calc-row"><span class="fc-label">备注</span><span class="fc-value">${esc(ex.note)}</span></div>`:''}
+    </div>
+    <div class="btn-group" style="margin-top:10px"><button class="btn btn-primary" id="btnEditExp">编辑</button><button class="btn btn-secondary" id="btnCloseDetail">关闭</button></div>`;
+  sec.style.display='';
+  document.getElementById('btnEditExp').addEventListener('click',()=>editExp(id));
+  document.getElementById('btnCloseDetail').addEventListener('click',()=>{sec.style.display='none';sec.innerHTML='';});
+  sec.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function showExpForm(type,editEx){
+  const sec=document.getElementById('expFormSection');
+  const labels={repair:'维修',clean:'清洁',supply:'耗材'};
+  const today=editEx?editEx.date:new Date().toISOString().slice(0,10);
+  let fields='';
+  if(type==='repair'){
+    fields=`<div class="form-row"><label>维修日期</label><input type="date" id="expDate" value="${today}"></div>
+    <div class="form-row"><label>维修位置</label><input type="text" id="expLocation" placeholder="如：3楼走廊灯" value="${editEx?esc(editEx.location):''}"></div>
+    <div class="form-row"><label>维修人</label><input type="text" id="expPerson" placeholder="维修师傅姓名" value="${editEx?esc(editEx.person):''}"></div>
+    <div class="form-row"><label>维修金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
+    <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
+  }else if(type==='clean'){
+    fields=`<div class="form-row"><label>清洁日期</label><input type="date" id="expDate" value="${today}"></div>
+    <div class="form-row"><label>清洁位置</label><input type="text" id="expLocation" placeholder="如：5楼公共区域" value="${editEx?esc(editEx.location):''}"></div>
+    <div class="form-row"><label>清洁人</label><input type="text" id="expPerson" placeholder="清洁人员姓名" value="${editEx?esc(editEx.person):''}"></div>
+    <div class="form-row"><label>清洁费用 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
+    <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
+  }else{
+    fields=`<div class="form-row"><label>购买日期</label><input type="date" id="expDate" value="${today}"></div>
+    <div class="form-row"><label>耗材名称</label><input type="text" id="expLocation" placeholder="如：灯泡x10" value="${editEx?esc(editEx.location):''}"></div>
+    <div class="form-row"><label>购买渠道</label><input type="text" id="expPerson" placeholder="如：淘宝/五金店" value="${editEx?esc(editEx.person):''}"></div>
+    <div class="form-row"><label>购买金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
+    <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
+  }
+  sec.innerHTML=`<div class="section-title">${editEx?'✏️ 编辑':'➕ 添加'}${labels[type]}支出</div>${fields}
+    <div class="btn-group"><button class="btn btn-primary" id="btnSaveExp">${editEx?'更新':'保存'}</button><button class="btn btn-secondary" id="btnCancelExp">取消</button></div>`;
+  sec.style.display='';
+  document.getElementById('btnSaveExp').addEventListener('click',()=>saveExp(type,editEx?editEx.id:null));
+  document.getElementById('btnCancelExp').addEventListener('click',()=>{sec.style.display='none';sec.innerHTML='';});
+  sec.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function renderExpList(bid){
   const sec=document.getElementById('expListSection');if(!sec)return;
@@ -1181,16 +1208,19 @@ function renderExpList(bid){
       html+=`<div style="text-align:center;color:var(--text-lighter);padding:12px;font-size:13px">暂无记录</div>`;
     }else{
       items.forEach(e=>{
-        const labels={repair:'维修位置',clean:'清洁位置',supply:'耗材名称'};
         const personLabel=e.type==='supply'?'购买渠道':(e.type==='repair'?'维修人':'清洁人');
-        html+=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin:4px 0">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-weight:500">${esc(e.location)||'未填写'}</span>
-            <span style="color:${t.color};font-weight:600">¥${num(e.amount).toFixed(2)}</span>
+        html+=`<div class="exp-swipe-wrap" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
+          <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
+            <button class="exp-action-edit" data-id="${e.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
+            <button class="exp-action-del" data-id="${e.id}" style="width:56px;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer">删除</button>
           </div>
-          <div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 ${e.date||'未填'} · ${personLabel}：${esc(e.person)||'-'}</div>
-          ${e.note?`<div style="font-size:12px;color:var(--text-lighter);margin-top:2px">📝 ${esc(e.note)}</div>`:''}
-          <button class="btn btn-danger" style="margin-top:6px;padding:4px 12px;font-size:12px" onclick="deleteExp('${e.id}')">删除</button>
+          <div class="exp-swipe-card" data-id="${e.id}" style="position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;transition:transform .2s;z-index:1;cursor:pointer">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-weight:500">${esc(e.location)||'未填写'}</span>
+              <span style="color:${t.color};font-weight:600">¥${num(e.amount).toFixed(2)}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 ${e.date||'未填'} · ${personLabel}：${esc(e.person)||'-'}</div>
+          </div>
         </div>`;
       });
     }
@@ -1206,6 +1236,36 @@ function renderExpList(bid){
       items.style.display=items.style.display==='none'?'block':'none';
       arrow.textContent=items.style.display==='none'?'▶':'▼';
     });
+  });
+  // 绑定点击查看详情
+  sec.querySelectorAll('.exp-swipe-card').forEach(card=>{
+    let startX=0,startY=0,swiping=false,moved=false;
+    card.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;swiping=true;moved=false;},{passive:true});
+    card.addEventListener('touchmove',e=>{
+      if(!swiping)return;
+      const dx=e.touches[0].clientX-startX;
+      const dy=e.touches[0].clientY-startY;
+      if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)){moved=true;e.preventDefault();}
+      if(Math.abs(dx)>Math.abs(dy)){card.style.transform='translateX('+Math.max(-112,Math.min(0,dx))+'px)';}
+    },{passive:false});
+    card.addEventListener('touchend',e=>{
+      if(!swiping)return;swiping=false;
+      const dx=e.changedTouches[0].clientX-startX;
+      if(dx<-50){card.style.transform='translateX(-112px)';}
+      else{card.style.transform='translateX(0)';}
+      if(!moved){showExpDetail(card.dataset.id);}
+    });
+    // PC端点击
+    card.addEventListener('click',e=>{
+      if(!moved&&'ontouchstart' in window===false){showExpDetail(card.dataset.id);}
+    });
+  });
+  // 绑定编辑/删除按钮
+  sec.querySelectorAll('.exp-action-edit').forEach(btn=>{
+    btn.addEventListener('click',e=>{e.stopPropagation();editExp(btn.dataset.id);});
+  });
+  sec.querySelectorAll('.exp-action-del').forEach(btn=>{
+    btn.addEventListener('click',e=>{e.stopPropagation();if(confirm('确定删除？'))deleteExp(btn.dataset.id);});
   });
 }
 
