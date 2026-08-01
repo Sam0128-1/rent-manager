@@ -152,7 +152,7 @@
 
   /* ===== 主内容区 ===== */
   .main{padding-top:96px;padding-bottom:24px;padding-left:var(--sidebar-w);height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch;transition:padding-left .3s cubic-bezier(.32,.72,0,1)}
-  .main.searching{padding-top:104px}
+  .main.searching{padding-top:auto}
 
   .overview{margin:10px 10px;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
   .overview-title{font-size:13px;color:var(--text-light);margin-bottom:10px;font-weight:500;display:flex;align-items:center;gap:6px}
@@ -195,8 +195,11 @@
   .overlay.closing{opacity:0}
   .sheet{position:fixed;left:0;right:0;bottom:0;z-index:201;background:var(--bg);border-radius:16px 16px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom)}
   .sheet.show{transform:translateY(0)}
-  .sheet-handle{width:36px;height:4px;background:#cbd5e1;border-radius:2px;margin:10px auto 0}
-  .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;border-radius:16px 16px 0 0;z-index:5}
+  .sheet-handle{width:36px;height:4px;background:#cbd5e1;border-radius:2px;margin:10px auto 0;touch-action:pan-y}
+  .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;border-radius:16px 16px 0 0;z-index:5;touch-action:pan-y}
+  .swipe-grab{cursor:grab;touch-action:pan-y}
+  .modal-swipe-area{height:28px;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:pan-y}
+  .modal-swipe-bar{width:36px;height:4px;background:#cbd5e1;border-radius:2px}
   .sheet-title{font-size:17px;font-weight:600}
   .sheet-close{width:32px;height:32px;border:none;background:#f1f5f9;border-radius:50%;font-size:20px;color:var(--text-light);cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
   .sheet-body{padding:12px 16px 24px}
@@ -372,28 +375,29 @@
 <!-- 房间详情弹层 -->
 <div class="overlay" id="overlay"></div>
 <div class="sheet" id="sheet">
-  <div class="sheet-handle"></div>
-  <div class="sheet-header"><div class="sheet-title" id="sheetTitle">房间详情</div><button class="sheet-close" id="sheetClose">×</button></div>
+  <div class="sheet-handle swipe-grab" data-swipe-close="closeSheet"></div>
+  <div class="sheet-header swipe-grab" data-swipe-close="closeSheet"><div class="sheet-title" id="sheetTitle">房间详情</div><button class="sheet-close" id="sheetClose">×</button></div>
   <div class="sheet-body" id="sheetBody"></div>
 </div>
 
 <!-- 设置弹层 -->
 <div class="sheet" id="settingsSheet">
-  <div class="sheet-handle"></div>
-  <div class="sheet-header"><div class="sheet-title">全局设置</div><button class="sheet-close" id="settingsClose">×</button></div>
+  <div class="sheet-handle swipe-grab" data-swipe-close="closeSettings"></div>
+  <div class="sheet-header swipe-grab" data-swipe-close="closeSettings"><div class="sheet-title">全局设置</div><button class="sheet-close" id="settingsClose">×</button></div>
   <div class="sheet-body" id="settingsBody"></div>
 </div>
 
 <!-- 月度录入弹层 -->
 <div class="sheet" id="monthSheet">
-  <div class="sheet-handle"></div>
-  <div class="sheet-header"><div class="sheet-title" id="monthSheetTitle">录入费用</div><button class="sheet-close" id="monthClose">×</button></div>
+  <div class="sheet-handle swipe-grab" data-swipe-close="closeMonthSheet"></div>
+  <div class="sheet-header swipe-grab" data-swipe-close="closeMonthSheet"><div class="sheet-title" id="monthSheetTitle">录入费用</div><button class="sheet-close" id="monthClose">×</button></div>
   <div class="sheet-body" id="monthSheetBody"></div>
 </div>
 
 <!-- 导出选择弹窗 -->
 <div class="overlay" id="exportOverlay"></div>
 <div class="export-modal" id="exportModal">
+  <div class="modal-swipe-area swipe-grab" data-swipe-close="closeExportModal"><div class="modal-swipe-bar"></div></div>
   <div class="export-modal-title">选择导出格式</div>
   <div class="export-option" id="exportImg"><span class="eo-icon">🖼️</span><div class="eo-text"><div class="eo-title">导出为图片</div><div class="eo-desc">可分享微信好友或保存相册</div></div></div>
   <div class="export-option" id="exportCsv"><span class="eo-icon">📊</span><div class="eo-text"><div class="eo-title">导出为CSV表格</div><div class="eo-desc">适合电脑打开查看</div></div></div>
@@ -402,6 +406,7 @@
 
 <!-- 归档操作选择弹窗 -->
 <div class="action-modal" id="archiveModal">
+  <div class="modal-swipe-area swipe-grab" data-swipe-close="closeArchiveModal"><div class="modal-swipe-bar"></div></div>
   <div class="action-modal-title">退租归档</div>
   <div class="action-option" id="archiveDo"><span class="ao-icon">📤</span><div class="ao-text">归档现任租客</div></div>
   <button class="btn btn-secondary btn-full" id="archiveCancel" style="margin-top:8px">取消</button>
@@ -409,6 +414,7 @@
 
 <!-- 备份导出格式选择弹窗 -->
 <div class="action-modal" id="backupExportModal">
+  <div class="modal-swipe-area swipe-grab" data-swipe-close="closeBackupExportModal"><div class="modal-swipe-bar"></div></div>
   <div class="action-modal-title">选择备份格式</div>
   <div class="action-option" id="backupJson"><span class="ao-icon">📦</span><div class="ao-text"><div style="font-size:14px;font-weight:600">导出JSON备份</div><div style="font-size:12px;color:var(--text-light)">完整数据，可用于恢复</div></div></div>
   <div class="action-option" id="backupCsv"><span class="ao-icon">📊</span><div class="ao-text"><div style="font-size:14px;font-weight:600">导出CSV备份表格</div><div style="font-size:12px;color:var(--text-light)">可在Excel/WPS打开编辑</div></div></div>
@@ -418,6 +424,7 @@
 <!-- 清空数据确认弹窗 -->
 <div class="overlay" id="clearOverlay"></div>
 <div class="action-modal" id="clearDataModal" style="max-width:340px;width:90%">
+  <div class="modal-swipe-area swipe-grab" data-swipe-close="clearDataModalClose"><div class="modal-swipe-bar"></div></div>
   <div class="action-modal-title">⚠️ 清空所有数据</div>
   <div style="font-size:13px;color:var(--danger);text-align:center;margin-bottom:12px;line-height:1.6">
     此操作将删除所有楼栋、租客、费用和归档记录，<strong>不可恢复</strong>！<br>建议先导出备份。
@@ -433,13 +440,14 @@
 <!-- 批量导出选择弹窗 -->
 <div class="overlay" id="batchOverlay"></div>
 <div class="sheet" id="batchSheet">
-  <div class="sheet-handle"></div>
-  <div class="sheet-header"><div class="sheet-title">批量导出</div><button class="sheet-close" id="batchClose">×</button></div>
+  <div class="sheet-handle swipe-grab" data-swipe-close="closeBatchExport"></div>
+  <div class="sheet-header swipe-grab" data-swipe-close="closeBatchExport"><div class="sheet-title">批量导出</div><button class="sheet-close" id="batchClose">×</button></div>
   <div class="sheet-body" id="batchBody"></div>
 </div>
 
 <!-- 单价设置弹窗 -->
 <div class="rate-popover" id="ratePopover">
+  <div class="modal-swipe-area swipe-grab" data-swipe-close="closeRatePopover"><div class="modal-swipe-bar"></div></div>
   <div class="rate-popover-title" id="ratePopoverTitle">设置单价</div>
   <div class="form-row-2">
     <div class="form-row"><label id="rpWLabel">水费单价 (元/方)</label><input type="number" id="rpWaterPrice" min="0" step="0.01" placeholder="6"></div>
@@ -454,6 +462,7 @@
 
 <!-- 楼栋编辑/添加弹窗（名称+楼层数+每层独立房间数） -->
 <div class="rate-popover" id="buildingEditPopover" style="max-height:80vh;overflow-y:auto">
+  <div class="modal-swipe-area swipe-grab" data-swipe-close="closeBuildingEdit"><div class="modal-swipe-bar"></div></div>
   <div class="rate-popover-title" id="beTitle">编辑楼栋</div>
   <div class="form-row"><label>楼栋名称</label><input type="text" id="beName" placeholder="如：A栋" maxlength="20"></div>
   <div class="form-row-2">
@@ -1462,8 +1471,8 @@ function renderSearchResults(keyword){
     });
   });
 }
-function openSearch(){document.getElementById('searchBar').classList.add('show');document.getElementById('main').classList.add('searching');setTimeout(()=>document.getElementById('searchInput').focus(),100);}
-function closeSearch(){document.getElementById('searchBar').classList.remove('show');document.getElementById('searchInput').value='';document.getElementById('searchClear').classList.remove('show');renderSearchResults('');}
+function openSearch(){document.getElementById('searchBar').classList.add('show');document.getElementById('main').classList.add('searching');setTimeout(()=>{var h=document.querySelector('.header').offsetHeight;document.getElementById('main').style.paddingTop=h+'px';document.getElementById('searchInput').focus();},50);}
+function closeSearch(){document.getElementById('searchBar').classList.remove('show');document.getElementById('main').classList.remove('searching');document.getElementById('main').style.paddingTop='';document.getElementById('searchInput').value='';document.getElementById('searchClear').classList.remove('show');renderSearchResults('');}
 
 /* ============================================================ 房间详情 ============================================================ */
 let currentRoomKey=null,currentArchiveIdx=null;
@@ -2906,6 +2915,7 @@ function openSettings(){
     document.getElementById('clearOverlay').classList.remove('show');
     document.getElementById('clearDataModal').classList.remove('show');
   });
+function clearDataModalClose(){if(clearCountdownTimer){clearInterval(clearCountdownTimer);clearCountdownTimer=null;}document.getElementById('clearOverlay').classList.remove('show');document.getElementById('clearDataModal').classList.remove('show');}
   document.getElementById('overlay').classList.add('show');
   document.getElementById('settingsSheet').classList.add('show');
 }
@@ -3001,6 +3011,44 @@ document.getElementById('overlay').addEventListener('touchstart',()=>{closeSheet
 document.getElementById('sheet').addEventListener('click',e=>e.stopPropagation());
 document.getElementById('monthSheet').addEventListener('click',e=>e.stopPropagation());
 document.getElementById('settingsSheet').addEventListener('click',e=>e.stopPropagation());
+document.getElementById('exportModal').addEventListener('click',e=>e.stopPropagation());
+document.getElementById('archiveModal').addEventListener('click',e=>e.stopPropagation());
+document.getElementById('backupExportModal').addEventListener('click',e=>e.stopPropagation());
+document.getElementById('clearDataModal').addEventListener('click',e=>e.stopPropagation());
+document.getElementById('ratePopover').addEventListener('click',e=>e.stopPropagation());
+document.getElementById('buildingEditPopover').addEventListener('click',e=>e.stopPropagation());
+
+(function initSwipeToClose(){
+  const threshold=50;
+  document.querySelectorAll('[data-swipe-close]').forEach(el=>{
+    let startY=0,startX=0,tracking=false,closeFn=null;
+    el.addEventListener('touchstart',e=>{
+      startY=e.touches[0].clientY;startX=e.touches[0].clientX;tracking=true;
+    },{passive:true});
+    el.addEventListener('touchmove',e=>{
+      if(!tracking)return;
+      const dy=e.touches[0].clientY-startY;
+      const dx=e.touches[0].clientX-startX;
+      if(dy>threshold&&dy>Math.abs(dx)){
+        const fnName=el.getAttribute('data-swipe-close');
+        if(typeof window[fnName]==='function')window[fnName]();
+        tracking=false;
+      }
+    },{passive:true});
+    el.addEventListener('touchend',()=>{tracking=false;});
+    el.addEventListener('mousedown',e=>{startY=e.clientY;startX=e.clientX;tracking=true;});
+    document.addEventListener('mousemove',e=>{
+      if(!tracking)return;
+      const dy=e.clientY-startY,dx=e.clientX-startX;
+      if(dy>threshold&&dy>Math.abs(dx)){
+        const fnName=el.getAttribute('data-swipe-close');
+        if(typeof window[fnName]==='function')window[fnName]();
+        tracking=false;
+      }
+    });
+    document.addEventListener('mouseup',()=>{tracking=false;});
+  });
+})();
 
 document.getElementById('exportImg').addEventListener('click',()=>{
   // 不在这里关闭弹窗，让 share 在用户手势上下文里发起
