@@ -199,6 +199,8 @@
   .page-fullscreen{position:fixed;inset:0;z-index:201;background:var(--bg);transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom)}
   .page-fullscreen.show{transform:translateY(0)}
   .page-fullscreen .sheet-header{position:sticky;top:0;z-index:5;background:#fff;border-radius:0}
+  /* monthSheet 需要在 sheet(全屏房间详情) 之上显示 */
+  #monthSheet{z-index:203}
   .sheet-handle{width:36px;height:4px;background:#cbd5e1;border-radius:2px;margin:10px auto 0;touch-action:pan-y}
   .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;border-radius:16px 16px 0 0;z-index:5;touch-action:pan-y}
   .swipe-grab{cursor:grab;touch-action:pan-y}
@@ -393,22 +395,22 @@
 <!-- 房间详情弹层 -->
 <div class="overlay" id="overlay"></div>
 <div class="sheet fullscreen-mode" id="sheet">
-  <div class="sheet-handle swipe-grab" data-swipe-close="closeSheet"></div>
-  <div class="sheet-header swipe-grab" data-swipe-close="closeSheet"><div class="sheet-title" id="sheetTitle">房间详情</div><button class="sheet-close" id="sheetClose">×</button></div>
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><div class="sheet-title" id="sheetTitle">房间详情</div><button class="sheet-close" id="sheetClose">×</button></div>
   <div class="sheet-body" id="sheetBody"></div>
 </div>
 
 <!-- 设置弹层 -->
 <div class="page-fullscreen" id="settingsSheet">
-  <div class="sheet-handle swipe-grab" data-swipe-close="closeSettings"></div>
-  <div class="sheet-header swipe-grab" data-swipe-close="closeSettings"><div class="sheet-title">全局设置</div><button class="sheet-close" id="settingsClose">×</button></div>
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><div class="sheet-title">全局设置</div><button class="sheet-close" id="settingsClose">×</button></div>
   <div class="sheet-body" id="settingsBody"></div>
 </div>
 
 <!-- 月度录入弹层 -->
 <div class="page-fullscreen" id="monthSheet">
-  <div class="sheet-handle swipe-grab" data-swipe-close="closeMonthSheet"></div>
-  <div class="sheet-header swipe-grab" data-swipe-close="closeMonthSheet"><div class="sheet-title" id="monthSheetTitle">录入费用</div><button class="sheet-close" id="monthClose">×</button></div>
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><div class="sheet-title" id="monthSheetTitle">录入费用</div><button class="sheet-close" id="monthClose">×</button></div>
   <div class="sheet-body" id="monthSheetBody"></div>
 </div>
 
@@ -458,8 +460,8 @@
 <!-- 批量导出选择弹窗 -->
 <div class="overlay" id="batchOverlay"></div>
 <div class="page-fullscreen" id="batchSheet">
-  <div class="sheet-handle swipe-grab" data-swipe-close="closeBatchExport"></div>
-  <div class="sheet-header swipe-grab" data-swipe-close="closeBatchExport"><div class="sheet-title">批量导出</div><button class="sheet-close" id="batchClose">×</button></div>
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><div class="sheet-title">批量导出</div><button class="sheet-close" id="batchClose">×</button></div>
   <div class="sheet-body" id="batchBody"></div>
 </div>
 
@@ -2181,33 +2183,17 @@ function openMonthPicker(key,curY,curM){
   </div>`;
   // 用CSS让select显示多个选项（齿轮效果）
   html+=`<style>
-    #mpYear, #mpMonth { 
+    #mpYear, #mpMonth {
       background: #f8fafc; border-radius: 10px; padding: 8px;
       scrollbar-width: none;
     }
     #mpYear::-webkit-scrollbar, #mpMonth::-webkit-scrollbar { display: none; }
     #mpYear option, #mpMonth option { padding: 8px 0; }
   </style>`;
-  // 列出已有记录的月份供快速跳转
-  const existYms=Object.keys(state.rooms[key].months).sort().reverse();
-  if(existYms.length>0){
-    html+=`<div style="margin-top:12px;font-size:13px;color:var(--text-light);margin-bottom:8px;padding:0 4px">已有记录：</div>`;
-    html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">`;
-    existYms.slice(0,12).forEach(ym=>{
-      const active=ym===curYm;
-      html+=`<button class="mp-exist-btn" data-ym="${ym}" style="padding:8px 4px;border:1px solid ${active?'var(--primary)':'var(--border)'};border-radius:8px;background:${active?'var(--primary)':'#fff'};color:${active?'#fff':'var(--text)'};font-size:13px">${formatYM(ym)}</button>`;
-    });
-    html+='</div>';
-  }
   html+=`<div style="display:flex;gap:8px;margin-top:20px"><button class="btn btn-secondary" style="flex:1" id="btnMonthPickCancel">取消</button><button class="btn btn-primary" style="flex:1" id="btnMonthPickOK">确定</button></div>`;
   const body=document.getElementById('sheetBody');
   document.getElementById('sheetTitle').textContent='选择月份';
   body.innerHTML=html;
-  body.querySelectorAll('.mp-exist-btn').forEach(b=>b.addEventListener('click',()=>{
-    const [y,m]=b.dataset.ym.split('-').map(n=>parseInt(n));
-    document.getElementById('mpYear').value=y;
-    document.getElementById('mpMonth').value=m;
-  }));
   document.getElementById('btnMonthPickCancel').addEventListener('click',closeSheet);
   document.getElementById('btnMonthPickOK').addEventListener('click',()=>{
     const y=document.getElementById('mpYear').value;
@@ -2924,11 +2910,22 @@ function exportStateAsCSV(){
 function getCSVTemplate(){
   let csv='\uFEFF';
   csv+=csvRow(CSV_HEADERS);
-  // 示例行（无楼栋ID、无房间状态，费用月份直接填年月）
-  csv+=csvRow(['A栋','1','101','张三','13800138000','110101199001011234','2024-01-01','2000','1000','微信','2024-01','2000','100','105','200','220','已缴费','','6','1.2']);
-  csv+=csvRow(['A栋','1','102','李四','13900139000','','2024-02-15','2500','2000','支付宝','2024-01','2500','50','60','300','350','未缴费','按月付','','']);
+  const curYear=new Date().getFullYear();
+  // 示例1：同一房间(A栋1层101)的两个月费用记录
+  csv+=csvRow(['A栋','1','101','张三','13800138000','110101199001011234',`${curYear}-01-01`,'2000','1000','微信',`${curYear}-01`,'2000','100','105','200','220','已缴费','','6','1.2']);
+  csv+=csvRow(['A栋','1','101','张三','13800138000','110101199001011234',`${curYear}-01-01`,'2000','1000','微信',`${curYear}-02`,'2000','105','110','220','240','未缴费','','6','1.2']);
+  // 示例2：另一间房，含押金
+  csv+=csvRow(['A栋','1','102','李四','13900139000','',`${curYear}-02-15`,'2500','2000','支付宝',`${curYear}-01`,'2500','50','60','300','350','已缴费','按月付','','']);
+  // 示例3：空置房间（无租客信息，仅费用月份）
+  csv+=csvRow(['A栋','1','103','','','','','','','',`${curYear}-01`,'1500','','','','','已缴费','','','']);
   csv+='\n';
-  csv+='#说明：通过楼栋名称+楼层+房间号定位房间（自动识别或创建）；费用月份直接填年月如2024-01；同一房间多条费用记录用相同楼栋名称+楼层+房间号关联；有租客入住会自动设为已入住状态；缴费状态：已缴费/未缴费\n';
+  csv+=`#说明：\n`;
+  csv+=`#1. 通过 楼栋名称+楼层+房间号 定位房间（自动匹配或创建）\n`;
+  csv+=`#2. 费用月份 填年月如 ${curYear}-01；同一房间的多个月份费用记录，用相同的楼栋+楼层+房间号 + 不同的费用月份 即可\n`;
+  csv+=`#3. 同一房间多条记录：租客信息只需在第一行填写，后续行可留空（不会覆盖已有数据）\n`;
+  csv+=`#4. 有租客姓名的房间会自动设为"已入住"状态\n`;
+  csv+=`#5. 缴费状态：已缴费 / 未缴费\n`;
+  csv+=`#6. 水费单价、电费单价 留空则使用全局默认值\n`;
   return csv;
 }
 
@@ -3331,8 +3328,8 @@ function openBackupManager(){
       </div>
     </div>
     <div class="section">
-      <div class="section-title" id="bkOpsToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-        备份操作 <span style="font-size:12px;color:var(--text-lighter);font-weight:400">点击展开 ▼</span>
+      <div class="section-title" id="bkOpsToggle" style="cursor:pointer;display:flex;align-items:center">
+        <span>备份操作</span> <span style="font-size:12px;color:var(--text-lighter);font-weight:400;margin-left:auto">点击展开 ▼</span>
       </div>
       <div id="bkOpsBody" style="display:none">
         <button class="btn-full" id="bkManualBtn" style="background:var(--primary);color:#fff">📥 立即手动备份</button>
@@ -3342,16 +3339,19 @@ function openBackupManager(){
       </div>
     </div>
     <div class="section">
-      <div class="section-title" id="bkDbToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-        数据库导入 / 导出 <span style="font-size:12px;color:var(--text-lighter);font-weight:400">点击展开 ▼</span>
+      <div class="section-title">CSV模板</div>
+      <button class="btn btn-secondary btn-full" id="bkDownloadTpl" style="background:var(--warning-bg);color:var(--warning)">📋 下载CSV模板</button>
+      <div class="info-hint">下载模板填入数据后可批量导入</div>
+    </div>
+    <div class="section">
+      <div class="section-title" id="bkDbToggle" style="cursor:pointer;display:flex;align-items:center">
+        <span>数据库导入 / 导出</span> <span style="font-size:12px;color:var(--text-lighter);font-weight:400;margin-left:auto">点击展开 ▼</span>
       </div>
       <div id="bkDbBody" style="display:none">
         <button class="btn-full" id="bkExportJson" style="background:var(--success);color:#fff">📤 导出数据库 (JSON)</button>
         <div class="info-hint">完整备份文件，可分享/保存，后续可用于导入恢复</div>
         <button class="btn btn-secondary btn-full" id="bkExportCsv" style="margin-top:8px;background:var(--success-bg);color:var(--success)">📊 导出CSV备份表格</button>
         <div class="info-hint">可在Excel/WPS打开编辑</div>
-        <button class="btn btn-secondary btn-full" id="bkDownloadTpl" style="margin-top:8px;background:var(--warning-bg);color:var(--warning)">📋 下载CSV模板</button>
-        <div class="info-hint">下载空模板填入数据后可批量导入</div>
         <div style="margin-top:10px">
           <label style="display:block;font-size:13px;color:var(--text-light);margin-bottom:4px;font-weight:500">导入数据库</label>
           <button class="btn-full" id="bkImportBtn" style="background:var(--primary);color:#fff">📁 选择文件导入</button>
@@ -3848,10 +3848,8 @@ document.getElementById('imgViewerClose').addEventListener('click',e=>{e.stopPro
 
 /* ============================================================ 启动 ============================================================ */
 load();renderAll();collapseSidebar();
-// 绑定弹层下滑关闭
-enableSwipeToClose(document.getElementById('sheet'),closeSheet);
-enableSwipeToClose(document.getElementById('monthSheet'),closeMonthSheet);
-enableSwipeToClose(document.getElementById('settingsSheet'),closeSettings);
+// 绑定弹层下滑关闭（仅弹窗模式保留，全屏页面不启用下滑关闭）
+// enableSwipeToClose 已移除，全屏页面通过 × 按钮关闭
 
 /* ============================================================ 数据保护：页面关闭/切后台时强制保存 + 退出时自动备份 ============================================================ */
 // APP打开后，退出（关闭/切后台）时是否已经做过自动备份？同一轮只做一次
@@ -3881,6 +3879,8 @@ function flushSave(triggerAutoBackup){
         // 异步发起（不阻塞保存流程，即使失败也不影响）
         try{autoBackupOnExit();}catch(e){console.warn('autoBackupOnExit err',e);}
       }
+      // 退出时也触发云端同步（如果有pending）
+      if(window._cloudSyncOnExit){try{window._cloudSyncOnExit();}catch(e){console.warn('cloudSyncOnExit err',e);}}
     }
   }catch(e){console.warn('flushSave failed',e);}
   _isUnloading=false;
@@ -3957,8 +3957,10 @@ if('serviceWorker' in navigator){
   function setSync(){localStorage.setItem(STORAGE_KEY+"_lastCloudSync",Date.now().toString());}
   async function upload(){if(!ready){toast("请先配置云同步");return;}try{var j=JSON.stringify(state);var r=await sbClient.from("rent_data").upsert({id:1,data:j,updated_at:new Date().toISOString()});if(r.error)throw r.error;setSync();toast("已同步到云端");updCloudUI();}catch(e){toast("同步失败: "+(e.message||e));}}
   async function download(){if(!ready){toast("请先配置云同步");return;}try{var r=await sbClient.from("rent_data").select("data,updated_at").eq("id",1).single();if(r.error)throw r.error;if(!r.data||!r.data.data){toast("云端暂无数据");return;}var cs=JSON.parse(r.data.data);if(!cs.rooms){toast("数据格式错误");return;}var t=new Date(r.data.updated_at).toLocaleString("zh-CN");if(!confirm("云端更新于: "+t+"\n\n用云端数据覆盖本地吗?\n(建议先导出备份)"))return;state=cs;_lastJson=JSON.stringify(state);initRooms();save();renderAll();toast("已从云端恢复");}catch(e){toast("下载失败: "+(e.message||e));}}
-  var _os=null,_st=null;
-  function hookSave(){if(typeof window.save!=="function"||_os)return;_os=window.save;window.save=function(){_os.apply(this,arguments);if(ready&&cfg.autoSync){var cj=JSON.stringify(state);if(cj===_lastJson)return;_lastJson=cj;clearTimeout(_st);_st=setTimeout(function(){upload().catch(function(){});},3000);}};}
+  var _os=null,_st=null,_cloudSyncPending=false;
+  function hookSave(){if(typeof window.save!=="function"||_os)return;_os=window.save;window.save=function(){_os.apply(this,arguments);if(ready&&cfg.autoSync){var cj=JSON.stringify(state);if(cj===_lastJson)return;_lastJson=cj;_cloudSyncPending=true;}};}
+  // 退出/切后台时触发云端同步
+  window._cloudSyncOnExit=function(){if(ready&&cfg.autoSync&&_cloudSyncPending){_cloudSyncPending=false;upload().catch(function(){});}};
   // 更新备份管理页中的云同步UI
   function updCloudUI(){
     var ls=lastSync();var ts=ls?new Date(ls).toLocaleString("zh-CN"):"从未同步";
@@ -3977,7 +3979,7 @@ if('serviceWorker' in navigator){
       '<div class="info-hint">获取: supabase.com → 项目 → Settings → API Keys + Data API</div>'+
       '<div class="info-hint" style="color:var(--danger);margin-top:6px">⚠️ 需先执行 supabase-setup.sql</div></div>'+
       '<div class="section"><div class="section-title">说明</div>'+
-      '<div class="info-hint" style="line-height:1.8">• 上传: 推送数据到云端<br>• 恢复: 从云端拉取数据<br>• 自动同步: 修改后自动上传</div></div>'+
+      '<div class="info-hint" style="line-height:1.8">• 上传: 推送数据到云端<br>• 恢复: 从云端拉取数据<br>• 自动同步: 退出APP或切后台时自动上传</div></div>'+
       '<div class="btn-group"><button class="btn btn-primary" id="btnSaveC">保存</button><button class="btn btn-secondary" id="btnBackC">返回</button><button class="btn btn-danger" id="btnClrC" style="flex:0 0 auto;padding:12px 16px">清除</button></div>';
     function restore(){openBackupManager();}
     document.getElementById("btnSaveC").addEventListener("click",function(){var u=document.getElementById("cfgUrl").value.trim();var k=document.getElementById("cfgKey").value.trim();if(!u||!k){toast("请填写完整");return;}cfg.url=u;cfg.key=k;saveCfg(cfg);initSB();toast("配置已启用");restore();});
