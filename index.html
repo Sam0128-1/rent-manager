@@ -249,6 +249,15 @@
   .month-list-item:active{background:#f8fafc}
   .month-list-item.unpaid{border-left:3px solid var(--danger)}
   .month-list-item.paid{border-left:3px solid var(--success)}
+  .swipe-item-wrap{position:relative;overflow:hidden;margin-bottom:8px;border-radius:10px}
+  .swipe-item-content{position:relative;z-index:1;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:transform .25s cubic-bezier(.32,.72,0,1);touch-action:pan-y}
+  .swipe-item-content.unpaid{border-left:3px solid var(--danger)}
+  .swipe-item-content.paid{border-left:3px solid var(--success)}
+  .swipe-item-content.swiped{transform:translateX(-150px)}
+  .swipe-actions{position:absolute;right:0;top:0;bottom:0;display:flex;z-index:0}
+  .swipe-actions button{width:75px;border:none;font-size:13px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:500}
+  .swipe-actions .sa-received{background:var(--success)}
+  .swipe-actions .sa-delete{background:var(--danger)}
   .mli-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
   .mli-month{font-size:15px;font-weight:600}
   .mli-total{font-size:15px;font-weight:700;color:var(--danger)}
@@ -1028,7 +1037,7 @@ function renderOverview(){
         }
       }
       // 归档租客的已缴费用也要统计（租客虽然退租了，但费用是缴了的）
-      (room.archived||[]).forEach(a=>{
+      (room.archived||[]).forEach((a,aIdx)=>{
         const archMd=a.months?a.months[ym]:null;
         if(archMd&&archMd.paid){
           // 用归档时保存的单价计算
@@ -1042,6 +1051,14 @@ function renderOverview(){
               const archRoom={roomRates:a.roomRates||{},months:{}};
               const c=calcMonthFee(archRoom,a.months[mym]);
               yearIncome+=c.total;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;
+            }
+          }
+          // 归档租客的未缴费也要统计到欠缴
+          for(const mym in a.months){
+            if(mym.startsWith(curYear)&&!a.months[mym].paid){
+              const archRoom={roomRates:a.roomRates||{},months:{}};
+              const calc=calcMonthFee(archRoom,a.months[mym]);
+              if(calc.total>0){arrears+=calc.total;arrearsList.push({key:`${bid}-${f*100+r}`,num2:f*100+r,ym:mym,tenant:a.tenant,calc,archiveIdx:aIdx});}
             }
           }
         }
@@ -1295,19 +1312,77 @@ function showArrearsDetail(list,bname){
   document.getElementById('sheetTitle').textContent=bname+' · 欠缴明细';
   body.innerHTML=`
     <div class="section">
-      <div class="section-title">欠缴租金明细</div>
-      ${list.map(item=>`
-        <div class="month-list-item unpaid" style="cursor:pointer" data-room="${item.key}">
-          <div class="mli-header"><span class="mli-month">${item.num2}房 · ${item.tenant||'未命名'}</span><span class="mli-status unpaid">${formatYM(item.ym)}</span></div>
-          <div class="mli-detail">租金${money(item.calc.rent)} · 水费${money(item.calc.waterFee)} · 电费${money(item.calc.elecFee)}</div>
-          <div class="mli-total">合计：${money(item.calc.total)}</div>
+      <div class="section-title">欠缴租金明细 <span style="font-size:11px;color:var(--text-lighter);font-weight:400;margin-left:6px">左滑显示操作</span></div>
+      ${list.map((item,i)=>`
+        <div class="swipe-item-wrap">
+          <div class="swipe-actions">
+            <button class="sa-received" data-idx="${i}">已收回</button>
+            <button class="sa-delete" data-idx="${i}">删除</button>
+          </div>
+          <div class="swipe-item-content unpaid" data-idx="${i}" data-room="${item.key}">
+            <div class="mli-header"><span class="mli-month">${item.num2}房 · ${item.tenant||'未命名'}${item.archiveIdx!==undefined?'<span class="sr-tag" style="background:#cbd5e1;color:#fff;margin-left:6px">已归档</span>':''}</span><span class="mli-status unpaid">${formatYM(item.ym)}</span></div>
+            <div class="mli-detail">租金${money(item.calc.rent)} · 水费${money(item.calc.waterFee)} · 电费${money(item.calc.elecFee)}</div>
+            <div class="mli-total">合计：${money(item.calc.total)}</div>
+          </div>
         </div>
       `).join('')}
       <div class="fee-calc" style="margin-top:8px"><div class="fee-calc-row total"><span class="fc-label">欠缴总计</span><span class="fc-value">${money(list.reduce((s,i)=>s+i.calc.total,0))}</span></div></div>
     </div>
     <div class="btn-group"><button class="btn btn-primary" id="btnArrearsBack">关闭</button></div>
   `;
-  body.querySelectorAll('.month-list-item').forEach(item=>item.addEventListener('click',()=>openRoom(item.dataset.room)));
+  // 绑定左滑
+  body.querySelectorAll('.swipe-item-content').forEach(el=>{
+    let startX=0,startY=0,tracking=false,swiped=false;
+    el.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;tracking=true;},{passive:true});
+    el.addEventListener('touchmove',e=>{
+      if(!tracking)return;
+      const dx=e.touches[0].clientX-startX,dy=e.touches[0].clientY-startY;
+      if(Math.abs(dx)>Math.abs(dy)){
+        const offset=swiped?dx-150:dx;
+        if(offset<0&&offset>-150){el.style.transform=`translateX(${offset}px)`;el.style.transition='none';}
+      }
+    },{passive:true});
+    el.addEventListener('touchend',e=>{
+      if(!tracking)return;tracking=false;
+      const dx=e.changedTouches[0].clientX-startX;
+      el.style.transition='';
+      if(!swiped&&dx<-50){el.classList.add('swiped');swiped=true;}
+      else if(swiped&&dx>-50){el.classList.remove('swiped');swiped=false;el.style.transform='';}
+      else{el.style.transform='';}
+    });
+    el.addEventListener('click',()=>{
+      if(swiped){el.classList.remove('swiped');swiped=false;el.style.transform='';return;}
+      openRoom(el.dataset.room);
+    });
+  });
+  // 已收回/删除
+  body.querySelectorAll('.sa-received').forEach(btn=>btn.addEventListener('click',()=>{
+    const item=list[parseInt(btn.dataset.idx)];
+    const room=state.rooms[item.key];if(!room){toast('房间不存在');return;}
+    if(item.archiveIdx!==undefined){
+      const a=room.archived[item.archiveIdx];if(a&&a.months&&a.months[item.ym]){a.months[item.ym].paid=true;}
+    }else{
+      if(room.months[item.ym])room.months[item.ym].paid=true;
+    }
+    save();renderAll();
+    const newList=list.filter((_,i)=>i!==parseInt(btn.dataset.idx));
+    if(newList.length===0){closeSheet();toast('已标记为已收回');}
+    else{showArrearsDetail(newList,bname);toast('已标记为已收回');}
+  }));
+  body.querySelectorAll('.sa-delete').forEach(btn=>btn.addEventListener('click',()=>{
+    if(!confirm('确定删除此欠缴记录？此操作不可恢复。'))return;
+    const item=list[parseInt(btn.dataset.idx)];
+    const room=state.rooms[item.key];if(!room){toast('房间不存在');return;}
+    if(item.archiveIdx!==undefined){
+      const a=room.archived[item.archiveIdx];if(a&&a.months&&a.months[item.ym]){delete a.months[item.ym];}
+    }else{
+      if(room.months[item.ym])delete room.months[item.ym];
+    }
+    save();renderAll();
+    const newList=list.filter((_,i)=>i!==parseInt(btn.dataset.idx));
+    if(newList.length===0){closeSheet();toast('已删除');}
+    else{showArrearsDetail(newList,bname);toast('已删除');}
+  }));
   document.getElementById('btnArrearsBack').addEventListener('click',closeSheet);
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
@@ -1476,6 +1551,7 @@ function closeSearch(){document.getElementById('searchBar').classList.remove('sh
 
 /* ============================================================ 房间详情 ============================================================ */
 let currentRoomKey=null,currentArchiveIdx=null;
+let _clipboardTenant=null;
 
 function openRoom(key,archiveIdx){
   currentRoomKey=key;
@@ -1535,7 +1611,8 @@ function openRoom(key,archiveIdx){
     </div>
     <div class="btn-group">
       <button class="btn btn-warn" id="btnArchive">退租归档</button>
-      <button class="btn btn-primary" id="btnSave">保存</button>
+      <button class="btn btn-secondary" id="btnCopyTenant">复制租客</button>
+      <button class="btn btn-primary" id="btnPasteTenant">粘贴租客</button>
     </div>
   `;
   renderMonthList(key);
@@ -1572,7 +1649,22 @@ function bindRoomEvents(key){
   document.getElementById('btnAddMonth').addEventListener('click',()=>openMonthEdit(key,null));
   document.getElementById('btnExport').addEventListener('click',()=>showExportModal(key));
   document.getElementById('btnArchive').addEventListener('click',()=>doArchiveTenant(key));
-  document.getElementById('btnSave').addEventListener('click',()=>saveRoom(key));
+  document.getElementById('btnCopyTenant').addEventListener('click',()=>{
+    const r=state.rooms[key];if(!r)return;
+    if(!r.tenant&&!r.phone){toast('当前房间无租客信息可复制');return;}
+    _clipboardTenant={tenant:r.tenant,phone:r.phone,idCard:r.idCard,moveInDate:r.moveInDate,note:r.note,fixedRent:r.fixedRent,status:r.status,deposit:JSON.parse(JSON.stringify(r.deposit))};
+    toast('已复制 '+r.tenant+' 的租客信息');
+  });
+  document.getElementById('btnPasteTenant').addEventListener('click',()=>{
+    if(!_clipboardTenant){toast('请先复制租客信息');return;}
+    if(!confirm('确定将复制的租客信息粘贴到当前房间？\n租客：'+(_clipboardTenant.tenant||'未命名')+'\n\n将覆盖当前租客信息（费用记录保留）。'))return;
+    const r=state.rooms[key];if(!r)return;
+    r.tenant=_clipboardTenant.tenant;r.phone=_clipboardTenant.phone;r.idCard=_clipboardTenant.idCard;r.moveInDate=_clipboardTenant.moveInDate;
+    r.note=_clipboardTenant.note;r.fixedRent=_clipboardTenant.fixedRent;r.status=_clipboardTenant.status;
+    r.deposit=JSON.parse(JSON.stringify(_clipboardTenant.deposit));
+    save();renderAll();
+    setTimeout(()=>{openRoom(key);toast('已粘贴租客信息');},300);
+  });
 
   // 自动保存（输入即保存，不关闭不提示）
   let autoSaveTimer;
@@ -1983,14 +2075,19 @@ function autoRoomStatus(room){
   if(hasTenant||hasMonths){room.status='occupied';}
   else if(room.status==='occupied'){room.status='empty';}
 }
-function saveRoom(key){
-  const room=state.rooms[key];
+function saveRoomQuiet(key){
+  const room=state.rooms[key];if(!room)return;
+  const fTenant=document.getElementById('fTenant');if(!fTenant)return; // 表单不存在则跳过
   room.tenant=val('fTenant');room.phone=val('fPhone');room.idCard=val('fIdCard');room.moveInDate=val('fDate');
   room.note=val('fNote');room.fixedRent=val('fFixedRent');
   const activePill=document.querySelector('.pill.active');if(activePill)room.status=activePill.dataset.status;
   autoRoomStatus(room);
   room.deposit.amount=val('fDeposit');room.deposit.method=val('fDepositMethod');
-  room.updatedAt=new Date().toISOString();save();renderAll();closeSheet();toast('保存成功');
+  room.updatedAt=new Date().toISOString();save();renderAll();
+}
+function saveRoom(key){
+  saveRoomQuiet(key);
+  closeSheet();toast('保存成功');
 }
 
 function showArchiveModal(key){
@@ -2002,7 +2099,20 @@ function closeArchiveModal(){document.getElementById('archiveModal').classList.r
 function doArchiveTenant(key){
   const room=state.rooms[key];
   if(!room.tenant&&!room.phone){toast('该房间无租客可归档');return;}
-  if(!confirm('确定将当前租客归档？归档后房间将变为空置状态，可入住新租客。\n（房间的固定月租金和单价设置将保留）'))return;
+  // 检查未缴费费用
+  let unpaidMonths=[];
+  let unpaidTotal=0;
+  for(const mym in room.months){
+    if(!room.months[mym].paid){
+      const c=calcMonthFee(room,room.months[mym]);
+      if(c.total>0){unpaidMonths.push(mym);unpaidTotal+=c.total;}
+    }
+  }
+  if(unpaidMonths.length>0){
+    if(!confirm(`该租客有 ${unpaidMonths.length} 个月未缴费记录，共欠缴 ¥${unpaidTotal.toFixed(2)}。\n归档后这些欠缴记录仍会保留在"欠缴租金"明细中。\n\n选择"确定"仍归档，选择"取消"返回。`))return;
+  }else{
+    if(!confirm('确定将当前租客归档？归档后房间将变为空置状态，可入住新租客。\n（房间的固定月租金和单价设置将保留）'))return;
+  }
   // 归档对象保存租客的所有信息，包括固定月租金和房间单价
   const archive={
     tenant:room.tenant,phone:room.phone,idCard:room.idCard,idCardImg:room.idCardImg,
@@ -2108,6 +2218,11 @@ function showArchivedTenant(key,idx){
 }
 
 function closeSheet(){
+  // 关闭房间编辑窗口时自动保存
+  if(currentRoomKey&&currentArchiveIdx===null){
+    const fTenant=document.getElementById('fTenant');
+    if(fTenant)saveRoomQuiet(currentRoomKey);
+  }
   const ov=document.getElementById('overlay');
   const sh=document.getElementById('sheet');
   sh.classList.remove('show');
