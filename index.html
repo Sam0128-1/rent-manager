@@ -1813,6 +1813,7 @@ function openMonthEdit(key,ym){
       waterCurr:'',
       electricPrev:prevMd?prevMd.electricCurr:'',
       electricCurr:'',
+      deduction:'',
       paid:false,note:''
     };
   }
@@ -2464,7 +2465,7 @@ async function doBatchExport(b,selMonths,selRooms,fmt){
     for(const item of selRooms){
       const{key,room}=item;const num2=key.split('-')[1];
       for(const ym of selMonths){
-        const md=room.months[ym];const calc=md?calcMonthFee(room,md):{rent:0,waterUsed:0,waterFee:0,elecUsed:0,elecFee:0,total:0};
+        const md=room.months[ym];const calc=md?calcMonthFee(room,md):{rent:0,waterUsed:0,waterFee:0,elecUsed:0,elecFee:0,deduction:0,total:0};
         const rates=getRoomRates(room);const dispStatus=getRoomDisplayStatus(room);
         const statusText=dispStatus==='empty'?'空置':(dispStatus==='unpaid'?'未缴':(dispStatus==='occupied'?'已缴':'未缴'));
         const tenantName=room.tenant||'空置';
