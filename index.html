@@ -808,14 +808,16 @@ function getRoomDisplayStatus(room){
 }
 
 function calcMonthFee(room,monthData){
-  if(!monthData)return{waterUsed:0,waterFee:0,elecUsed:0,elecFee:0,rent:0,total:0};
+  if(!monthData)return{waterUsed:0,waterFee:0,elecUsed:0,elecFee:0,rent:0,deduction:0,total:0};
   const rates=getRoomRates(room);
   const wUsed=num(monthData.waterCurr)-num(monthData.waterPrev);
   const eUsed=num(monthData.electricCurr)-num(monthData.electricPrev);
   const waterFee=(wUsed>0?wUsed:0)*rates.waterPrice;
   const elecFee=(eUsed>0?eUsed:0)*rates.electricPrice;
   const rent=num(monthData.rent);
-  return{waterUsed:wUsed>0?wUsed:0,waterFee,elecUsed:eUsed>0?eUsed:0,elecFee,rent,total:rent+waterFee+elecFee};
+  const deduction=num(monthData.deduction);
+  const subtotal=rent+waterFee+elecFee;
+  return{waterUsed:wUsed>0?wUsed:0,waterFee,elecUsed:eUsed>0?eUsed:0,elecFee,rent,deduction,total:Math.max(0,subtotal-deduction)};
 }
 
 let toastTimer;
@@ -1721,7 +1723,7 @@ function renderMonthList(key){
     const calc=calcMonthFee(room,md);
     return `<div class="month-list-item ${md.paid?'paid':'unpaid'}" data-month="${ym}">
       <div class="mli-header"><span class="mli-month">${formatYM(ym)}</span><span class="mli-total">${money(calc.total)}</span></div>
-      <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}</div>
+      <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}</div>
       <span class="mli-status ${md.paid?'paid':'unpaid'}">${md.paid?'已缴费':'未缴费'}</span>
     </div>`;
   }).join('');
@@ -1731,7 +1733,7 @@ function renderMonthList(key){
       const calc=calcMonthFee(room,md);
       return `<div class="month-list-item ${md.paid?'paid':'unpaid'}" data-month="${ym}">
         <div class="mli-header"><span class="mli-month">${formatYM(ym)}</span><span class="mli-total">${money(calc.total)}</span></div>
-        <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}</div>
+        <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}</div>
         <span class="mli-status ${md.paid?'paid':'unpaid'}">${md.paid?'已缴费':'未缴费'}</span>
       </div>`;
     }).join('')}</div>`;
@@ -1809,15 +1811,23 @@ function openMonthEdit(key,ym){
       </div>
     </div>
     <div class="section">
+      <div class="section-title">扣除项 <span style="font-size:11px;color:var(--text-lighter);font-weight:400">（租客自费维修等可扣除金额）</span></div>
+      <div class="form-row"><label>扣除金额 (¥)</label><input type="number" id="mDeduction" value="${esc(md.deduction)}" placeholder="0" min="0" step="0.01"></div>
+    </div>
+    <div class="section">
       <div class="section-title">合计</div>
-      <div class="fee-calc"><div class="fee-calc-row total"><span class="fc-label">本月应收</span><span class="fc-value" id="totalFee">¥0.00</span></div></div>
+      <div class="fee-calc">
+        <div class="fee-calc-row"><span class="fc-label">小计（租金+水电）</span><span class="fc-value" id="subtotalFee">¥0.00</span></div>
+        <div class="fee-calc-row"><span class="fc-label" style="color:var(--danger)">扣除项</span><span class="fc-value" id="deductionFee" style="color:var(--danger)">-¥0.00</span></div>
+        <div class="fee-calc-row total"><span class="fc-label">本月应收</span><span class="fc-value" id="totalFee">¥0.00</span></div>
+      </div>
       <div class="switch-row" style="margin-top:10px"><span class="switch-label">已缴费</span><div class="switch ${md.paid?'on':''}" id="paidSwitch"></div></div>
       <div class="form-row" style="margin-top:10px"><label>备注</label><input type="text" id="mNote" value="${esc(md.note)}" placeholder="备注"></div>
     </div>
     <div class="btn-group"><button class="btn btn-danger" id="btnMonthDel">删除</button><button class="btn btn-primary" id="btnMonthSave">保存</button></div>
   `;
   updateMonthCalc();
-  ['mWaterPrev','mWaterCurr','mElecPrev','mElecCurr','mRent'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',updateMonthCalc);});
+  ['mWaterPrev','mWaterCurr','mElecPrev','mElecCurr','mRent','mDeduction'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',updateMonthCalc);});
   document.getElementById('paidSwitch').addEventListener('click',()=>document.getElementById('paidSwitch').classList.toggle('on'));
   document.getElementById('btnWaterRate').addEventListener('click',()=>openRatePopover(key,'water'));
   document.getElementById('btnElecRate').addEventListener('click',()=>openRatePopover(key,'elec'));
@@ -1845,12 +1855,16 @@ function updateMonthCalc(){
   const wFee=(wUsed>0?wUsed:0)*rates.waterPrice;
   const eFee=(eUsed>0?eUsed:0)*rates.electricPrice;
   const rent=num(val('mRent'));
-  const total=rent+wFee+eFee;
-  const wuEl=document.getElementById('waterUsed'),wfEl=document.getElementById('waterFee'),euEl=document.getElementById('elecUsed'),efEl=document.getElementById('elecFee'),tEl=document.getElementById('totalFee');
+  const deduction=num(val('mDeduction'));
+  const subtotal=rent+wFee+eFee;
+  const total=Math.max(0,subtotal-deduction);
+  const wuEl=document.getElementById('waterUsed'),wfEl=document.getElementById('waterFee'),euEl=document.getElementById('elecUsed'),efEl=document.getElementById('elecFee'),tEl=document.getElementById('totalFee'),stEl=document.getElementById('subtotalFee'),dEl=document.getElementById('deductionFee');
   if(wuEl)wuEl.textContent=(wUsed>0?wUsed:0).toFixed(1)+' 方';
   if(wfEl)wfEl.textContent=money(wFee);
   if(euEl)euEl.textContent=(eUsed>0?eUsed:0).toFixed(1)+' 度';
   if(efEl)efEl.textContent=money(eFee);
+  if(stEl)stEl.textContent=money(subtotal);
+  if(dEl)dEl.textContent='-¥'+deduction.toFixed(2);
   if(tEl)tEl.textContent=money(total);
 }
 
@@ -1866,7 +1880,7 @@ function saveMonth(key){
   if(eCurr<ePrev){
     toast('⚠️ 本月电表读数('+eCurr+')小于上月('+ePrev+')，请检查');return;
   }
-  room.months[ym]={rent:val('mRent'),waterPrev:val('mWaterPrev'),waterCurr:val('mWaterCurr'),electricPrev:val('mElecPrev'),electricCurr:val('mElecCurr'),paid:document.getElementById('paidSwitch').classList.contains('on'),note:val('mNote')};
+  room.months[ym]={rent:val('mRent'),waterPrev:val('mWaterPrev'),waterCurr:val('mWaterCurr'),electricPrev:val('mElecPrev'),electricCurr:val('mElecCurr'),deduction:val('mDeduction'),paid:document.getElementById('paidSwitch').classList.contains('on'),note:val('mNote')};
   autoRoomStatus(room);
   save();renderMonthList(key);renderAll();closeMonthSheet();toast('保存成功');
 }
@@ -2258,16 +2272,17 @@ function generateRoomCanvas(key){
   ctx.fillText(`水电费明细 · 电话：${room.phone||'-'}  ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,W/2,66);
   ctx.fillStyle='#f1f5f9';ctx.fillRect(0,90,W,50);
   ctx.fillStyle='#1e293b';ctx.font='bold 13px sans-serif';
-  [{l:'月份',x:50},{l:'租金',x:140},{l:'用水(方)',x:215},{l:'水费',x:300},{l:'用电(度)',x:380},{l:'电费',x:465},{l:'合计',x:540}].forEach(c=>ctx.fillText(c.l,c.x,120));
+  [{l:'月份',x:50},{l:'租金',x:130},{l:'用水(方)',x:200},{l:'水费',x:275},{l:'用电(度)',x:345},{l:'电费',x:420},{l:'扣除',x:485},{l:'合计',x:550}].forEach(c=>ctx.fillText(c.l,c.x,120));
   ctx.strokeStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(0,140);ctx.lineTo(W,140);ctx.stroke();
   ctx.font='12px sans-serif';
   months.slice(0,monthCount).forEach((ym,i)=>{
     const md=room.months[ym];const calc=calcMonthFee(room,md);const y=140+(i+1)*rowH-18;
     if(i%2===1){ctx.fillStyle='#f8fafc';ctx.fillRect(0,140+i*rowH,W,rowH);}
-    ctx.fillStyle='#1e293b';ctx.fillText(formatYM(ym),50,y);ctx.fillText(money(calc.rent),140,y);
-    ctx.fillText(calc.waterUsed>0?calc.waterUsed.toFixed(1):'-',215,y);ctx.fillText(money(calc.waterFee),300,y);
-    ctx.fillText(calc.elecUsed>0?calc.elecUsed.toFixed(1):'-',380,y);ctx.fillText(money(calc.elecFee),465,y);
-    ctx.fillStyle='#ef4444';ctx.font='bold 13px sans-serif';ctx.fillText(money(calc.total),540,y);ctx.font='12px sans-serif';
+    ctx.fillStyle='#1e293b';ctx.fillText(formatYM(ym),50,y);ctx.fillText(money(calc.rent),130,y);
+    ctx.fillText(calc.waterUsed>0?calc.waterUsed.toFixed(1):'-',200,y);ctx.fillText(money(calc.waterFee),275,y);
+    ctx.fillText(calc.elecUsed>0?calc.elecUsed.toFixed(1):'-',345,y);ctx.fillText(money(calc.elecFee),420,y);
+    ctx.fillStyle='#e6a700';ctx.fillText(calc.deduction>0?'-'+money(calc.deduction):'-',485,y);
+    ctx.fillStyle='#ef4444';ctx.font='bold 13px sans-serif';ctx.fillText(money(calc.total),550,y);ctx.font='12px sans-serif';
   });
   let totalAll=0;months.forEach(ym=>totalAll+=calcMonthFee(room,room.months[ym]).total);
   ctx.fillStyle='#f8fafc';ctx.fillRect(0,140+monthCount*rowH,W,40);
@@ -2297,10 +2312,10 @@ async function exportAsCSV(key){
   csv+=`${bName} ${num}房 ${tenantName} 水电费明细\n`;
   csv+=`租客,${room.tenant||''},电话,${room.phone||''},身份证,${room.idCard||''}\n`;
   csv+=`单价,水费 ${rates.waterPrice}元/方,电费 ${rates.electricPrice}元/度\n\n`;
-  csv+='月份,租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,合计,缴费状态,备注\n';
-  months.forEach(ym=>{const md=room.months[ym];const calc=calcMonthFee(room,md);csv+=[formatYM(ym),calc.rent.toFixed(2),md.waterPrev||'',md.waterCurr||'',calc.waterUsed.toFixed(1),calc.waterFee.toFixed(2),md.electricPrev||'',md.electricCurr||'',calc.elecUsed.toFixed(1),calc.elecFee.toFixed(2),calc.total.toFixed(2),md.paid?'已缴费':'未缴费',md.note||''].join(',')+'\n';});
-  let tRent=0,tWater=0,tElec=0,tTotal=0;months.forEach(ym=>{const c=calcMonthFee(room,room.months[ym]);tRent+=c.rent;tWater+=c.waterFee;tElec+=c.elecFee;tTotal+=c.total;});
-  csv+=`合计,${tRent.toFixed(2)},,,${tWater.toFixed(2)},,,,${tElec.toFixed(2)},${tTotal.toFixed(2)},,\n`;
+  csv+='月份,租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,扣除项,合计,缴费状态,备注\n';
+  months.forEach(ym=>{const md=room.months[ym];const calc=calcMonthFee(room,md);csv+=[formatYM(ym),calc.rent.toFixed(2),md.waterPrev||'',md.waterCurr||'',calc.waterUsed.toFixed(1),calc.waterFee.toFixed(2),md.electricPrev||'',md.electricCurr||'',calc.elecUsed.toFixed(1),calc.elecFee.toFixed(2),calc.deduction.toFixed(2),calc.total.toFixed(2),md.paid?'已缴费':'未缴费',md.note||''].join(',')+'\n';});
+  let tRent=0,tWater=0,tElec=0,tDeduction=0,tTotal=0;months.forEach(ym=>{const c=calcMonthFee(room,room.months[ym]);tRent+=c.rent;tWater+=c.waterFee;tElec+=c.elecFee;tDeduction+=c.deduction;tTotal+=c.total;});
+  csv+=`合计,${tRent.toFixed(2)},,,${tWater.toFixed(2)},,,,${tElec.toFixed(2)},${tDeduction.toFixed(2)},${tTotal.toFixed(2)},,\n`;
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
   const now=new Date();const filename=`${bName}${num}房_${tenantName}_水电费明细_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}.csv`;
   const shared=await shareFile(blob,filename,'text/csv',`${bName} ${num}房 ${tenantName} 水电费明细`);
@@ -2442,12 +2457,12 @@ async function doBatchExport(b,selMonths,selRooms,fmt){
     let csv='\uFEFF';
     csv+=`${bName} 费用明细\n`;
     csv+=`导出时间,${new Date().toISOString().slice(0,10)}\n\n`;
-    csv+='房间号,租客,月份,月租金,用水量(方),水费,用电量(度),电费,合计,缴费状态,备注\n';
+    csv+='房间号,租客,月份,月租金,用水量(方),水费,用电量(度),电费,扣除项,合计,缴费状态,备注\n';
     selRooms.forEach(item=>{
       const{key,room}=item;const num2=key.split('-')[1];
       selMonths.forEach(ym=>{
         const md=room.months[ym];
-        if(md){const c=calcMonthFee(room,md);csv+=[num2,room.tenant||'',formatYM(ym),c.rent.toFixed(2),c.waterUsed.toFixed(1),c.waterFee.toFixed(2),c.elecUsed.toFixed(1),c.elecFee.toFixed(2),c.total.toFixed(2),md.paid?'已缴费':'未缴费',md.note||''].join(',')+'\n';}
+        if(md){const c=calcMonthFee(room,md);csv+=[num2,room.tenant||'',formatYM(ym),c.rent.toFixed(2),c.waterUsed.toFixed(1),c.waterFee.toFixed(2),c.elecUsed.toFixed(1),c.elecFee.toFixed(2),c.deduction.toFixed(2),c.total.toFixed(2),md.paid?'已缴费':'未缴费',md.note||''].join(',')+'\n';}
       });
     });
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
@@ -3191,10 +3206,10 @@ document.getElementById('exportCsv').addEventListener('click',()=>{
   csv+=`${bName} ${num}房 ${tenantName} 水电费明细\n`;
   csv+=`租客,${room.tenant||''},电话,${room.phone||''},身份证,${room.idCard||''}\n`;
   csv+=`单价,水费 ${rates.waterPrice}元/方,电费 ${rates.electricPrice}元/度\n\n`;
-  csv+='月份,租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,合计,缴费状态,备注\n';
-  months.forEach(ym=>{const md=room.months[ym];const calc=calcMonthFee(room,md);csv+=[formatYM(ym),calc.rent.toFixed(2),md.waterPrev||'',md.waterCurr||'',calc.waterUsed.toFixed(1),calc.waterFee.toFixed(2),md.electricPrev||'',md.electricCurr||'',calc.elecUsed.toFixed(1),calc.elecFee.toFixed(2),calc.total.toFixed(2),md.paid?'已缴费':'未缴费',md.note||''].join(',')+'\n';});
-  let tRent=0,tWater=0,tElec=0,tTotal=0;months.forEach(ym=>{const c=calcMonthFee(room,room.months[ym]);tRent+=c.rent;tWater+=c.waterFee;tElec+=c.elecFee;tTotal+=c.total;});
-  csv+=`合计,${tRent.toFixed(2)},,,${tWater.toFixed(2)},,,,${tElec.toFixed(2)},${tTotal.toFixed(2)},,\n`;
+  csv+='月份,租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,扣除项,合计,缴费状态,备注\n';
+  months.forEach(ym=>{const md=room.months[ym];const calc=calcMonthFee(room,md);csv+=[formatYM(ym),calc.rent.toFixed(2),md.waterPrev||'',md.waterCurr||'',calc.waterUsed.toFixed(1),calc.waterFee.toFixed(2),md.electricPrev||'',md.electricCurr||'',calc.elecUsed.toFixed(1),calc.elecFee.toFixed(2),calc.deduction.toFixed(2),calc.total.toFixed(2),md.paid?'已缴费':'未缴费',md.note||''].join(',')+'\n';});
+  let tRent=0,tWater=0,tElec=0,tDeduction=0,tTotal=0;months.forEach(ym=>{const c=calcMonthFee(room,room.months[ym]);tRent+=c.rent;tWater+=c.waterFee;tElec+=c.elecFee;tDeduction+=c.deduction;tTotal+=c.total;});
+  csv+=`合计,${tRent.toFixed(2)},,,${tWater.toFixed(2)},,,,${tElec.toFixed(2)},${tDeduction.toFixed(2)},${tTotal.toFixed(2)},,\n`;
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
   const now=new Date();const filename=`${bName}${num}房_${tenantName}_水电费明细_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}.csv`;
   // CSV 也通过 shareFile 弹出系统分享面板，用户可选择保存到文件或分享到其他App
