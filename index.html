@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -815,6 +815,14 @@ function compressImage(file,cb,maxW,quality){
   };
   reader.readAsDataURL(file);
 }
+async function uploadCompressImage(file,cb,maxW,quality){
+  compressImage(file,async function(b64){
+    if(window.CloudSync&&window.CloudSync.isReady&&window.CloudSync.isReady()){
+      try{var url=await window.CloudSync.uploadImage(b64);cb(url);}
+      catch(e){toast('图片上传失败: '+(e.message||e));cb(b64);}
+    }else{cb(b64);}
+  },maxW,quality);
+}
 function showImageViewer(src){document.getElementById('imgViewerImg').src=src;document.getElementById('imgViewer').classList.add('show');}
 
 /* ============================================================ Web Share API ============================================================ */
@@ -1261,13 +1269,13 @@ function bindRoomEvents(key){
   const idCardBtn=document.getElementById('idCardBtn');
   const idCardInput=document.getElementById('idCardInput');
   idCardBtn.addEventListener('click',(e)=>{if(e.target.id==='idCardDel'){e.stopPropagation();return;}if(room.idCardImg){showImageViewer(room.idCardImg);return;}idCardInput.click();});
-  idCardInput.addEventListener('change',()=>{if(idCardInput.files&&idCardInput.files[0]){compressImage(idCardInput.files[0],(b64)=>{room.idCardImg=b64;save();idCardBtn.classList.add('has-img');idCardBtn.querySelector('.iib-thumb').src=b64;toast('上传成功');});}});
+  idCardInput.addEventListener('change',()=>{if(idCardInput.files&&idCardInput.files[0]){uploadCompressImage(idCardInput.files[0],(url)=>{room.idCardImg=url;save();idCardBtn.classList.add('has-img');idCardBtn.querySelector('.iib-thumb').src=url;toast('上传成功');});}});
   document.getElementById('idCardDel').addEventListener('click',(e)=>{e.stopPropagation();if(!confirm('删除身份证照片？'))return;room.idCardImg=null;save();idCardBtn.classList.remove('has-img');idCardBtn.querySelector('.iib-thumb').src='';});
 
   const idScanBtn=document.getElementById('idScanBtn');
   const idScanInput=document.getElementById('idScanInput');
   idScanBtn.addEventListener('click',()=>idScanInput.click());
-  idScanInput.addEventListener('change',()=>{if(idScanInput.files&&idScanInput.files[0]){toast('正在识别...');compressImage(idScanInput.files[0],(b64)=>{room.idCardImg=b64;save();idCardBtn.classList.add('has-img');idCardBtn.querySelector('.iib-thumb').src=b64;recognizeIdCard(b64,(idNum)=>{if(idNum){document.getElementById('fIdCard').value=idNum;toast('识别成功：'+idNum);}else{toast('未识别到身份证号，请手动输入');}});});}});
+  idScanInput.addEventListener('change',()=>{if(idScanInput.files&&idScanInput.files[0]){toast('正在识别...');uploadCompressImage(idScanInput.files[0],(url)=>{room.idCardImg=url;save();idCardBtn.classList.add('has-img');idCardBtn.querySelector('.iib-thumb').src=url;recognizeIdCard(url,(idNum)=>{if(idNum){document.getElementById('fIdCard').value=idNum;toast('识别成功：'+idNum);}else{toast('未识别到身份证号，请手动输入');}});});}});
   const fIdCard=document.getElementById('fIdCard');
   fIdCard.addEventListener('input',()=>{let v=fIdCard.value.toUpperCase().replace(/[^0-9X]/g,'');if(v.length>18)v=v.slice(0,18);fIdCard.value=v;});
 
@@ -1275,7 +1283,7 @@ function bindRoomEvents(key){
   const receiptInput=document.getElementById('receiptInput');
   function triggerReceiptUpload(){if(room.deposit.receiptImg){showImageViewer(room.deposit.receiptImg);return;}receiptInput.click();}
   receiptBtn.addEventListener('click',(e)=>{if(e.target.id==='receiptDel'){e.stopPropagation();return;}triggerReceiptUpload();});
-  receiptInput.addEventListener('change',()=>{if(receiptInput.files&&receiptInput.files[0]){compressImage(receiptInput.files[0],(b64)=>{room.deposit.receiptImg=b64;save();receiptBtn.classList.add('has-img');receiptBtn.querySelector('.iib-thumb').src=b64;toast('上传成功');});}});
+  receiptInput.addEventListener('change',()=>{if(receiptInput.files&&receiptInput.files[0]){uploadCompressImage(receiptInput.files[0],(url)=>{room.deposit.receiptImg=url;save();receiptBtn.classList.add('has-img');receiptBtn.querySelector('.iib-thumb').src=url;toast('上传成功');});}});
   document.getElementById('receiptDel').addEventListener('click',(e)=>{e.stopPropagation();if(!confirm('删除押金单照片？'))return;room.deposit.receiptImg=null;save();receiptBtn.classList.remove('has-img');receiptBtn.querySelector('.iib-thumb').src='';});
 
   document.getElementById('btnAddMonth').addEventListener('click',()=>openMonthEdit(key,null));
@@ -2919,7 +2927,20 @@ if('serviceWorker' in navigator){
     document.getElementById("btnClrC").addEventListener("click",function(){if(!confirm("确定清除?"))return;cfg={url:"",key:"",autoSync:false};saveCfg(cfg);ready=false;sbClient=null;toast("已清除");restore();});
   }function watchSB(){var sb=document.getElementById("settingsBody");if(!sb)return;var ob=new MutationObserver(function(){if(sb.children.length>0&&!document.getElementById("cloudSyncSection"))inject();});ob.observe(sb,{childList:true,subtree:true});}
   if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",function(){initSB();hookSave();watchSB();});}else{initSB();hookSave();watchSB();}
-  window.CloudSync={upload:upload,download:download,isReady:function(){return ready;}};
+  async function uploadImageToStorage(base64Data){
+    if(!ready||!sbClient){throw new Error('云同步未配置');}
+    var parts=base64Data.split(',');
+    var mime=parts[0].match(/:(.*?);/)[1];
+    var bstr=atob(parts[1]),n=bstr.length,u8arr=new Uint8Array(n);
+    while(n--){u8arr[n]=bstr.charCodeAt(n);}
+    var blob=new Blob([u8arr],{type:mime});
+    var filename='rent-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.jpg';
+    var r=await sbClient.storage.from('rent-images').upload(filename,blob,{contentType:'image/jpeg'});
+    if(r.error) throw r.error;
+    var url=sbClient.storage.from('rent-images').getPublicUrl(filename).data.publicUrl;
+    return url;
+  }
+  window.CloudSync={upload:upload,download:download,isReady:function(){return ready;},uploadImage:uploadImageToStorage};
 })();
 </script>
 </body>

@@ -1,4 +1,4 @@
-﻿(function(){
+(function(){
   "use strict";
   var CKEY="supabase_config";
   function loadCfg(){try{var r=localStorage.getItem(CKEY);return r?JSON.parse(r):{url:"",key:"",autoSync:false};}catch(e){return{url:"",key:"",autoSync:false};}}
@@ -9,6 +9,19 @@
   function setSync(){localStorage.setItem(STORAGE_KEY+"_lastCloudSync",Date.now().toString());}
   async function upload(){if(!ready){toast("请先配置云同步");return;}try{var j=JSON.stringify(state);var r=await sbClient.from("rent_data").upsert({id:1,data:j,updated_at:new Date().toISOString()});if(r.error)throw r.error;setSync();toast("已同步到云端");updUI();}catch(e){toast("同步失败: "+(e.message||e));}}
   async function download(){if(!ready){toast("请先配置云同步");return;}try{var r=await sbClient.from("rent_data").select("data,updated_at").eq("id",1).single();if(r.error)throw r.error;if(!r.data||!r.data.data){toast("云端暂无数据");return;}var cs=JSON.parse(r.data.data);if(!cs.rooms){toast("数据格式错误");return;}var t=new Date(r.data.updated_at).toLocaleString("zh-CN");if(!confirm("云端更新于: "+t+"\n\n用云端数据覆盖本地吗?\n(建议先导出备份)"))return;state=cs;initRooms();save();renderAll();toast("已从云端恢复");}catch(e){toast("下载失败: "+(e.message||e));}}
+  async function uploadImageToStorage(base64Data){
+    if(!ready||!sbClient){throw new Error('云同步未配置');}
+    var parts=base64Data.split(',');
+    var mime=parts[0].match(/:(.*?);/)[1];
+    var bstr=atob(parts[1]),n=bstr.length,u8arr=new Uint8Array(n);
+    while(n--){u8arr[n]=bstr.charCodeAt(n);}
+    var blob=new Blob([u8arr],{type:mime});
+    var filename='rent-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.jpg';
+    var r=await sbClient.storage.from('rent-images').upload(filename,blob,{contentType:'image/jpeg'});
+    if(r.error) throw r.error;
+    var url=sbClient.storage.from('rent-images').getPublicUrl(filename).data.publicUrl;
+    return url;
+  }
   var _os=null,_st=null;
   function hookSave(){if(typeof window.save!=="function"||_os)return;_os=window.save;window.save=function(){_os.apply(this,arguments);if(ready&&cfg.autoSync){clearTimeout(_st);_st=setTimeout(function(){upload().catch(function(){});},3000);}};}
   function updUI(){var s=document.getElementById("cloudSyncSection");if(!s)return;var t=lastSync();var ts=t?new Date(t).toLocaleString("zh-CN"):"从未同步";var e=s.querySelector("[data-lastsync]");if(e)e.textContent=ts;}
@@ -39,7 +52,7 @@
       '<div class="form-row"><label>Project URL</label><input type="text" id="cfgUrl" placeholder="https://xxxx.supabase.co" value="'+(cfg.url||'')+'"></div>'+
       '<div class="form-row"><label>Anon Public Key</label><textarea id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIs..." style="min-height:72px;font-size:12px">'+(cfg.key||'')+'</textarea></div>'+
       '<div class="info-hint">获取: supabase.com → 项目 → Settings → API Keys + Data API</div>'+
-      '<div class="info-hint" style="color:var(--danger);margin-top:6px">⚠️ 需先执行 supabase-setup.sql</div></div>'+
+      '<div class="info-hint" style="color:var(--danger);margin-top:6px">⚠️ 需先执行 supabase-setup.sql 和 storage-setup.sql</div></div>'+
       '<div class="section"><div class="section-title">说明</div>'+
       '<div class="info-hint" style="line-height:1.8">• 上传: 推送数据到云端<br>• 恢复: 从云端拉取数据<br>• 自动同步: 修改后自动上传</div></div>'+
       '<div class="btn-group"><button class="btn btn-primary" id="btnSaveC">保存</button><button class="btn btn-danger" id="btnClrC" style="flex:0 0 auto;padding:12px 16px">清除</button></div>';
@@ -49,5 +62,5 @@
   }
   function watchSB(){var sb=document.getElementById("settingsBody");if(!sb)return;var ob=new MutationObserver(function(){if(sb.children.length>0&&!document.getElementById("cloudSyncSection"))inject();});ob.observe(sb,{childList:true,subtree:true});}
   if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",function(){initSB();hookSave();watchSB();});}else{initSB();hookSave();watchSB();}
-  window.CloudSync={upload:upload,download:download,isReady:function(){return ready;}};
+  window.CloudSync={upload:upload,download:download,isReady:function(){return ready;},uploadImage:uploadImageToStorage};
 })();
