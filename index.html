@@ -190,8 +190,9 @@
   .room-unpaid{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
   .room-maintenance{background:#fefce8;color:#a16207;border-color:#fde68a}
 
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;opacity:0;transition:opacity .25s}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;opacity:0;transition:opacity .15s}
   .overlay.show{display:block;opacity:1}
+  .overlay.closing{opacity:0}
   .sheet{position:fixed;left:0;right:0;bottom:0;z-index:201;background:var(--bg);border-radius:16px 16px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom)}
   .sheet.show{transform:translateY(0)}
   .sheet-handle{width:36px;height:4px;background:#cbd5e1;border-radius:2px;margin:10px auto 0}
@@ -346,7 +347,7 @@
   <div class="search-bar" id="searchBar">
     <div class="search-input-wrap">
       <span class="search-icon">🔍</span>
-      <input type="search" class="search-input" id="searchInput" placeholder="搜索租客姓名 / 身份证号 / 手机号">
+      <input type="search" class="search-input" id="searchInput" placeholder="搜索租客/身份证/手机号/支出记录">
       <button class="search-clear" id="searchClear">×</button>
     </div>
   </div>
@@ -361,7 +362,7 @@
       <div class="overview-item clickable" id="ovMonthWrap"><div class="overview-num" id="ovMonthIncome" style="color:var(--success)">¥0 <span id="ovMonthArrow" style="font-size:11px">▶</span></div><div class="overview-label">月租金(已收)</div><div class="ov-detail" id="ovMonthDetail" style="display:none"></div></div>
       <div class="overview-item clickable" id="ovYearWrap"><div class="overview-num" id="ovYearIncome" style="color:var(--primary)">¥0 <span id="ovYearArrow" style="font-size:11px">▶</span></div><div class="overview-label">年租金(已收)</div><div class="ov-detail" id="ovYearDetail" style="display:none"></div></div>
       <div class="overview-item clickable" id="ovArrearsWrap"><div class="overview-num" id="ovArrears" style="color:var(--danger)">¥0</div><div class="overview-label">欠缴租金 ▶</div></div>
-      <div class="overview-item clickable" id="ovExpenseWrap" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center"><span class="overview-label" style="margin-top:0">支出 ▶</span><span class="overview-num" id="ovExpense" style="color:#e6a700">¥0</span></div>
+      <div class="overview-item clickable" id="ovExpenseWrap" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;min-height:72px"><span class="overview-label" style="margin-top:0">支出 ▶</span><span class="overview-num" id="ovExpense" style="color:#e6a700">¥0</span></div>
     </div>
   </div>
   <div id="floorList"></div>
@@ -1153,10 +1154,10 @@ function showExpDetail(id){
       <div class="fee-calc-row total"><span class="fc-label">${fl[3]}</span><span class="fc-value" style="color:#e6a700">¥${num(ex.amount).toFixed(2)}</span></div>
       ${ex.note?`<div class="fee-calc-row"><span class="fc-label">备注</span><span class="fc-value">${esc(ex.note)}</span></div>`:''}
     </div>
-    <div class="btn-group" style="margin-top:10px"><button class="btn btn-primary" id="btnEditExp">编辑</button><button class="btn btn-secondary" id="btnCloseDetail">关闭</button></div>`;
+    <div class="btn-group" style="margin-top:10px"><button class="btn btn-primary" id="btnEditExp">编辑</button><button class="btn btn-danger" id="btnDelDetail">删除</button></div>`;
   sec.style.display='';
   document.getElementById('btnEditExp').addEventListener('click',()=>editExp(id));
-  document.getElementById('btnCloseDetail').addEventListener('click',()=>{sec.style.display='none';sec.innerHTML='';});
+  document.getElementById('btnDelDetail').addEventListener('click',()=>{if(confirm('确定删除此支出记录？')){deleteExp(id);sec.style.display='none';sec.innerHTML='';}});
   sec.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function showExpForm(type,editEx){
@@ -1362,15 +1363,26 @@ function doSearch(keyword){
     const room=state.rooms[key];
     if(room.tenant||room.phone||room.idCard){
       if(room.tenant.toLowerCase().includes(kw)||(room.phone||'').includes(kw)||(room.idCard||'').toLowerCase().includes(kw)){
-        results.push({key,tenant:room.tenant,phone:room.phone,idCard:room.idCard,status:room.status,archived:false});
+        results.push({type:'room',key,tenant:room.tenant,phone:room.phone,idCard:room.idCard,status:room.status,archived:false});
       }
     }
     (room.archived||[]).forEach((a,i)=>{
       if((a.tenant||'').toLowerCase().includes(kw)||(a.phone||'').includes(kw)||(a.idCard||'').toLowerCase().includes(kw)){
-        results.push({key,tenant:a.tenant,phone:a.phone,idCard:a.idCard,status:'archived',archived:true,archiveIdx:i});
+        results.push({type:'room',key,tenant:a.tenant,phone:a.phone,idCard:a.idCard,status:'archived',archived:true,archiveIdx:i});
       }
     });
   }
+  // 搜索支出记录
+  (state.expenses||[]).forEach(ex=>{
+    const b=getBuilding(ex.bid);const bName=b?b.name:ex.bid;
+    const loc=(ex.location||'').toLowerCase();
+    const per=(ex.person||'').toLowerCase();
+    if(loc.includes(kw)||per.includes(kw)){
+      const typeLabels={repair:'维修',clean:'清洁',supply:'耗材'};
+      const typeColors={repair:'#3b82f6',clean:'var(--success)',supply:'#e6a700'};
+      results.push({type:'expense',expId:ex.id,bid:ex.bid,bName,expType:ex.type,expTypeLabel:typeLabels[ex.type]||ex.type,expColor:typeColors[ex.type]||'var(--primary)',expDate:ex.date,expLocation:ex.location||'-',expPerson:ex.person||'-',expAmount:ex.amount});
+    }
+  });
   return results;
 }
 function renderSearchResults(keyword){
@@ -1387,21 +1399,55 @@ function renderSearchResults(keyword){
   floorList.style.display='none';overview.style.display='none';
   container.classList.add('show');
   const results=doSearch(keyword);
-  if(results.length===0){container.innerHTML='<div class="empty-hint">未找到匹配的租客</div>';return;}
-  container.innerHTML=results.map(r=>{
-    const s=r.archived?{label:'已归档'}:(STATUS_MAP[r.status]||{label:''});
-    return `<div class="search-result-item" data-room="${r.key}" ${r.archived?`data-archive="${r.archiveIdx}"`:''}>
-      <div class="sr-room">${r.key.replace('-','')}</div>
-      <div class="sr-info">
-        <div class="sr-name">${esc(r.tenant)||'未命名'}<span class="sr-tag" style="background:${r.archived?'#cbd5e1':'var(--primary)'};color:#fff">${s.label}</span></div>
-        <div class="sr-detail">${r.phone||'无电话'} · ${r.idCard||'无身份证'}</div>
-      </div>
-    </div>`;
-  }).join('');
-  container.querySelectorAll('.search-result-item').forEach(item=>{
+  if(results.length===0){container.innerHTML='<div class="empty-hint">未找到匹配的结果</div>';return;}
+  const roomResults=results.filter(r=>r.type==='room');
+  const expResults=results.filter(r=>r.type==='expense');
+  let html='';
+  if(roomResults.length>0){
+    html+=`<div style="font-size:12px;color:var(--text-light);padding:4px 16px">租客结果 (${roomResults.length})</div>`;
+    html+=roomResults.map(r=>{
+      const s=r.archived?{label:'已归档'}:(STATUS_MAP[r.status]||{label:''});
+      return `<div class="search-result-item" data-room="${r.key}" ${r.archived?`data-archive="${r.archiveIdx}"`:''}>
+        <div class="sr-room">${r.key.replace('-','')}</div>
+        <div class="sr-info">
+          <div class="sr-name">${esc(r.tenant)||'未命名'}<span class="sr-tag" style="background:${r.archived?'#cbd5e1':'var(--primary)'};color:#fff">${s.label}</span></div>
+          <div class="sr-detail">${r.phone||'无电话'} · ${r.idCard||'无身份证'}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  if(expResults.length>0){
+    html+=`<div style="font-size:12px;color:var(--text-light);padding:8px 16px 4px">支出记录 (${expResults.length})</div>`;
+    html+=expResults.map(r=>{
+      const personLabel=r.expType==='supply'?'购买渠道':(r.expType==='repair'?'维修人':'清洁人');
+      return `<div class="search-result-item" data-expense="${r.expId}" style="border-left:3px solid ${r.expColor}">
+        <div class="sr-info" style="width:100%">
+          <div class="sr-name">${esc(r.expLocation)}<span class="sr-tag" style="background:${r.expColor};color:#fff">${r.expTypeLabel}</span></div>
+          <div class="sr-detail">${r.bName} · ${r.expDate||'未填'} · ${personLabel}：${esc(r.expPerson)} · ¥${num(r.expAmount).toFixed(2)}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  container.innerHTML=html;
+  container.querySelectorAll('.search-result-item[data-room]').forEach(item=>{
     item.addEventListener('click',()=>{
       const roomKey=item.dataset.room;const archiveIdx=item.dataset.archive;
       closeSearch();openRoom(roomKey,archiveIdx!==undefined?parseInt(archiveIdx):null);
+    });
+  });
+  container.querySelectorAll('.search-result-item[data-expense]').forEach(item=>{
+    item.addEventListener('click',()=>{
+      const exId=item.dataset.expense;
+      const exp=(state.expenses||[]).find(e=>e.id===exId);
+      if(!exp)return;
+      closeSearch();
+      const b=getBuilding(exp.bid);
+      if(b){
+        state.current=exp.bid;
+        renderSidebar();renderOverview();
+      }
+      openExpenses(exp.bid);
+      setTimeout(()=>showExpDetail(exId),300);
     });
   });
 }
@@ -1552,7 +1598,7 @@ function doOCR(imgBase64,callback){
 function renderMonthList(key){
   const room=state.rooms[key];
   const container=document.getElementById('monthList');
-  const months=Object.keys(room.months).sort().reverse();
+  const months=Object.keys(room.months).sort((a,b)=>{const aU=!room.months[a].paid?0:1;const bU=!room.months[b].paid?0:1;if(aU!==bU)return aU-bU;return b.localeCompare(a);});
   if(months.length===0){container.innerHTML='<div class="empty-hint">暂无月度记录</div>';return;}
   // 最多显示3条，其余折叠
   const SHOW_COUNT=3;
@@ -1713,7 +1759,14 @@ function saveMonth(key){
   save();renderMonthList(key);renderAll();closeMonthSheet();toast('保存成功');
 }
 function deleteMonth(key){if(!confirm('确定删除该月记录？'))return;const ym=val('monthYm');delete state.rooms[key].months[ym];save();renderMonthList(key);renderAll();closeMonthSheet();toast('已删除');}
-function closeMonthSheet(){document.getElementById('monthSheet').classList.remove('show');editingMonth=null;editingRoomKey=null;}
+function closeMonthSheet(){
+  const ms=document.getElementById('monthSheet');
+  if(!ms.classList.contains('show'))return;
+  ms.classList.remove('show');
+  const ov=document.getElementById('overlay');
+  if(!ov.classList.contains('closing')){ov.classList.add('closing');setTimeout(()=>{ov.classList.remove('show');ov.classList.remove('closing');},150);}
+  editingMonth=null;editingRoomKey=null;
+}
 
 /* ============================================================ 单价设置弹窗 ============================================================ */
 let ratePopoverRoomKey=null,ratePopoverType=null;
@@ -2034,7 +2087,14 @@ function showArchivedTenant(key,idx){
   document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');
 }
 
-function closeSheet(){document.getElementById('overlay').classList.remove('show');document.getElementById('sheet').classList.remove('show');currentRoomKey=null;currentArchiveIdx=null;}
+function closeSheet(){
+  const ov=document.getElementById('overlay');
+  const sh=document.getElementById('sheet');
+  sh.classList.remove('show');
+  ov.classList.add('closing');
+  setTimeout(()=>{ov.classList.remove('show');ov.classList.remove('closing');},150);
+  currentRoomKey=null;currentArchiveIdx=null;
+}
 
 /* ============================================================ 导出 ============================================================ */
 let exportRoomKey=null;
@@ -2045,7 +2105,7 @@ function closeBackupExportModal(){document.getElementById('backupExportModal').c
 function generateRoomCanvas(key){
   const room=state.rooms[key];const[b,num]=key.split('-');
   const bld=getBuilding(b);const bName=bld?bld.name:(b+'栋');
-  const months=Object.keys(room.months).sort().reverse();
+  const months=Object.keys(room.months).sort((a,b)=>{const aU=!room.months[a].paid?0:1;const bU=!room.months[b].paid?0:1;if(aU!==bU)return aU-bU;return b.localeCompare(a);});
   if(months.length===0)return null;
   const canvas=document.createElement('canvas');
   const W=600,rowH=50,headerH=140,footerH=40;
@@ -2888,7 +2948,8 @@ function showAllArchives(){
 
 function closeSettings(){
   document.getElementById('settingsSheet').classList.remove('show');
-  document.getElementById('overlay').classList.remove('show');
+  const ov=document.getElementById('overlay');
+  if(!ov.classList.contains('closing')){ov.classList.add('closing');setTimeout(()=>{ov.classList.remove('show');ov.classList.remove('closing');},150);}
 }
 
 /* ============================================================ 事件绑定 ============================================================ */
@@ -2925,6 +2986,7 @@ document.querySelector('.header').addEventListener('click',(e)=>{
 document.getElementById('sheetClose').addEventListener('click',closeSheet);
 document.getElementById('monthClose').addEventListener('click',closeMonthSheet);
 document.getElementById('overlay').addEventListener('click',()=>{closeSheet();closeMonthSheet();closeSettings();closeExportModal();closeArchiveModal();closeRatePopover();});
+document.getElementById('overlay').addEventListener('touchstart',()=>{closeSheet();closeMonthSheet();closeSettings();closeExportModal();closeArchiveModal();closeRatePopover();},{passive:true});
 document.getElementById('sheet').addEventListener('click',e=>e.stopPropagation());
 document.getElementById('monthSheet').addEventListener('click',e=>e.stopPropagation());
 document.getElementById('settingsSheet').addEventListener('click',e=>e.stopPropagation());
