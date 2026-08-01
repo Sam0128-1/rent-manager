@@ -358,11 +358,11 @@
   <div class="overview">
     <div class="overview-title" id="overviewTitle">概览</div>
     <div class="overview-grid" id="overviewGrid">
-      <div class="overview-item"><div class="overview-num" id="ovTotal" style="color:var(--primary)">0</div><div class="overview-label">入住情况</div></div>
+      <div class="overview-item" style="grid-column:1/-1;display:flex;justify-content:space-around;align-items:center"><div style="text-align:center"><div class="overview-num" id="ovTotalRooms" style="color:var(--primary)">0</div><div class="overview-label">房间</div></div><div style="text-align:center"><div class="overview-num" id="ovOccupied" style="color:var(--success)">0</div><div class="overview-label">已入住</div></div><div style="text-align:center"><div class="overview-num" id="ovVacant" style="color:var(--text-light)">0</div><div class="overview-label">空置</div></div></div>
+      <div class="overview-item clickable" id="ovArrearsWrap"><div class="overview-num" id="ovArrears" style="color:var(--danger)">¥0</div><div class="overview-label">欠缴租金 ▶</div></div>
+      <div class="overview-item clickable" id="ovExpenseWrap"><div class="overview-num" id="ovExpense" style="color:#e6a700">¥0</div><div class="overview-label">支出 ▶</div></div>
       <div class="overview-item clickable" id="ovMonthWrap"><div class="overview-num" id="ovMonthIncome" style="color:var(--success)">¥0 <span id="ovMonthArrow" style="font-size:11px">▶</span></div><div class="overview-label">月租金(已收)</div><div class="ov-detail" id="ovMonthDetail" style="display:none"></div></div>
       <div class="overview-item clickable" id="ovYearWrap"><div class="overview-num" id="ovYearIncome" style="color:var(--primary)">¥0 <span id="ovYearArrow" style="font-size:11px">▶</span></div><div class="overview-label">年租金(已收)</div><div class="ov-detail" id="ovYearDetail" style="display:none"></div></div>
-      <div class="overview-item clickable" id="ovArrearsWrap"><div class="overview-num" id="ovArrears" style="color:var(--danger)">¥0</div><div class="overview-label">欠缴租金 ▶</div></div>
-      <div class="overview-item clickable" id="ovExpenseWrap" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;min-height:72px"><span class="overview-label" style="margin-top:0">支出 ▶</span><span class="overview-num" id="ovExpense" style="color:#e6a700">¥0</span></div>
     </div>
   </div>
   <div id="floorList"></div>
@@ -1050,7 +1050,9 @@ function renderOverview(){
     if(exYear===curYear)yearExpense+=num(ex.amount);
   });
   document.getElementById('overviewTitle').textContent=b.name+' · 概览';
-  document.getElementById('ovTotal').textContent=occ+'/'+total;
+  document.getElementById('ovTotalRooms').textContent=total;
+  document.getElementById('ovOccupied').textContent=occ;
+  document.getElementById('ovVacant').textContent=(total-occ);
   document.getElementById('ovMonthIncome').innerHTML='¥'+monthIncome+' <span id="ovMonthArrow" style="font-size:11px">▶</span>';
   document.getElementById('ovYearIncome').innerHTML='¥'+yearIncome+' <span id="ovYearArrow" style="font-size:11px">▶</span>';
   document.getElementById('ovArrears').textContent='¥'+arrears;
