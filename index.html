@@ -190,11 +190,14 @@
   .room-unpaid{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
   .room-maintenance{background:#fefce8;color:#a16207;border-color:#fde68a}
 
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;opacity:0;transition:opacity .15s}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:201;display:none;opacity:0;transition:opacity .15s}
   .overlay.show{display:block;opacity:1}
   .overlay.closing{opacity:0}
-  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:201;background:var(--bg);border-radius:16px 16px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom)}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:202;background:var(--bg);border-radius:16px 16px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom)}
   .sheet.show{transform:translateY(0)}
+  .page-fullscreen{position:fixed;inset:0;z-index:201;background:var(--bg);transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom)}
+  .page-fullscreen.show{transform:translateY(0)}
+  .page-fullscreen .sheet-header{position:sticky;top:0;z-index:5;background:#fff;border-radius:0}
   .sheet-handle{width:36px;height:4px;background:#cbd5e1;border-radius:2px;margin:10px auto 0;touch-action:pan-y}
   .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;border-radius:16px 16px 0 0;z-index:5;touch-action:pan-y}
   .swipe-grab{cursor:grab;touch-action:pan-y}
@@ -357,6 +360,7 @@
     </div>
     <div class="header-actions">
       <button class="header-btn" id="btnSearch" title="搜索">🔍</button>
+      <button class="header-btn" id="btnBackup" title="数据备份与恢复">☁</button>
       <button class="header-btn" id="btnSettings" title="设置">⚙</button>
     </div>
   </div>
@@ -401,7 +405,7 @@
 </div>
 
 <!-- 月度录入弹层 -->
-<div class="sheet" id="monthSheet">
+<div class="page-fullscreen" id="monthSheet">
   <div class="sheet-handle swipe-grab" data-swipe-close="closeMonthSheet"></div>
   <div class="sheet-header swipe-grab" data-swipe-close="closeMonthSheet"><div class="sheet-title" id="monthSheetTitle">录入费用</div><button class="sheet-close" id="monthClose">×</button></div>
   <div class="sheet-body" id="monthSheetBody"></div>
@@ -2075,7 +2079,6 @@ function openMonthEdit(key,ym){
   document.getElementById('paidSwitch').addEventListener('click',()=>{
     setTimeout(updateMonthCalc,10);
   });
-  document.getElementById('overlay').classList.add('show');
   document.getElementById('monthSheet').classList.add('show');
 }
 
@@ -2147,8 +2150,6 @@ function closeMonthSheet(){
   const ms=document.getElementById('monthSheet');
   if(!ms.classList.contains('show'))return;
   ms.classList.remove('show');
-  const ov=document.getElementById('overlay');
-  if(!ov.classList.contains('closing')){ov.classList.add('closing');setTimeout(()=>{ov.classList.remove('show');ov.classList.remove('closing');},150);}
   editingMonth=null;editingRoomKey=null;
 }
 
@@ -3257,15 +3258,6 @@ function openSettings(){
       <button class="btn-full" id="btnBatchExport" style="background:var(--success);color:#fff">批量导出费用明细（可选月份/房间/格式）</button>
       <div class="info-hint">导出当前栋每个房间单独的当月费用图片，可逐张分享给租客</div>
     </div>
-    <div class="section card-clickable" id="bkCard" style="cursor:pointer">
-      <div class="section-title">💾 数据备份与恢复 <span class="st-action" style="color:var(--text-lighter)">▶</span></div>
-      <div class="fee-calc">
-        <div class="fee-calc-row"><span class="fc-label">自动备份</span><span class="fc-value" id="bkCardAuto">${getBackupCfg().autoBackup?'<span style="color:var(--success)">已开启</span>':'<span style="color:var(--text-lighter)">未开启</span>'}</span></div>
-        <div class="fee-calc-row"><span class="fc-label">存储位置</span><span class="fc-value" style="color:var(--primary)">本地 IndexedDB</span></div>
-        <div class="fee-calc-row"><span class="fc-label">上次备份</span><span class="fc-value" style="color:${backupWarn?'var(--danger)':'var(--success)'}">${esc(lastBackupText)}${backupDays>0?' ('+backupDays+'天前)':''}</span></div>
-      </div>
-      <div class="info-hint">点击进入：自动备份、手动备份、恢复历史记录、导入/导出数据库</div>
-    </div>
     <div class="section">
       <div class="section-title">其他</div>
       <button class="btn btn-danger btn-full" id="btnClearAll">清空所有数据</button>
@@ -3274,8 +3266,6 @@ function openSettings(){
   document.getElementById('setWaterPrice').addEventListener('input',()=>{state.globalRates.waterPrice=num(val('setWaterPrice'))||6;save();});
   document.getElementById('setElecPrice').addEventListener('input',()=>{state.globalRates.electricPrice=num(val('setElecPrice'))||1.2;save();});
   document.getElementById('btnBatchExport').addEventListener('click',()=>{closeSettings();openBatchExport();});
-  // 数据备份卡片 → 进入备份管理页面
-  document.getElementById('bkCard').addEventListener('click',()=>{openBackupManager();});
   let clearCountdownTimer=null;
   document.getElementById('btnClearAll').addEventListener('click',()=>{
     // 弹出自定义清空确认弹窗
@@ -3354,12 +3344,17 @@ function fmtBackupTime(ts){if(!ts)return'-';const d=new Date(ts);return d.toLoca
 
 // 打开备份管理页（图1）：自动备份、存储位置、手动备份、恢复入口、导入/导出
 function openBackupManager(){
-  // 关闭设置页，在同一个sheet中显示（复用settingsSheet）
+  // 复用 settingsSheet 来显示备份管理页
   document.getElementById('settingsSheet').querySelector('.sheet-title').textContent='数据备份与恢复';
   const body=document.getElementById('settingsBody');
   const cfg=getBackupCfg();
   const lastBK=getLastBackupTime();
   const lastBKText=lastBK?fmtBackupTime(lastBK)+` (${Math.floor((Date.now()-lastBK)/86400000)}天前)`:'从未备份';
+  // 读取 Supabase 云同步配置
+  let cloudCfg={url:'',key:'',autoSync:false};
+  try{const raw=localStorage.getItem('supabase_config');if(raw)cloudCfg=JSON.parse(raw);}catch(e){}
+  const lastCloudSyncTs=parseInt(localStorage.getItem(STORAGE_KEY+'_lastCloudSync')||'0');
+  const lastCloudSyncText=lastCloudSyncTs?fmtBackupTime(lastCloudSyncTs):'从未同步';
   body.innerHTML=`
     <div class="section">
       <div class="section-title">自动备份</div>
@@ -3374,12 +3369,16 @@ function openBackupManager(){
     <div class="section">
       <div class="section-title">存储位置</div>
       <div class="fee-calc">
-        <div class="fee-calc-row"><span class="fc-label">本地存储</span><span class="fc-value" style="color:var(--primary)">IndexedDB + localStorage</span></div>
+        <div class="fee-calc-row"><span class="fc-label">日常数据</span><span class="fc-value" style="color:var(--primary)">${cloudCfg.url?'本地 + Supabase 云端':'本地 (localStorage + IndexedDB)'}</span></div>
+        ${cloudCfg.url?`<div class="fee-calc-row"><span class="fc-label">云端同步</span><span class="fc-value" style="color:${cloudCfg.autoSync?'var(--success)':'var(--text-light)'}">${cloudCfg.autoSync?'自动同步已开启':'已配置，手动同步'}</span></div>`:''}
+        ${cloudCfg.url?`<div class="fee-calc-row"><span class="fc-label">上次云同步</span><span class="fc-value" style="color:var(--text-light)">${lastCloudSyncText}</span></div>`:''}
+        <div class="fee-calc-row"><span class="fc-label">图片存储</span><span class="fc-value" style="color:var(--primary)">Supabase Storage (rent-images)</span></div>
+        <div class="fee-calc-row"><span class="fc-label">备份记录</span><span class="fc-value" style="color:var(--primary)">本地 IndexedDB</span></div>
         <div class="fee-calc-row"><span class="fc-label">最大备份数</span><span class="fc-value">${MAX_BACKUPS} 条（超过自动覆盖最旧）</span></div>
         <div class="fee-calc-row"><span class="fc-label">上次备份</span><span class="fc-value" style="color:${(!lastBK||Date.now()-lastBK>7*86400000)?'var(--danger)':'var(--success)'}">${esc(lastBKText)}</span></div>
       </div>
       <div class="info-hint" style="text-align:left;padding:8px 4px 0">
-        💡 建议定期「导出数据库」到文件，避免手机清理缓存导致IndexedDB数据丢失
+        ${cloudCfg.url?'💡 日常数据已同步到 Supabase 云端；备份记录存在本地 IndexedDB，建议定期「导出数据库」到文件做额外保障':'💡 建议配置 Supabase 云同步实现多设备数据共享，并定期「导出数据库」到文件'}
       </div>
     </div>
     <div class="section">
@@ -3404,15 +3403,33 @@ function openBackupManager(){
         <div class="info-hint">CSV会合并数据；JSON会覆盖当前数据</div>
       </div>
     </div>
+    <div class="section" id="bkCloudSection">
+      <div class="section-title">☁️ 云端同步 (Supabase)</div>
+      <div class="fee-calc">
+        <div class="fee-calc-row"><span class="fc-label">同步状态</span><span class="fc-value" id="bkCloudStatus" style="color:${cloudCfg.url?'var(--success)':'var(--text-lighter)'}">${cloudCfg.url?'已配置':'未配置'}</span></div>
+        <div class="fee-calc-row"><span class="fc-label">上次同步</span><span class="fc-value" id="bkCloudLast" style="color:var(--text-light)">${lastCloudSyncText}</span></div>
+        <div class="fee-calc-row"><span class="fc-label">自动同步</span><span class="fc-value" id="bkCloudAuto" style="color:${cloudCfg.autoSync?'var(--success)':'var(--text-light)'}">${cloudCfg.autoSync?'已开启':'未开启'}</span></div>
+      </div>
+      ${cloudCfg.url?'':'<div class="info-hint" style="color:var(--warning)">⚠️ 尚未配置 Supabase，点击下方配置</div>'}
+      <div class="switch-row" style="margin-top:10px"><span class="switch-label">自动同步到云端</span><div class="switch ${cloudCfg.autoSync?'on':''}" id="swCloudAuto"></div></div>
+      <div class="btn-group" style="margin-top:8px">
+        <button class="btn btn-primary" id="bkCloudUp" ${cloudCfg.url?'':'disabled style="opacity:.5"'}>⬆️ 上传到云端</button>
+        <button class="btn btn-secondary" id="bkCloudDown" ${cloudCfg.url?'':'disabled style="opacity:.5"'}>⬇️ 从云端恢复</button>
+      </div>
+      <button class="btn btn-secondary btn-full" id="bkCloudCfg" style="margin-top:8px;background:var(--purple-bg);color:var(--purple)">⚙️ ${cloudCfg.url?'修改':'配置'} Supabase</button>
+      <div class="info-hint">云端同步可实现多设备数据共享，图片存储在 Supabase Storage</div>
+    </div>
     <div class="btn-group" style="margin-top:16px">
-      <button class="btn btn-secondary" id="bkBackBtn">← 返回设置</button>
+      <button class="btn btn-secondary" id="bkBackBtn">← 关闭</button>
     </div>
   `;
+  // 显示弹窗
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('settingsSheet').classList.add('show');
   // === 事件绑定 ===
   // 返回设置
   document.getElementById('bkBackBtn').addEventListener('click',()=>{
-    document.getElementById('settingsSheet').querySelector('.sheet-title').textContent='全局设置';
-    openSettings();
+    closeSettings();
   });
   // 自动备份开关
   document.getElementById('swAutoBackup').addEventListener('click',()=>{
@@ -3494,6 +3511,24 @@ function openBackupManager(){
     };
     reader.readAsText(file);
   });
+  // === 云端同步事件 ===
+  document.getElementById('swCloudAuto').addEventListener('click',()=>{
+    let c={url:'',key:'',autoSync:false};
+    try{c=JSON.parse(localStorage.getItem('supabase_config')||'{}');}catch(e){}
+    c.autoSync=!c.autoSync;
+    localStorage.setItem('supabase_config',JSON.stringify(c));
+    document.getElementById('swCloudAuto').classList.toggle('on',c.autoSync);
+    const ae=document.getElementById('bkCloudAuto');
+    if(ae){ae.textContent=c.autoSync?'已开启':'未开启';ae.style.color=c.autoSync?'var(--success)':'var(--text-light)';}
+    toast(c.autoSync?'已开启自动同步':'已关闭自动同步');
+  });
+  document.getElementById('bkCloudUp').addEventListener('click',()=>{
+    if(window.CloudSync&&window.CloudSync.upload)window.CloudSync.upload();
+  });
+  document.getElementById('bkCloudDown').addEventListener('click',()=>{
+    if(window.CloudSync&&window.CloudSync.download)window.CloudSync.download();
+  });
+  document.getElementById('bkCloudCfg').addEventListener('click',()=>openCloudCfgDlg());
 }
 
 // 打开备份记录列表页（图2）：显示20条记录，点击恢复，支持删除单条
@@ -3652,6 +3687,7 @@ document.getElementById('searchInput').addEventListener('input',e=>{
 });
 document.getElementById('searchClear').addEventListener('click',()=>{document.getElementById('searchInput').value='';document.getElementById('searchClear').classList.remove('show');renderSearchResults('');document.getElementById('searchInput').focus();});
 document.getElementById('btnSettings').addEventListener('click',openSettings);
+document.getElementById('btnBackup').addEventListener('click',()=>{openBackupManager();});
 document.getElementById('settingsClose').addEventListener('click',closeSettings);
 document.getElementById('batchClose').addEventListener('click',closeBatchExport);
 document.getElementById('batchOverlay').addEventListener('click',closeBatchExport);
@@ -3675,8 +3711,8 @@ document.querySelector('.header').addEventListener('click',(e)=>{
 });
 document.getElementById('sheetClose').addEventListener('click',closeSheet);
 document.getElementById('monthClose').addEventListener('click',closeMonthSheet);
-document.getElementById('overlay').addEventListener('click',()=>{closeSheet();closeMonthSheet();closeSettings();closeExportModal();closeArchiveModal();closeRatePopover();});
-document.getElementById('overlay').addEventListener('touchstart',()=>{closeSheet();closeMonthSheet();closeSettings();closeExportModal();closeArchiveModal();closeRatePopover();},{passive:true});
+document.getElementById('overlay').addEventListener('click',()=>{closeSheet();closeSettings();closeExportModal();closeArchiveModal();closeRatePopover();});
+document.getElementById('overlay').addEventListener('touchstart',()=>{closeSheet();closeSettings();closeExportModal();closeArchiveModal();closeRatePopover();},{passive:true});
 document.getElementById('sheet').addEventListener('click',e=>e.stopPropagation());
 document.getElementById('monthSheet').addEventListener('click',e=>e.stopPropagation());
 document.getElementById('settingsSheet').addEventListener('click',e=>e.stopPropagation());
@@ -3854,12 +3890,12 @@ setTimeout(()=>{
   if(!hasData)return;
   // 优先提醒开启自动备份
   if(!cfg.autoBackup){
-    toast('建议开启「退出时自动备份」→ 设置 → 数据备份与恢复');
+    toast('建议开启「退出时自动备份」→ 点击顶部 ☁ 云图标');
   }else{
     // 已开启自动备份，再看看是否超过7天没备份（没触发过退出）
     const lastBackup=getLastBackupTime();
     if(!lastBackup||(Date.now()-lastBackup)>7*86400000){
-      toast('建议手动备份一次或导出数据库文件 → 设置 → 数据备份与恢复');
+      toast('建议手动备份一次或导出数据库文件 → 点击顶部 ☁ 云图标');
     }
   }
 },2500);
@@ -3899,31 +3935,16 @@ if('serviceWorker' in navigator){
   function initSB(){if(!cfg.url||!cfg.key){ready=false;return false;}if(typeof window.supabase==="undefined"){ready=false;return false;}try{sbClient=window.supabase.createClient(cfg.url,cfg.key);ready=true;return true;}catch(e){ready=false;return false;}}
   function lastSync(){return parseInt(localStorage.getItem(STORAGE_KEY+"_lastCloudSync")||"0");}
   function setSync(){localStorage.setItem(STORAGE_KEY+"_lastCloudSync",Date.now().toString());}
-  async function upload(){if(!ready){toast("请先配置云同步");return;}try{var j=JSON.stringify(state);var r=await sbClient.from("rent_data").upsert({id:1,data:j,updated_at:new Date().toISOString()});if(r.error)throw r.error;setSync();toast("已同步到云端");updUI();}catch(e){toast("同步失败: "+(e.message||e));}}
+  async function upload(){if(!ready){toast("请先配置云同步");return;}try{var j=JSON.stringify(state);var r=await sbClient.from("rent_data").upsert({id:1,data:j,updated_at:new Date().toISOString()});if(r.error)throw r.error;setSync();toast("已同步到云端");updCloudUI();}catch(e){toast("同步失败: "+(e.message||e));}}
   async function download(){if(!ready){toast("请先配置云同步");return;}try{var r=await sbClient.from("rent_data").select("data,updated_at").eq("id",1).single();if(r.error)throw r.error;if(!r.data||!r.data.data){toast("云端暂无数据");return;}var cs=JSON.parse(r.data.data);if(!cs.rooms){toast("数据格式错误");return;}var t=new Date(r.data.updated_at).toLocaleString("zh-CN");if(!confirm("云端更新于: "+t+"\n\n用云端数据覆盖本地吗?\n(建议先导出备份)"))return;state=cs;_lastJson=JSON.stringify(state);initRooms();save();renderAll();toast("已从云端恢复");}catch(e){toast("下载失败: "+(e.message||e));}}
-  var _os=null,_st=null,_lastJson=null;
+  var _os=null,_st=null;
   function hookSave(){if(typeof window.save!=="function"||_os)return;_os=window.save;window.save=function(){_os.apply(this,arguments);if(ready&&cfg.autoSync){var cj=JSON.stringify(state);if(cj===_lastJson)return;_lastJson=cj;clearTimeout(_st);_st=setTimeout(function(){upload().catch(function(){});},3000);}};}
-  function updUI(){var s=document.getElementById("cloudSyncSection");if(!s)return;var t=lastSync();var ts=t?new Date(t).toLocaleString("zh-CN"):"从未同步";var e=s.querySelector("[data-lastsync]");if(e)e.textContent=ts;}
-  function inject(){
-    var sb=document.getElementById("settingsBody");if(!sb)return;if(document.getElementById("cloudSyncSection"))return;
-    var ok=cfg.url&&cfg.key;var ls=lastSync();var lst=ls?new Date(ls).toLocaleString("zh-CN"):"从未同步";
-    var sec=document.createElement("div");sec.className="section";sec.id="cloudSyncSection";
-    sec.innerHTML='<div class="section-title">☁️ 云端同步 (Supabase)</div>'+
-    '<div class="fee-calc">'+
-      '<div class="fee-calc-row"><span class="fc-label">同步状态</span><span class="fc-value" style="color:'+(ok?'var(--success)':'var(--text-lighter)')+'">'+(ok?'已配置':'未配置')+'</span></div>'+
-      '<div class="fee-calc-row"><span class="fc-label">上次同步</span><span class="fc-value" data-lastsync>'+lst+'</span></div>'+
-      '<div class="fee-calc-row"><span class="fc-label">自动同步</span><span class="fc-value">'+(cfg.autoSync?'已开启':'未开启')+'</span></div>'+
-    '</div>'+(ok?'':'<div class="info-hint" style="color:var(--warning)">⚠️ 请配置 Supabase</div>')+
-    '<div class="switch-row" style="margin-top:10px"><span class="switch-label">自动同步到云端</span><div class="switch '+(cfg.autoSync?'on':'')+'" id="swAuto"></div></div>'+
-    '<div class="btn-group"><button class="btn btn-primary" id="btnUp" '+(ok?'':'disabled style="opacity:.5"')+'>⬆️ 上传到云端</button><button class="btn btn-secondary" id="btnDown" '+(ok?'':'disabled style="opacity:.5"')+'>⬇️ 从云端恢复</button></div>'+
-    '<button class="btn btn-secondary btn-full" id="btnCfg" style="margin-top:8px;background:var(--purple-bg);color:var(--purple)">⚙️ 配置 Supabase</button>'+
-    '<div class="info-hint">云端同步可实现多设备数据共享</div>';
-    var secs=sb.querySelectorAll(".section");if(secs.length>0){sb.insertBefore(sec,secs[secs.length-1]);}else{sb.appendChild(sec);}
-    document.getElementById("swAuto").addEventListener("click",function(){cfg.autoSync=!cfg.autoSync;saveCfg(cfg);this.classList.toggle("on");var e=sec.querySelectorAll(".fc-value")[2];if(e)e.textContent=cfg.autoSync?"已开启":"未开启";toast(cfg.autoSync?"已开启自动同步":"已关闭自动同步");});
-    document.getElementById("btnUp").addEventListener("click",upload);
-    document.getElementById("btnDown").addEventListener("click",download);
-    document.getElementById("btnCfg").addEventListener("click",cfgDlg);
+  // 更新备份管理页中的云同步UI
+  function updCloudUI(){
+    var ls=lastSync();var ts=ls?new Date(ls).toLocaleString("zh-CN"):"从未同步";
+    var el=document.getElementById("bkCloudLast");if(el)el.textContent=ts;
   }
+  // 云同步配置弹窗（全局可调用）
   function cfgDlg(){
     var ss=document.getElementById("settingsSheet");
     var st=ss.querySelector(".sheet-title");
@@ -3938,12 +3959,15 @@ if('serviceWorker' in navigator){
       '<div class="section"><div class="section-title">说明</div>'+
       '<div class="info-hint" style="line-height:1.8">• 上传: 推送数据到云端<br>• 恢复: 从云端拉取数据<br>• 自动同步: 修改后自动上传</div></div>'+
       '<div class="btn-group"><button class="btn btn-primary" id="btnSaveC">保存</button><button class="btn btn-secondary" id="btnBackC">返回</button><button class="btn btn-danger" id="btnClrC" style="flex:0 0 auto;padding:12px 16px">清除</button></div>';
-    function restore(){sb.innerHTML=orig;if(st)st.textContent="全局设置";if(typeof openSettings==="function")openSettings();}
+    function restore(){openBackupManager();}
     document.getElementById("btnSaveC").addEventListener("click",function(){var u=document.getElementById("cfgUrl").value.trim();var k=document.getElementById("cfgKey").value.trim();if(!u||!k){toast("请填写完整");return;}cfg.url=u;cfg.key=k;saveCfg(cfg);initSB();toast("配置已启用");restore();});
     document.getElementById("btnBackC").addEventListener("click",restore);
     document.getElementById("btnClrC").addEventListener("click",function(){if(!confirm("确定清除?"))return;cfg={url:"",key:"",autoSync:false};saveCfg(cfg);ready=false;sbClient=null;toast("已清除");restore();});
-  }function watchSB(){var sb=document.getElementById("settingsBody");if(!sb)return;var ob=new MutationObserver(function(){if(sb.children.length>0&&!document.getElementById("cloudSyncSection"))inject();});ob.observe(sb,{childList:true,subtree:true});}
-  if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",function(){initSB();_lastJson=JSON.stringify(state);hookSave();watchSB();});}else{initSB();_lastJson=JSON.stringify(state);hookSave();watchSB();}
+  }
+  window.openCloudCfgDlg=cfgDlg;
+  // 暴露 upload/download 供备份管理页调用
+  window.CloudSync={upload:upload,download:download,isReady:function(){return ready;},uploadImage:undefined};
+  if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",function(){initSB();_lastJson=JSON.stringify(state);hookSave();});}else{initSB();_lastJson=JSON.stringify(state);hookSave();}
   async function uploadImageToStorage(base64Data){
     if(!ready||!sbClient){throw new Error('云同步未配置');}
     var parts=base64Data.split(',');
