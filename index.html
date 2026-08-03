@@ -386,9 +386,9 @@
 <!-- 主内容 -->
 <div class="main" id="main">
   <div class="overview">
-    <div class="overview-title" id="overviewTitle">概览</div>
+    <div class="overview-title" id="overviewTitle"><span id="ovTitleText">概览</span> <span id="ovMonthSelector" style="cursor:pointer;font-size:13px;color:var(--primary);margin-left:8px">📅 <span id="ovSelMonth">本月</span></span></div>
     <div class="overview-grid" id="overviewGrid">
-      <div class="overview-item" style="grid-column:1/-1;display:flex;justify-content:space-around;align-items:center"><div style="text-align:center"><div class="overview-num" id="ovTotalRooms" style="color:var(--primary)">0</div><div class="overview-label">房间</div></div><div style="text-align:center"><div class="overview-num" id="ovOccupied" style="color:var(--success)">0</div><div class="overview-label">已入住</div></div><div style="text-align:center"><div class="overview-num" id="ovVacant" style="color:var(--text-light)">0</div><div class="overview-label">空置</div></div></div>
+      <div class="overview-item" style="grid-column:1/-1;display:flex;justify-content:space-around;align-items:center"><div style="text-align:center"><div class="overview-num" id="ovTotalRooms" style="color:var(--primary)">0</div><div class="overview-label">房间</div></div><div style="text-align:center"><div class="overview-num" id="ovOccupied" style="color:var(--success)">0</div><div class="overview-label">已入住</div></div><div class="clickable" id="ovVacantWrap" style="text-align:center;cursor:pointer"><div class="overview-num" id="ovVacant" style="color:var(--text-light)">0</div><div class="overview-label">空置 ▶</div></div></div>
       <div class="overview-item clickable" id="ovArrearsWrap"><div class="overview-num" id="ovArrears" style="color:var(--danger)">¥0</div><div class="overview-label">欠缴租金 ▶</div></div>
       <div class="overview-item clickable" id="ovExpenseWrap"><div class="overview-num" id="ovExpense" style="color:#e6a700">¥0</div><div class="overview-label">支出 ▶</div></div>
       <div class="overview-item clickable" id="ovMonthWrap"><div class="overview-num" id="ovMonthIncome" style="color:var(--success)">¥0 <span id="ovMonthArrow" style="font-size:11px">▶</span></div><div class="overview-label">月租金(已收)</div><div class="ov-detail" id="ovMonthDetail" style="display:none"></div></div>
@@ -425,7 +425,13 @@
 <div class="overlay" id="exportOverlay"></div>
 <div class="export-modal" id="exportModal">
   <div class="modal-swipe-area swipe-grab" data-swipe-close="closeExportModal"><div class="modal-swipe-bar"></div></div>
-  <div class="export-modal-title">选择导出格式</div>
+  <div class="export-modal-title">选择导出</div>
+  <div style="font-size:13px;color:var(--text-light);margin:0 0 8px">缴费状态筛选</div>
+  <div class="status-pills" id="exportFilter" style="margin-bottom:10px">
+    <div class="pill active" data-filter="all">全部</div>
+    <div class="pill" data-filter="paid">已缴费</div>
+    <div class="pill" data-filter="unpaid">未缴费</div>
+  </div>
   <div class="export-option" id="exportImg"><span class="eo-icon">🖼️</span><div class="eo-text"><div class="eo-title">导出为图片</div><div class="eo-desc">可分享微信好友或保存相册</div></div></div>
   <div class="export-option" id="exportCsv"><span class="eo-icon">📊</span><div class="eo-text"><div class="eo-title">导出为CSV表格</div><div class="eo-desc">适合电脑打开查看</div></div></div>
   <button class="btn btn-secondary btn-full" id="exportCancel" style="margin-top:8px">取消</button>
@@ -542,8 +548,10 @@ function defaultRoom(){
     tenant:'',phone:'',idCard:'',idCardImg:null,moveInDate:'',
     status:'empty',note:'',fixedRent:'',
     roomRates:{waterPrice:'',electricPrice:''},
-    deposit:{amount:'',method:'',receiptImg:null},
-    months:{},archived:[]
+    deposit:{amount:'',method:'微信',receiptImg:null},
+    months:{},archived:[],
+    displayName:'',
+    tenants:[]
   };
 }
 
@@ -563,6 +571,13 @@ function initRooms(){
           for(const k in def){if(state.rooms[key][k]===undefined)state.rooms[key][k]=def[k];}
           if(state.rooms[key].idCardFrontImg&&!state.rooms[key].idCardImg)state.rooms[key].idCardImg=state.rooms[key].idCardFrontImg;
           (state.rooms[key].archived||[]).forEach(a=>{if(a.idCardFrontImg&&!a.idCardImg)a.idCardImg=a.idCardFrontImg;});
+          // 迁移：旧房间的押金支付方式默认为微信
+          if(state.rooms[key].deposit&&!state.rooms[key].deposit.method)state.rooms[key].deposit.method='微信';
+          // 迁移：旧房间的单租客字段转为tenants数组
+          if(state.rooms[key].tenant&&!state.rooms[key].tenants){
+            state.rooms[key].tenants=[{name:state.rooms[key].tenant,phone:state.rooms[key].phone,idCard:state.rooms[key].idCard,idCardImg:state.rooms[key].idCardImg,moveInDate:state.rooms[key].moveInDate}];
+          }
+          if(!Array.isArray(state.rooms[key].tenants))state.rooms[key].tenants=[];
         }
         // 自动状态修正
         autoRoomStatus(state.rooms[key]);
@@ -966,7 +981,7 @@ function getRoomDisplayStatus(room){
 }
 
 function calcMonthFee(room,monthData){
-  if(!monthData)return{waterUsed:0,waterFee:0,elecUsed:0,elecFee:0,rent:0,deduction:0,total:0};
+  if(!monthData)return{waterUsed:0,waterFee:0,elecUsed:0,elecFee:0,rent:0,deduction:0,arrearsRepayment:0,total:0};
   const rates=getRoomRates(room);
   const wUsed=num(monthData.waterCurr)-num(monthData.waterPrev);
   const eUsed=num(monthData.electricCurr)-num(monthData.electricPrev);
@@ -974,8 +989,9 @@ function calcMonthFee(room,monthData){
   const elecFee=(eUsed>0?eUsed:0)*rates.electricPrice;
   const rent=num(monthData.rent);
   const deduction=num(monthData.deduction);
+  const arrearsRepayment=num(monthData.arrearsRepayment);
   const subtotal=rent+waterFee+elecFee;
-  return{waterUsed:wUsed>0?wUsed:0,waterFee,elecUsed:eUsed>0?eUsed:0,elecFee,rent,deduction,total:Math.max(0,subtotal-deduction)};
+  return{waterUsed:wUsed>0?wUsed:0,waterFee,elecUsed:eUsed>0?eUsed:0,elecFee,rent,deduction,arrearsRepayment,total:Math.max(0,subtotal-deduction-arrearsRepayment)};
 }
 
 let toastTimer;
@@ -1210,6 +1226,8 @@ function updateArchiveBadge(){
 }
 
 /* ============================================================ 首页渲染 ============================================================ */
+let _overviewMonth=null; // 概览选择的月份，null表示本月
+
 function renderOverview(){
   const b=getBuilding(state.current);
   if(!b)return;
@@ -1217,47 +1235,52 @@ function renderOverview(){
   let total=0,occ=0,monthIncome=0,yearIncome=0,arrears=0;
   let mRent=0,mWater=0,mElec=0,yRent=0,yWater=0,yElec=0;
   const ym=currentYearMonth();
-  const curYear=ym.split('-')[0];
+  const selYm=_overviewMonth||ym;
+  const selYear=selYm.split('-')[0];
+  const selMonth=selYm.split('-')[1];
   const arrearsList=[];
+  const vacantList=[];
   (b.floors||[]).forEach((floor,fIdx)=>{
     const f=fIdx+1;
     for(let r=1;r<=floor.rooms;r++){
       const room=state.rooms[`${bid}-${f*100+r}`];
       if(!room)continue;
       total++;
-      if(room.status!=='empty'&&room.status!=='maintenance')occ++;
-      // 当前租客的费用
-      const md=room.months[ym];
+      if(room.status==='empty'||room.status==='maintenance'){
+        vacantList.push({key:`${bid}-${f*100+r}`,num:f*100+r,tenant:room.tenant});
+      }else{
+        occ++;
+      }
+      // 选中月份的费用
+      const md=room.months[selYm];
       if(md&&md.paid){const c=calcMonthFee(room,md);monthIncome+=c.total;mRent+=c.rent;mWater+=c.waterFee;mElec+=c.elecFee;}
       for(const mym in room.months){
-        if(mym.startsWith(curYear)&&room.months[mym].paid){const c=calcMonthFee(room,room.months[mym]);yearIncome+=c.total;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;}
+        if(mym.startsWith(selYear)&&room.months[mym].paid){const c=calcMonthFee(room,room.months[mym]);yearIncome+=c.total;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;}
       }
       for(const mym in room.months){
-        if(mym.startsWith(curYear)&&!room.months[mym].paid){
+        if(mym.startsWith(selYear)&&!room.months[mym].paid){
           const calc=calcMonthFee(room,room.months[mym]);
           if(calc.total>0){arrears+=calc.total;arrearsList.push({key:`${bid}-${f*100+r}`,num2:f*100+r,ym:mym,tenant:room.tenant,calc});}
         }
       }
-      // 归档租客的已缴费用也要统计（租客虽然退租了，但费用是缴了的）
+      // 归档租客的已缴费用也要统计
       (room.archived||[]).forEach((a,aIdx)=>{
-        const archMd=a.months?a.months[ym]:null;
+        const archMd=a.months?a.months[selYm]:null;
         if(archMd&&archMd.paid){
-          // 用归档时保存的单价计算
           const archRoom={roomRates:a.roomRates||{},months:{}};
           const c=calcMonthFee(archRoom,archMd);
           monthIncome+=c.total;mRent+=c.rent;mWater+=c.waterFee;mElec+=c.elecFee;
         }
         if(a.months){
           for(const mym in a.months){
-            if(mym.startsWith(curYear)&&a.months[mym].paid){
+            if(mym.startsWith(selYear)&&a.months[mym].paid){
               const archRoom={roomRates:a.roomRates||{},months:{}};
               const c=calcMonthFee(archRoom,a.months[mym]);
               yearIncome+=c.total;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;
             }
           }
-          // 归档租客的未缴费也要统计到欠缴
           for(const mym in a.months){
-            if(mym.startsWith(curYear)&&!a.months[mym].paid){
+            if(mym.startsWith(selYear)&&!a.months[mym].paid){
               const archRoom={roomRates:a.roomRates||{},months:{}};
               const calc=calcMonthFee(archRoom,a.months[mym]);
               if(calc.total>0){arrears+=calc.total;arrearsList.push({key:`${bid}-${f*100+r}`,num2:f*100+r,ym:mym,tenant:a.tenant,calc,archiveIdx:aIdx});}
@@ -1269,22 +1292,27 @@ function renderOverview(){
   });
   // 支出统计
   let monthExpense=0,yearExpense=0;
-  const curMonth=ym;
+  const curMonth=selYm;
   (state.expenses||[]).forEach(ex=>{
     if(ex.bid!==bid)return;
     const exMonth=ex.date?ex.date.slice(0,7):'';
     const exYear=ex.date?ex.date.slice(0,4):'';
     if(exMonth===curMonth)monthExpense+=num(ex.amount);
-    if(exYear===curYear)yearExpense+=num(ex.amount);
+    if(exYear===selYear)yearExpense+=num(ex.amount);
   });
-  document.getElementById('overviewTitle').textContent=b.name+' · 概览';
+  // 更新UI
+  document.getElementById('ovTitleText').textContent=b.name+' · 概览';
+  document.getElementById('ovSelMonth').textContent=_overviewMonth?_overviewMonth:'本月';
   document.getElementById('ovTotalRooms').textContent=total;
   document.getElementById('ovOccupied').textContent=occ;
   document.getElementById('ovVacant').textContent=(total-occ);
-  document.getElementById('ovMonthIncome').innerHTML='¥'+monthIncome+' <span id="ovMonthArrow" style="font-size:11px">▶</span>';
-  document.getElementById('ovYearIncome').innerHTML='¥'+yearIncome+' <span id="ovYearArrow" style="font-size:11px">▶</span>';
-  document.getElementById('ovArrears').textContent='¥'+arrears;
-  document.getElementById('ovExpense').textContent='¥'+yearExpense;
+  document.getElementById('ovMonthIncome').innerHTML='¥'+monthIncome.toFixed(2)+' <span id="ovMonthArrow" style="font-size:11px">▶</span>';
+  document.getElementById('ovYearIncome').innerHTML='¥'+yearIncome.toFixed(2)+' <span id="ovYearArrow" style="font-size:11px">▶</span>';
+  document.getElementById('ovArrears').textContent='¥'+arrears.toFixed(2);
+  // 支出卡片根据是否选月显示当月或全年
+  const expLabel=_overviewMonth?'支出('+_overviewMonth+')':'支出(全年)';
+  document.getElementById('ovExpense').innerHTML=`¥${(_overviewMonth?monthExpense:yearExpense).toFixed(2)} <span id="ovExpArrow" style="font-size:11px">▶</span>`;
+  document.querySelector('#ovExpenseWrap .overview-label').textContent=expLabel+' ▶';
   document.getElementById('ovMonthDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${mRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${mWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${mElec.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label" style="color:#e6a700">支出</span><span class="ovd-val" style="color:#e6a700">-¥${monthExpense.toFixed(2)}</span></div><div class="ovd-row total"><span class="ovd-label">净收入</span><span class="ovd-val">¥${(monthIncome-monthExpense).toFixed(2)}</span></div>`;
   document.getElementById('ovYearDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${yRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${yWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${yElec.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label" style="color:#e6a700">支出</span><span class="ovd-val" style="color:#e6a700">-¥${yearExpense.toFixed(2)}</span></div><div class="ovd-row total"><span class="ovd-label">净收入</span><span class="ovd-val">¥${(yearIncome-yearExpense).toFixed(2)}</span></div>`;
   // 绑定展开/收起
@@ -1303,6 +1331,47 @@ function renderOverview(){
   const newEw=ew.cloneNode(true);
   ew.parentNode.replaceChild(newEw,ew);
   newEw.addEventListener('click',()=>openExpenses(bid));
+  // 空置房间点击
+  const vw=document.getElementById('ovVacantWrap');
+  const newVw=vw.cloneNode(true);
+  vw.parentNode.replaceChild(newVw,vw);
+  if(vacantList.length>0){
+    newVw.addEventListener('click',()=>showVacantRooms(vacantList,b.name));
+  }
+  // 月份选择器
+  const ms=document.getElementById('ovMonthSelector');
+  const newMs=ms.cloneNode(true);
+  ms.parentNode.replaceChild(newMs,ms);
+  newMs.addEventListener('click',()=>{
+    const curVal=_overviewMonth||currentYearMonth();
+    const input=prompt('选择查看月份 (格式: YYYY-MM，留空恢复本月)',curVal);
+    if(input===null)return;
+    const v=input.trim();
+    if(!v){_overviewMonth=null;renderOverview();toast('已恢复本月');return;}
+    if(!/^\d{4}-\d{2}$/.test(v)){toast('格式错误，请使用 YYYY-MM');return;}
+    _overviewMonth=v;renderOverview();toast('已切换到 '+v);
+  });
+}
+
+function showVacantRooms(vacantList,bname){
+  const body=document.getElementById('sheetBody');
+  let html=`<div class="section"><div class="section-title">空置房间 (${vacantList.length}间)</div>`;
+  html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px 0">';
+  vacantList.forEach(v=>{
+    const dn=getRoomDisplayName(state.rooms[v.key],v.num);
+    html+=`<div style="background:var(--bg);border-radius:8px;padding:8px;text-align:center;cursor:pointer" data-room="${v.key}">
+      <div style="font-weight:600;font-size:14px">${esc(dn)}</div>
+      <div style="font-size:11px;color:var(--text-lighter)">${esc(v.tenant||'空置')}</div>
+    </div>`;
+  });
+  html+='</div></div>';
+  body.innerHTML=html;
+  body.querySelectorAll('[data-room]').forEach(el=>{
+    el.addEventListener('click',()=>openRoom(el.dataset.room));
+  });
+  document.getElementById('sheetTitle').textContent=bname+' · 空置房间';
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
 }
 
 /* ============================================================ 支出记账 ============================================================ */
@@ -1588,6 +1657,8 @@ function showArrearsDetail(list,bname){
   document.getElementById('sheet').classList.add('show');
 }
 
+let _lastExpandedFloor=null; // 记录上次展开的楼层
+
 function renderFloors(){
   const b=getBuilding(state.current);
   if(!b)return;
@@ -1595,6 +1666,8 @@ function renderFloors(){
   list.innerHTML='';
   const ym=currentYearMonth();
   const floorsCount=(b.floors||[]).length;
+  // 如果没有记录，默认展开1楼
+  if(_lastExpandedFloor===null||_lastExpandedFloor<1||_lastExpandedFloor>floorsCount)_lastExpandedFloor=1;
   for(let fIdx=floorsCount-1;fIdx>=0;fIdx--){
     const f=fIdx+1;
     const floor=b.floors[fIdx];
@@ -1609,18 +1682,17 @@ function renderFloors(){
       if(room.status!=='empty'&&room.status!=='maintenance')occCount++;
     }
     const floorEl=document.createElement('div');
-    floorEl.className='floor'+(f===1?' expanded':'');
+    floorEl.className='floor'+(f===_lastExpandedFloor?' expanded':'');
     floorEl.innerHTML=`
       <div class="floor-header">
         <div class="floor-title"><span class="floor-badge">${f}F</span><span>${f} 楼</span></div>
-        <div class="floor-info">${occCount}/${totalCount} 入住 <span class="floor-arrow">▶</span></div>
+        <div class="floor-info">${occCount}/${totalCount} 入住 <span class="floor-arrow">${f===_lastExpandedFloor?'▼':'▶'}</span></div>
       </div>
       <div class="floor-body">
         <div class="rooms-grid">
           ${rooms.map(({num:num2,room})=>{
             const dispStatus=getRoomDisplayStatus(room);
             const s=STATUS_MAP[dispStatus]||STATUS_MAP.empty;
-            // 计算该房间所有未缴费月份的合计欠费
             let arrearsTotal=0;
             for(const mym in room.months){
               if(!room.months[mym].paid){
@@ -1628,13 +1700,12 @@ function renderFloors(){
                 if(c.total>0)arrearsTotal+=c.total;
               }
             }
-            // 显示租客姓名，空置显示"空"
             const tenantName=room.tenant||'';
             const displayName=tenantName||'空';
-            // 限制姓名显示长度（超过3个字截断）
             const shortName=displayName.length>3?displayName.slice(0,3):displayName;
+            const dn=getRoomDisplayName(room,num2);
             return `<div class="room-cell ${s.cls}" data-room="${b.id}-${num2}">
-              <span class="r-num">${num2}</span>
+              <span class="r-num">${esc(dn)}</span>
               ${arrearsTotal>0?`<span class="r-arrears">¥${arrearsTotal.toFixed(0)}</span>`:''}
               <span class="r-tenant">${esc(shortName)}</span>
             </div>`;
@@ -1642,7 +1713,13 @@ function renderFloors(){
         </div>
       </div>
     `;
-    floorEl.querySelector('.floor-header').addEventListener('click',()=>floorEl.classList.toggle('expanded'));
+    floorEl.querySelector('.floor-header').addEventListener('click',()=>{
+      floorEl.classList.toggle('expanded');
+      if(floorEl.classList.contains('expanded'))_lastExpandedFloor=f;
+      else if(_lastExpandedFloor===f){
+        // 如果取消展开，不改变记录（下次还是展开这个楼层）
+      }
+    });
     floorEl.querySelectorAll('.room-cell').forEach(cell=>cell.addEventListener('click',()=>openRoom(cell.dataset.room)));
     list.appendChild(floorEl);
   }
@@ -1753,14 +1830,31 @@ function closeSearch(){document.getElementById('searchBar').classList.remove('sh
 let currentRoomKey=null,currentArchiveIdx=null;
 let _clipboardTenant=null;
 
+function getRoomDisplayName(room,num){
+  if(room.displayName)return room.displayName;
+  return num;
+}
+function getPrimaryTenant(room){
+  if(room.tenants&&room.tenants.length>0)return room.tenants[0];
+  return {name:room.tenant,phone:room.phone,idCard:room.idCard,idCardImg:room.idCardImg,moveInDate:room.moveInDate};
+}
+function getAllTenants(room){
+  if(room.tenants&&room.tenants.length>0)return room.tenants;
+  const t=getPrimaryTenant(room);
+  if(t.name||t.phone)return [t];
+  return [];
+}
 function openRoom(key,archiveIdx){
   currentRoomKey=key;
   currentArchiveIdx=(archiveIdx===undefined||archiveIdx===null)?null:archiveIdx;
   if(currentArchiveIdx!==null){showArchivedTenant(key,currentArchiveIdx);return;}
   const room=state.rooms[key];
   const[b,num]=key.split('-');
+  // 记住当前房间所在楼层，编辑完返回时保持展开
+  _lastExpandedFloor=Math.floor(parseInt(num)/100);
   const bld=getBuilding(b);
-  document.getElementById('sheetTitle').textContent=`${bld?bld.name:(b+'栋')} ${num} 房间`;
+  const displayName=getRoomDisplayName(room,num);
+  document.getElementById('sheetTitle').innerHTML=`${bld?bld.name:(b+'栋')} <span id="roomNameDisplay" style="cursor:pointer;border-bottom:1px dashed var(--text-lighter)">${esc(displayName)}</span> <span id="roomNameEditBtn" style="cursor:pointer;color:var(--primary);font-size:14px">✏️</span>`;
   const body=document.getElementById('sheetBody');
 
   body.innerHTML=`
@@ -1771,29 +1865,26 @@ function openRoom(key,archiveIdx){
       </div>
     </div>
     <div class="section">
-      <div class="section-title">租客信息</div>
-      <div class="form-row-2">
-        <div class="form-row"><label>住户姓名</label><input type="text" id="fTenant" value="${esc(room.tenant)}" placeholder="输入姓名"></div>
-        <div class="form-row"><label>联系电话</label><input type="tel" id="fPhone" value="${esc(room.phone)}" placeholder="手机号"></div>
-      </div>
-      <div class="form-row">
-        <label>身份证号</label>
-        <div class="input-with-btn">
-          <button class="input-icon-btn ${room.idCardImg?'has-img':''}" id="idCardBtn" type="button"><img class="iib-thumb" src="${room.idCardImg||''}" alt=""><span class="iib-icon">🪪</span><span class="iib-del" id="idCardDel">×</span></button>
-          <input type="text" id="fIdCard" value="${esc(room.idCard)}" placeholder="18位身份证号" maxlength="18">
-          <button class="input-icon-btn" id="idScanBtn" type="button" title="扫描识别" style="width:44px;font-size:16px"><span class="iib-icon">📷</span></button>
-        </div>
-        <input type="file" accept="image/*" id="idCardInput" style="display:none">
-        <input type="file" accept="image/*" capture="environment" id="idScanInput" style="display:none">
-      </div>
+      <div class="section-title">租客信息 <span class="st-action" id="btnAddTenant" style="font-size:12px">+ 添加租客</span></div>
+      <div id="tenantList"></div>
       <div class="form-row"><label>入住日期</label><input type="date" id="fDate" value="${esc(room.moveInDate)}"></div>
-      <div class="form-row"><label>固定月租金 (¥)</label><input type="number" id="fFixedRent" value="${esc(room.fixedRent)}" placeholder="0" min="0" step="0.01"></div>
     </div>
     <div class="section">
-      <div class="section-title">押金</div>
-      <div class="form-row-3">
-        <div class="form-row"><label>金额 (¥)</label><input type="number" id="fDeposit" value="${esc(room.deposit.amount)}" placeholder="0" min="0" step="0.01"></div>
-        <div class="form-row"><label>支付方式</label><input type="text" id="fDepositMethod" value="${esc(room.deposit.method)}" placeholder="微信/现金"></div>
+      <div class="section-title">租金/押金</div>
+      <div class="form-row-2">
+        <div class="form-row"><label>固定月租金 (¥)</label><input type="number" id="fFixedRent" value="${esc(room.fixedRent)}" placeholder="0" min="0" step="0.01"></div>
+        <div class="form-row"><label>押金金额 (¥)</label><input type="number" id="fDeposit" value="${esc(room.deposit.amount)}" placeholder="0" min="0" step="0.01"></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row"><label>押金支付方式</label>
+          <select id="fDepositMethod" style="width:100%;height:42px;border:1px solid var(--border);border-radius:10px;padding:0 10px;background:var(--bg);color:var(--text);font-size:14px">
+            <option value="微信" ${room.deposit.method==='微信'?'selected':''}>微信</option>
+            <option value="现金" ${room.deposit.method==='现金'?'selected':''}>现金</option>
+            <option value="银行转账" ${room.deposit.method==='银行转账'?'selected':''}>银行转账</option>
+            <option value="支付宝" ${room.deposit.method==='支付宝'?'selected':''}>支付宝</option>
+            <option value="其他" ${!['微信','现金','银行转账','支付宝'].includes(room.deposit.method)?'selected':''}>其他</option>
+          </select>
+        </div>
         <div class="form-row"><label>凭证</label>
           <button class="input-icon-btn ${room.deposit.receiptImg?'has-img':''}" id="receiptBtn" type="button" style="width:100%;height:42px"><img class="iib-thumb" src="${room.deposit.receiptImg||''}" alt=""><span class="iib-icon">🧾</span><span class="iib-del" id="receiptDel">×</span></button>
         </div>
@@ -1826,19 +1917,167 @@ function bindRoomEvents(key){
   const body=document.getElementById('sheetBody');
   body.querySelectorAll('.pill').forEach(p=>p.addEventListener('click',()=>{body.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');}));
 
-  const idCardBtn=document.getElementById('idCardBtn');
-  const idCardInput=document.getElementById('idCardInput');
-  idCardBtn.addEventListener('click',(e)=>{if(e.target.id==='idCardDel'){e.stopPropagation();return;}if(room.idCardImg){showImageViewer(room.idCardImg);return;}idCardInput.click();});
-  idCardInput.addEventListener('change',()=>{if(idCardInput.files&&idCardInput.files[0]){uploadCompressImage(idCardInput.files[0],(url)=>{room.idCardImg=url;save();idCardBtn.classList.add('has-img');idCardBtn.querySelector('.iib-thumb').src=url;toast('上传成功');});}});
-  document.getElementById('idCardDel').addEventListener('click',(e)=>{e.stopPropagation();if(!confirm('删除身份证照片？'))return;room.idCardImg=null;save();idCardBtn.classList.remove('has-img');idCardBtn.querySelector('.iib-thumb').src='';});
+  // === 房间名编辑 ===
+  document.getElementById('roomNameEditBtn').addEventListener('click',()=>{
+    const newName=prompt('输入房间名称（留空恢复默认）',room.displayName||'');
+    if(newName===null)return;
+    room.displayName=newName.trim();
+    save();
+    const dn=getRoomDisplayName(room,key.split('-')[1]);
+    document.getElementById('roomNameDisplay').textContent=esc(dn);
+    toast('房间名已更新');
+  });
+  document.getElementById('roomNameDisplay').addEventListener('click',()=>{document.getElementById('roomNameEditBtn').click();});
 
-  const idScanBtn=document.getElementById('idScanBtn');
-  const idScanInput=document.getElementById('idScanInput');
-  idScanBtn.addEventListener('click',()=>idScanInput.click());
-  idScanInput.addEventListener('change',()=>{if(idScanInput.files&&idScanInput.files[0]){toast('正在识别...');uploadCompressImage(idScanInput.files[0],(url)=>{room.idCardImg=url;save();idCardBtn.classList.add('has-img');idCardBtn.querySelector('.iib-thumb').src=url;recognizeIdCard(url,(idNum)=>{if(idNum){document.getElementById('fIdCard').value=idNum;toast('识别成功：'+idNum);}else{toast('未识别到身份证号，请手动输入');}});});}});
-  const fIdCard=document.getElementById('fIdCard');
-  fIdCard.addEventListener('input',()=>{let v=fIdCard.value.toUpperCase().replace(/[^0-9X]/g,'');if(v.length>18)v=v.slice(0,18);fIdCard.value=v;});
+  // === 租客列表渲染 ===
+  function renderTenants(){
+    const list=getAllTenants(room);
+    const container=document.getElementById('tenantList');
+    if(list.length===0){
+      container.innerHTML=`<div style="padding:12px;background:var(--bg);border-radius:10px;text-align:center;color:var(--text-lighter);font-size:13px">暂无租客，点击右上角"+ 添加租客"</div>`;
+      return;
+    }
+    let html='';
+    list.forEach((t,i)=>{
+      const isFirst=i===0;
+      const collapsed=!isFirst;
+      html+=`<div class="tenant-card" data-idx="${i}" style="border:1px solid var(--border);border-radius:10px;padding:${collapsed?'8px 12px':'12px'};margin-bottom:8px;background:#fff">
+        <div class="tenant-card-header" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+          <div style="font-weight:600;font-size:14px">租客 ${i+1}：${esc(t.name||'未命名')}${isFirst?' <span style="color:var(--primary);font-size:11px;font-weight:400">（主要）</span>':''}</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            ${list.length>1?`<span class="tenant-toggle" data-idx="${i}" style="font-size:12px;color:var(--text-light)">${collapsed?'展开 ▼':'收起 ▲'}</span>`:''}
+            ${list.length>1?`<span class="tenant-del" data-idx="${i}" style="color:var(--danger);font-size:14px;cursor:pointer">✕</span>`:''}
+          </div>
+        </div>
+        <div class="tenant-card-body tenant-body-${i}" style="display:${collapsed?'none':'block'};margin-top:10px">
+          <div class="form-row-2">
+            <div class="form-row"><label>姓名</label><input type="text" class="tName" data-idx="${i}" value="${esc(t.name)}" placeholder="输入姓名"></div>
+            <div class="form-row"><label>电话</label><input type="tel" class="tPhone" data-idx="${i}" value="${esc(t.phone)}" placeholder="手机号"></div>
+          </div>
+          <div class="form-row">
+            <label>身份证号</label>
+            <div class="input-with-btn">
+              <button class="input-icon-btn ${t.idCardImg?'has-img':''} tIdCardBtn" data-idx="${i}" type="button"><img class="iib-thumb" src="${t.idCardImg||''}" alt=""><span class="iib-icon">🪪</span></button>
+              <input type="text" class="tIdCard" data-idx="${i}" value="${esc(t.idCard)}" placeholder="18位身份证号" maxlength="18">
+              <button class="input-icon-btn tIdScanBtn" data-idx="${i}" type="button" style="width:44px;font-size:16px"><span class="iib-icon">📷</span></button>
+            </div>
+            <input type="file" accept="image/*" class="tIdCardInput" data-idx="${i}" style="display:none">
+            <input type="file" accept="image/*" capture="environment" class="tIdScanInput" data-idx="${i}" style="display:none">
+          </div>
+          <div class="form-row"><label>入住日期</label><input type="date" class="tMoveIn" data-idx="${i}" value="${esc(t.moveInDate)}"></div>
+        </div>
+      </div>`;
+    });
+    container.innerHTML=html;
+    bindTenantCardEvents();
+  }
 
+  function bindTenantCardEvents(){
+    const list=getAllTenants(room);
+    // 展开/收起
+    document.querySelectorAll('.tenant-toggle').forEach(el=>{
+      el.addEventListener('click',e=>{
+        e.stopPropagation();
+        const idx=parseInt(el.dataset.idx);
+        const body=document.querySelector(`.tenant-body-${idx}`);
+        if(body.style.display==='none'){body.style.display='block';el.textContent='收起 ▲';}
+        else{body.style.display='none';el.textContent='展开 ▼';}
+      });
+    });
+    // 删除租客
+    document.querySelectorAll('.tenant-del').forEach(el=>{
+      el.addEventListener('click',e=>{
+        e.stopPropagation();
+        const idx=parseInt(el.dataset.idx);
+        if(!confirm('确定删除该租客？'))return;
+        room.tenants.splice(idx,1);
+        // 同步回主租客字段
+        if(room.tenants.length>0){const t=room.tenants[0];room.tenant=t.name;room.phone=t.phone;room.idCard=t.idCard;room.idCardImg=t.idCardImg;room.moveInDate=t.moveInDate;}
+        else{room.tenant='';room.phone='';room.idCard='';room.idCardImg=null;}
+        autoRoomStatus(room);save();
+        renderTenants();renderAll();toast('已删除');
+      });
+    });
+    // 身份证图片点击
+    document.querySelectorAll('.tIdCardBtn').forEach(btn=>{
+      btn.addEventListener('click',e=>{
+        e.stopPropagation();
+        const idx=parseInt(btn.dataset.idx);
+        const t=room.tenants[idx];
+        if(!t)return;
+        if(t.idCardImg){showImageViewer(t.idCardImg);return;}
+        const input=document.querySelector(`.tIdCardInput[data-idx="${idx}"]`);
+        input.click();
+      });
+    });
+    document.querySelectorAll('.tIdCardInput').forEach(inp=>{
+      inp.addEventListener('change',()=>{
+        const idx=parseInt(inp.dataset.idx);
+        const t=room.tenants[idx];if(!t||!inp.files[0])return;
+        uploadCompressImage(inp.files[0],(url)=>{t.idCardImg=url;save();renderTenants();toast('上传成功');});
+      });
+    });
+    // 扫描识别
+    document.querySelectorAll('.tIdScanBtn').forEach(btn=>{
+      btn.addEventListener('click',e=>{
+        e.stopPropagation();
+        const idx=parseInt(btn.dataset.idx);
+        const input=document.querySelector(`.tIdScanInput[data-idx="${idx}"]`);
+        input.click();
+      });
+    });
+    document.querySelectorAll('.tIdScanInput').forEach(inp=>{
+      inp.addEventListener('change',()=>{
+        const idx=parseInt(inp.dataset.idx);
+        const t=room.tenants[idx];if(!t||!inp.files[0])return;
+        toast('正在识别...');
+        uploadCompressImage(inp.files[0],(url)=>{t.idCardImg=url;save();renderTenants();
+          recognizeIdCard(url,(idNum)=>{
+            if(idNum){const idCardEl=document.querySelector(`.tIdCard[data-idx="${idx}"]`);if(idCardEl){idCardEl.value=idNum;t.idCard=idNum;}toast('识别成功：'+idNum);}
+            else{toast('未识别到身份证号');}
+          });
+        });
+      });
+    });
+    // 身份证号自动格式化
+    document.querySelectorAll('.tIdCard').forEach(el=>{
+      el.addEventListener('input',()=>{let v=el.value.toUpperCase().replace(/[^0-9X]/g,'');if(v.length>18)v=v.slice(0,18);el.value=v;});
+    });
+    // 自动保存输入
+    ['tName','tPhone','tIdCard','tMoveIn'].forEach(cls=>{
+      document.querySelectorAll('.'+cls).forEach(el=>{
+        el.addEventListener('input',()=>{
+          const idx=parseInt(el.dataset.idx);
+          const t=room.tenants[idx];if(!t)return;
+          t.name=document.querySelector(`.tName[data-idx="${idx}"]`).value;
+          t.phone=document.querySelector(`.tPhone[data-idx="${idx}"]`).value;
+          t.idCard=document.querySelector(`.tIdCard[data-idx="${idx}"]`).value;
+          t.moveInDate=document.querySelector(`.tMoveIn[data-idx="${idx}"]`).value;
+          // 同步主租客字段
+          if(idx===0){room.tenant=t.name;room.phone=t.phone;room.idCard=t.idCard;room.idCardImg=t.idCardImg;room.moveInDate=t.moveInDate;}
+          autoRoomStatus(room);save();renderAll();
+        });
+      });
+    });
+  }
+
+  // 添加租客
+  document.getElementById('btnAddTenant').addEventListener('click',()=>{
+    if(!room.tenants)room.tenants=[];
+    if(room.tenants.length===0){
+      // 迁移旧数据：如果旧的单租客字段有数据，转为tenants数组
+      if(room.tenant||room.phone){
+        room.tenants=[{name:room.tenant,phone:room.phone,idCard:room.idCard,idCardImg:room.idCardImg,moveInDate:room.moveInDate}];
+        room.tenant='';room.phone='';room.idCard='';room.idCardImg=null;
+      }
+    }
+    room.tenants.push({name:'',phone:'',idCard:'',idCardImg:null,moveInDate:''});
+    save();renderTenants();toast('已添加租客');
+  });
+
+  renderTenants();
+
+  // === 押金凭证 ===
   const receiptBtn=document.getElementById('receiptBtn');
   const receiptInput=document.getElementById('receiptInput');
   function triggerReceiptUpload(){if(room.deposit.receiptImg){showImageViewer(room.deposit.receiptImg);return;}receiptInput.click();}
@@ -1846,24 +2085,27 @@ function bindRoomEvents(key){
   receiptInput.addEventListener('change',()=>{if(receiptInput.files&&receiptInput.files[0]){uploadCompressImage(receiptInput.files[0],(url)=>{room.deposit.receiptImg=url;save();receiptBtn.classList.add('has-img');receiptBtn.querySelector('.iib-thumb').src=url;toast('上传成功');});}});
   document.getElementById('receiptDel').addEventListener('click',(e)=>{e.stopPropagation();if(!confirm('删除押金单照片？'))return;room.deposit.receiptImg=null;save();receiptBtn.classList.remove('has-img');receiptBtn.querySelector('.iib-thumb').src='';});
 
+  // === 其他按钮 ===
   document.getElementById('btnAddMonth').addEventListener('click',()=>openMonthEdit(key,null));
   document.getElementById('btnExport').addEventListener('click',()=>showExportModal(key));
   document.getElementById('btnArchive').addEventListener('click',()=>doArchiveTenant(key));
   document.getElementById('btnCopyTenant').addEventListener('click',()=>{
     const r=state.rooms[key];if(!r)return;
-    if(!r.tenant&&!r.phone){toast('当前房间无租客信息可复制');return;}
-    _clipboardTenant={tenant:r.tenant,phone:r.phone,idCard:r.idCard,moveInDate:r.moveInDate,note:r.note,fixedRent:r.fixedRent,status:r.status,deposit:JSON.parse(JSON.stringify(r.deposit))};
-    toast('已复制 '+r.tenant+' 的租客信息');
+    const allT=getAllTenants(r);
+    if(allT.length===0&&!r.fixedRent){toast('当前房间无信息可复制');return;}
+    _clipboardTenant={tenant:r.tenant,phone:r.phone,idCard:r.idCard,moveInDate:r.moveInDate,note:r.note,fixedRent:r.fixedRent,status:r.status,deposit:JSON.parse(JSON.stringify(r.deposit)),tenants:JSON.parse(JSON.stringify(r.tenants||[]))};
+    toast('已复制 '+(allT[0]?.name||'房间')+' 的信息');
   });
   document.getElementById('btnPasteTenant').addEventListener('click',()=>{
-    if(!_clipboardTenant){toast('请先复制租客信息');return;}
-    if(!confirm('确定将复制的租客信息粘贴到当前房间？\n租客：'+(_clipboardTenant.tenant||'未命名')+'\n\n将覆盖当前租客信息（费用记录保留）。'))return;
+    if(!_clipboardTenant){toast('请先复制信息');return;}
+    if(!confirm('确定将复制的信息粘贴到当前房间？\n\n将覆盖当前租客信息（费用记录保留）。'))return;
     const r=state.rooms[key];if(!r)return;
     r.tenant=_clipboardTenant.tenant;r.phone=_clipboardTenant.phone;r.idCard=_clipboardTenant.idCard;r.moveInDate=_clipboardTenant.moveInDate;
     r.note=_clipboardTenant.note;r.fixedRent=_clipboardTenant.fixedRent;r.status=_clipboardTenant.status;
     r.deposit=JSON.parse(JSON.stringify(_clipboardTenant.deposit));
+    if(_clipboardTenant.tenants)r.tenants=JSON.parse(JSON.stringify(_clipboardTenant.tenants));
     save();renderAll();
-    setTimeout(()=>{openRoom(key);toast('已粘贴租客信息');},300);
+    setTimeout(()=>{openRoom(key);toast('已粘贴信息');},300);
   });
 
   // 自动保存（输入即保存，不关闭不提示）
@@ -1872,15 +2114,18 @@ function bindRoomEvents(key){
     clearTimeout(autoSaveTimer);
     autoSaveTimer=setTimeout(()=>{
       const r=state.rooms[key];if(!r)return;
-      r.tenant=val('fTenant');r.phone=val('fPhone');r.idCard=val('fIdCard');r.moveInDate=val('fDate');
+      r.moveInDate=val('fDate');
       r.note=val('fNote');r.fixedRent=val('fFixedRent');
       const ap=document.querySelector('.pill.active');if(ap)r.status=ap.dataset.status;
-      autoRoomStatus(r);
       r.deposit.amount=val('fDeposit');r.deposit.method=val('fDepositMethod');
+      // 同步主租客字段（用于兼容旧代码）
+      const ts=getAllTenants(r);
+      if(ts.length>0){r.tenant=ts[0].name;r.phone=ts[0].phone;r.idCard=ts[0].idCard;r.idCardImg=ts[0].idCardImg;r.moveInDate=ts[0].moveInDate;}
+      autoRoomStatus(r);
       save();renderAll();
     },500);
   }
-  ['fTenant','fPhone','fIdCard','fDate','fFixedRent','fDeposit','fDepositMethod','fNote'].forEach(id=>{
+  ['fDate','fFixedRent','fDeposit','fDepositMethod','fNote'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.addEventListener('input',autoSaveRoom);
   });
@@ -1926,7 +2171,7 @@ function renderMonthList(key){
       </div>
       <div class="swipe-item-content ${md.paid?'paid':'unpaid'}" data-month="${ym}">
         <div class="mli-header"><span class="mli-month">${formatYM(ym)}</span><span class="mli-total">${money(calc.total)}</span></div>
-        <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}</div>
+        <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}${calc.arrearsRepayment>0?' · 补缴-'+money(calc.arrearsRepayment):''}</div>
         <span class="mli-status ${md.paid?'paid':'unpaid'}">${md.paid?'已缴费':'未缴费'}</span>
       </div>
     </div>`;
@@ -1942,7 +2187,7 @@ function renderMonthList(key){
         </div>
         <div class="swipe-item-content ${md.paid?'paid':'unpaid'}" data-month="${ym}">
           <div class="mli-header"><span class="mli-month">${formatYM(ym)}</span><span class="mli-total">${money(calc.total)}</span></div>
-          <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}</div>
+          <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}${calc.arrearsRepayment>0?' · 补缴-'+money(calc.arrearsRepayment):''}</div>
           <span class="mli-status ${md.paid?'paid':'unpaid'}">${md.paid?'已缴费':'未缴费'}</span>
         </div>
       </div>`;
@@ -2013,6 +2258,7 @@ function openMonthEdit(key,ym){
       electricPrev:prevMd?prevMd.electricCurr:'',
       electricCurr:'',
       deduction:'',
+      arrearsRepayment:'',
       paid:false,note:''
     };
   }
@@ -2057,10 +2303,15 @@ function openMonthEdit(key,ym){
       <div class="form-row"><label>扣除金额 (¥)</label><input type="number" id="mDeduction" value="${esc(md.deduction)}" placeholder="0" min="0" step="0.01"></div>
     </div>
     <div class="section">
+      <div class="section-title">欠款补缴 <span style="font-size:11px;color:var(--text-lighter);font-weight:400">（之前未缴清的欠款，本月补缴金额）</span></div>
+      <div class="form-row"><label>补缴金额 (¥)</label><input type="number" id="mArrearsRepayment" value="${esc(md.arrearsRepayment)}" placeholder="0" min="0" step="0.01"></div>
+    </div>
+    <div class="section">
       <div class="section-title">合计</div>
       <div class="fee-calc">
         <div class="fee-calc-row"><span class="fc-label">小计（租金+水电）</span><span class="fc-value" id="subtotalFee">¥0.00</span></div>
         <div class="fee-calc-row"><span class="fc-label" style="color:var(--danger)">扣除项</span><span class="fc-value" id="deductionFee" style="color:var(--danger)">-¥0.00</span></div>
+        <div class="fee-calc-row"><span class="fc-label" style="color:var(--danger)">欠款补缴</span><span class="fc-value" id="arrearsFee" style="color:var(--danger)">-¥0.00</span></div>
         <div class="fee-calc-row total"><span class="fc-label">本月应收</span><span class="fc-value" id="totalFee">¥0.00</span></div>
       </div>
       <div class="switch-row" style="margin-top:10px"><span class="switch-label">已缴费</span><div class="switch ${md.paid?'on':''}" id="paidSwitch"></div></div>
@@ -2069,7 +2320,7 @@ function openMonthEdit(key,ym){
     <div class="btn-group"><button class="btn btn-danger" id="btnMonthDel">删除</button><button class="btn btn-primary" id="btnMonthSave">保存</button></div>
   `;
   updateMonthCalc();
-  ['mWaterPrev','mWaterCurr','mElecPrev','mElecCurr','mRent','mDeduction'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',updateMonthCalc);});
+  ['mWaterPrev','mWaterCurr','mElecPrev','mElecCurr','mRent','mDeduction','mArrearsRepayment'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',updateMonthCalc);});
   // 设置本月读数最小值=上月读数
   const wp=document.getElementById('mWaterPrev'),wc=document.getElementById('mWaterCurr');
   const ep=document.getElementById('mElecPrev'),ec=document.getElementById('mElecCurr');
@@ -2098,6 +2349,7 @@ function switchMonth(key,newYm){
   const currentData={
     rent:val('mRent'),waterPrev:val('mWaterPrev'),waterCurr:val('mWaterCurr'),
     electricPrev:val('mElecPrev'),electricCurr:val('mElecCurr'),deduction:val('mDeduction'),
+    arrearsRepayment:val('mArrearsRepayment'),
     paid:document.getElementById('paidSwitch').classList.contains('on'),note:val('mNote')
   };
   // 如果目标月份已有记录，询问是否覆盖
@@ -2126,15 +2378,17 @@ function updateMonthCalc(){
   const eFee=(eUsed>0?eUsed:0)*rates.electricPrice;
   const rent=num(val('mRent'));
   const deduction=num(val('mDeduction'));
+  const arrearsRepayment=num(val('mArrearsRepayment'));
   const subtotal=rent+wFee+eFee;
-  const total=Math.max(0,subtotal-deduction);
-  const wuEl=document.getElementById('waterUsed'),wfEl=document.getElementById('waterFee'),euEl=document.getElementById('elecUsed'),efEl=document.getElementById('elecFee'),tEl=document.getElementById('totalFee'),stEl=document.getElementById('subtotalFee'),dEl=document.getElementById('deductionFee');
+  const total=Math.max(0,subtotal-deduction-arrearsRepayment);
+  const wuEl=document.getElementById('waterUsed'),wfEl=document.getElementById('waterFee'),euEl=document.getElementById('elecUsed'),efEl=document.getElementById('elecFee'),tEl=document.getElementById('totalFee'),stEl=document.getElementById('subtotalFee'),dEl=document.getElementById('deductionFee'),aEl=document.getElementById('arrearsFee');
   if(wuEl)wuEl.textContent=(wUsed>0?wUsed:0).toFixed(1)+' 方';
   if(wfEl)wfEl.textContent=money(wFee);
   if(euEl)euEl.textContent=(eUsed>0?eUsed:0).toFixed(1)+' 度';
   if(efEl)efEl.textContent=money(eFee);
   if(stEl)stEl.textContent=money(subtotal);
   if(dEl)dEl.textContent='-¥'+deduction.toFixed(2);
+  if(aEl)aEl.textContent='-¥'+arrearsRepayment.toFixed(2);
   if(tEl)tEl.textContent=money(total);
 }
 
@@ -2150,7 +2404,7 @@ function saveMonth(key){
   if(eCurr<ePrev){
     toast('⚠️ 本月电表读数('+eCurr+')小于上月('+ePrev+')，请检查');return;
   }
-  room.months[ym]={rent:val('mRent'),waterPrev:val('mWaterPrev'),waterCurr:val('mWaterCurr'),electricPrev:val('mElecPrev'),electricCurr:val('mElecCurr'),deduction:val('mDeduction'),paid:document.getElementById('paidSwitch').classList.contains('on'),note:val('mNote')};
+  room.months[ym]={rent:val('mRent'),waterPrev:val('mWaterPrev'),waterCurr:val('mWaterCurr'),electricPrev:val('mElecPrev'),electricCurr:val('mElecCurr'),deduction:val('mDeduction'),arrearsRepayment:val('mArrearsRepayment'),paid:document.getElementById('paidSwitch').classList.contains('on'),note:val('mNote')};
   autoRoomStatus(room);
   save();renderMonthList(key);renderAll();closeMonthSheet();toast('保存成功');
 }
@@ -2428,16 +2682,18 @@ function autoRoomStatus(room){
   const hasTenant=room.tenant||room.phone||room.idCard;
   const hasMonths=room.months&&Object.keys(room.months).length>0;
   if(hasTenant||hasMonths){room.status='occupied';}
-  else if(room.status==='occupied'){room.status='empty';}
+  else{room.status='empty';}
 }
 function saveRoomQuiet(key){
   const room=state.rooms[key];if(!room)return;
-  const fTenant=document.getElementById('fTenant');if(!fTenant)return; // 表单不存在则跳过
-  room.tenant=val('fTenant');room.phone=val('fPhone');room.idCard=val('fIdCard');room.moveInDate=val('fDate');
+  const fDate=document.getElementById('fDate');if(!fDate)return;
+  room.moveInDate=fDate.value;
   room.note=val('fNote');room.fixedRent=val('fFixedRent');
   const activePill=document.querySelector('.pill.active');if(activePill)room.status=activePill.dataset.status;
-  autoRoomStatus(room);
   room.deposit.amount=val('fDeposit');room.deposit.method=val('fDepositMethod');
+  const ts=getAllTenants(room);
+  if(ts.length>0){room.tenant=ts[0].name;room.phone=ts[0].phone;room.idCard=ts[0].idCard;room.idCardImg=ts[0].idCardImg;room.moveInDate=ts[0].moveInDate;}
+  autoRoomStatus(room);
   room.updatedAt=new Date().toISOString();save();renderAll();
 }
 function saveRoom(key){
@@ -2583,17 +2839,30 @@ function closeSheet(){
 
 /* ============================================================ 导出 ============================================================ */
 let exportRoomKey=null;
-function showExportModal(key){exportRoomKey=key;document.getElementById('exportOverlay').classList.add('show');document.getElementById('exportModal').classList.add('show');}
+let exportFilterStatus='all';
+function showExportModal(key){exportRoomKey=key;exportFilterStatus='all';document.getElementById('exportOverlay').classList.add('show');document.getElementById('exportModal').classList.add('show');
+  // 初始化筛选按钮
+  document.querySelectorAll('#exportFilter .pill').forEach(p=>{
+    p.classList.toggle('active',p.dataset.filter==='all');
+    p.addEventListener('click',()=>{
+      document.querySelectorAll('#exportFilter .pill').forEach(x=>x.classList.remove('active'));
+      p.classList.add('active');exportFilterStatus=p.dataset.filter;
+    });
+  });
+}
 function closeExportModal(){document.getElementById('exportOverlay').classList.remove('show');document.getElementById('exportModal').classList.remove('show');}
 function closeBackupExportModal(){document.getElementById('backupExportModal').classList.remove('show');if(!document.getElementById('exportModal').classList.contains('show')&&!document.getElementById('archiveModal').classList.contains('show')&&!document.getElementById('ratePopover').classList.contains('show')&&!document.getElementById('buildingEditPopover').classList.contains('show')){document.getElementById('exportOverlay').classList.remove('show');}}
 
-function generateRoomCanvas(key){
+function generateRoomCanvas(key,filterStatus){
   const room=state.rooms[key];const[b,num]=key.split('-');
   const bld=getBuilding(b);const bName=bld?bld.name:(b+'栋');
-  const months=Object.keys(room.months).sort((a,b)=>{const aU=!room.months[a].paid?0:1;const bU=!room.months[b].paid?0:1;if(aU!==bU)return aU-bU;return b.localeCompare(a);});
+  let months=Object.keys(room.months).sort((a,b)=>{const aU=!room.months[a].paid?0:1;const bU=!room.months[b].paid?0:1;if(aU!==bU)return aU-bU;return b.localeCompare(a);});
+  // 根据缴费状态筛选
+  if(filterStatus==='paid')months=months.filter(m=>room.months[m].paid);
+  else if(filterStatus==='unpaid')months=months.filter(m=>!room.months[m].paid);
   if(months.length===0)return null;
   const canvas=document.createElement('canvas');
-  const W=600,rowH=50,headerH=140,footerH=40;
+  const W=600,rowH=60,headerH=140,footerH=40;
   const monthCount=Math.min(months.length,12);
   canvas.width=W;canvas.height=headerH+monthCount*rowH+footerH+30;
   const ctx=canvas.getContext('2d');
@@ -2602,23 +2871,39 @@ function generateRoomCanvas(key){
   ctx.fillStyle=grad;ctx.fillRect(0,0,W,90);
   ctx.fillStyle='#ffffff';ctx.font='bold 22px sans-serif';ctx.textAlign='center';
   const tenantName=room.tenant||'未命名';
-  ctx.fillText(`${bName} ${num}房 ${tenantName}`,W/2,38);
+  const dn=getRoomDisplayName(room,num);
+  ctx.fillText(`${bName} ${dn} ${tenantName}`,W/2,38);
   ctx.font='13px sans-serif';ctx.fillStyle='rgba(255,255,255,.85)';
   const now=new Date();
   ctx.fillText(`水电费明细 · 电话：${room.phone||'-'}  ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,W/2,66);
   ctx.fillStyle='#f1f5f9';ctx.fillRect(0,90,W,50);
-  ctx.fillStyle='#1e293b';ctx.font='bold 13px sans-serif';
-  [{l:'月份',x:50},{l:'租金',x:130},{l:'用水(方)',x:200},{l:'水费',x:275},{l:'用电(度)',x:345},{l:'电费',x:420},{l:'扣除',x:485},{l:'合计',x:550}].forEach(c=>ctx.fillText(c.l,c.x,120));
+  ctx.fillStyle='#1e293b';ctx.font='bold 11px sans-serif';
+  [{l:'月份',x:30},{l:'租金',x:95},{l:'水表',x:145},{l:'水费',x:215},{l:'电表',x:265},{l:'电费',x:335},{l:'扣除',x:395},{l:'补缴',x:445},{l:'合计',x:510},{l:'状态',x:560}].forEach(c=>ctx.fillText(c.l,c.x,118));
   ctx.strokeStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(0,140);ctx.lineTo(W,140);ctx.stroke();
-  ctx.font='12px sans-serif';
+  ctx.font='11px sans-serif';
   months.slice(0,monthCount).forEach((ym,i)=>{
-    const md=room.months[ym];const calc=calcMonthFee(room,md);const y=140+(i+1)*rowH-18;
+    const md=room.months[ym];const calc=calcMonthFee(room,md);const y=140+(i+1)*rowH-20;
     if(i%2===1){ctx.fillStyle='#f8fafc';ctx.fillRect(0,140+i*rowH,W,rowH);}
-    ctx.fillStyle='#1e293b';ctx.fillText(formatYM(ym),50,y);ctx.fillText(money(calc.rent),130,y);
-    ctx.fillText(calc.waterUsed>0?calc.waterUsed.toFixed(1):'-',200,y);ctx.fillText(money(calc.waterFee),275,y);
-    ctx.fillText(calc.elecUsed>0?calc.elecUsed.toFixed(1):'-',345,y);ctx.fillText(money(calc.elecFee),420,y);
-    ctx.fillStyle='#e6a700';ctx.fillText(calc.deduction>0?'-'+money(calc.deduction):'-',485,y);
-    ctx.fillStyle='#ef4444';ctx.font='bold 13px sans-serif';ctx.fillText(money(calc.total),550,y);ctx.font='12px sans-serif';
+    ctx.fillStyle='#1e293b';ctx.textAlign='left';ctx.fillText(formatYM(ym),30,y);
+    // 租金
+    ctx.fillText(money(calc.rent),95,y);
+    // 水表读数
+    ctx.fillStyle='#64748b';ctx.textAlign='center';
+    ctx.fillText(`${md.waterPrev||0}→${md.waterCurr||0}`,170,y);
+    ctx.fillStyle='#1e293b';ctx.textAlign='left';ctx.fillText(money(calc.waterFee),215,y);
+    // 电表读数
+    ctx.fillStyle='#64748b';ctx.textAlign='center';
+    ctx.fillText(`${md.electricPrev||0}→${md.electricCurr||0}`,290,y);
+    ctx.fillStyle='#1e293b';ctx.textAlign='left';ctx.fillText(money(calc.elecFee),335,y);
+    // 扣除
+    ctx.fillStyle='#e6a700';ctx.fillText(calc.deduction>0?'-'+money(calc.deduction):'-',395,y);
+    // 补缴
+    ctx.fillStyle='#e6a700';ctx.fillText(calc.arrearsRepayment>0?'-'+money(calc.arrearsRepayment):'-',445,y);
+    // 合计
+    const isPaid=md.paid;
+    ctx.fillStyle=isPaid?'#22c55e':'#ef4444';ctx.font='bold 12px sans-serif';ctx.fillText(money(calc.total),510,y);ctx.font='11px sans-serif';
+    // 状态
+    ctx.fillStyle=isPaid?'#22c55e':'#ef4444';ctx.textAlign='center';ctx.fillText(isPaid?'已缴':'未缴',560,y);
   });
   let totalAll=0;months.forEach(ym=>totalAll+=calcMonthFee(room,room.months[ym]).total);
   ctx.fillStyle='#f8fafc';ctx.fillRect(0,140+monthCount*rowH,W,40);
@@ -2628,8 +2913,8 @@ function generateRoomCanvas(key){
 }
 
 async function exportAsImage(key){
-  const canvas=generateRoomCanvas(key);
-  if(!canvas){toast('暂无月度记录可导出');return;}
+  const canvas=generateRoomCanvas(key,exportFilterStatus);
+  if(!canvas){toast('暂无符合条件的月度记录可导出');return;}
   const[b,num]=key.split('-');const bld=getBuilding(b);const bName=bld?bld.name:(b+'栋');const now=new Date();
   const room=state.rooms[key];const tenantName=room.tenant||'未命名';
   const filename=`${bName}${num}房_${tenantName}_水电费明细_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}.png`;
@@ -2811,11 +3096,20 @@ function closeBatchExport(){document.getElementById('batchSheet').classList.remo
 
 async function doBatchExport(b,selMonths,selRooms,fmt){
   const bName=b.name||(b.id+'栋');
+  // 预先过滤：只保留有费用记录的 (房间, 月份) 组合
+  const validEntries=[]; // [{item, ym, md}]
+  selRooms.forEach(item=>{
+    selMonths.forEach(ym=>{
+      const md=item.room.months[ym];
+      if(md)validEntries.push({item,ym,md});
+    });
+  });
+  if(validEntries.length===0){toast('所选月份中无费用记录');return;}
   if(fmt==='image'){
     // 所有房间画在一张高清大图上，纵向排列
-    const dpr=3; // 高清：3倍像素密度
-    const W=520*dpr,cardH=200*dpr,gap=10*dpr;
-    const totalCards=selRooms.length*selMonths.length;
+    const dpr=3;
+    const W=520*dpr,cardH=260*dpr,gap=10*dpr;
+    const totalCards=validEntries.length;
     const totalH=totalCards*cardH+(totalCards-1)*gap;
     const canvas=document.createElement('canvas');
     canvas.width=W;canvas.height=Math.max(totalH,cardH);
@@ -2823,35 +3117,42 @@ async function doBatchExport(b,selMonths,selRooms,fmt){
     const wLogic=W/dpr,hCard=cardH/dpr,gGap=gap/dpr;
     ctx.fillStyle='#fff';ctx.fillRect(0,0,wLogic,canvas.height/dpr);
     let idx=0;
-    for(const item of selRooms){
+    for(const{item,ym,md}of validEntries){
       const{key,room}=item;const num2=key.split('-')[1];
-      for(const ym of selMonths){
-        const md=room.months[ym];const calc=md?calcMonthFee(room,md):{rent:0,waterUsed:0,waterFee:0,elecUsed:0,elecFee:0,deduction:0,total:0};
-        const rates=getRoomRates(room);const dispStatus=getRoomDisplayStatus(room);
-        const statusText=dispStatus==='empty'?'空置':(dispStatus==='unpaid'?'未缴':(dispStatus==='occupied'?'已缴':'未缴'));
-        const tenantName=room.tenant||'空置';
-        const yOff=idx*(hCard+gGap);
-        // 卡片背景
-        ctx.fillStyle='#fff';ctx.fillRect(0,yOff,wLogic,hCard);
-        // 标题栏（蓝色渐变）
-        const grad=ctx.createLinearGradient(0,yOff,wLogic,yOff);grad.addColorStop(0,'#5C6DFF');grad.addColorStop(1,'#4B5BF0');
-        ctx.fillStyle=grad;ctx.fillRect(0,yOff,wLogic,48);
-        ctx.fillStyle='#fff';ctx.font='bold 18px sans-serif';ctx.textAlign='left';
-        ctx.fillText(`${bName} ${num2}房 ${tenantName}`,14,yOff+32);
-        ctx.font='14px sans-serif';ctx.textAlign='right';
-        ctx.fillText(formatYM(ym),wLogic-14,yOff+32);
-        // 费用明细
-        ctx.font='14px sans-serif';
-        [{l:'月租金',v:money(calc.rent),y:yOff+72},{l:'水费 ('+calc.waterUsed+'方 × ¥'+rates.waterPrice+')',v:money(calc.waterFee),y:yOff+96},{l:'电费 ('+calc.elecUsed+'度 × ¥'+rates.electricPrice+')',v:money(calc.elecFee),y:yOff+120}].forEach(d=>{ctx.fillStyle='#64748b';ctx.textAlign='left';ctx.fillText(d.l,14,d.y);ctx.fillStyle='#1e293b';ctx.textAlign='right';ctx.fillText(d.v,wLogic-14,d.y);});
-        // 合计行
-        ctx.fillStyle='#f8fafc';ctx.fillRect(0,yOff+140,wLogic,44);
-        ctx.fillStyle='#1e293b';ctx.font='bold 16px sans-serif';ctx.textAlign='left';ctx.fillText('合计应收',14,yOff+170);
-        ctx.fillStyle='#ef4444';ctx.font='bold 20px sans-serif';ctx.textAlign='right';ctx.fillText(money(calc.total),wLogic-14,yOff+170);
-        // 状态
-        const sc=statusText==='未缴'?'#ef4444':(statusText==='已缴'?'#22c55e':'#94a3b8');
-        ctx.fillStyle=sc;ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText('状态：'+statusText,14,yOff+192);
-        idx++;
-      }
+      const calc=calcMonthFee(room,md);
+      const rates=getRoomRates(room);
+      const tenantName=room.tenant||'空置';
+      const yOff=idx*(hCard+gGap);
+      // 卡片背景
+      ctx.fillStyle='#fff';ctx.fillRect(0,yOff,wLogic,hCard);
+      // 标题栏（蓝色渐变）
+      const grad=ctx.createLinearGradient(0,yOff,wLogic,yOff);grad.addColorStop(0,'#5C6DFF');grad.addColorStop(1,'#4B5BF0');
+      ctx.fillStyle=grad;ctx.fillRect(0,yOff,wLogic,48);
+      ctx.fillStyle='#fff';ctx.font='bold 18px sans-serif';ctx.textAlign='left';
+      ctx.fillText(`${bName} ${num2}房 ${tenantName}`,14,yOff+32);
+      ctx.font='14px sans-serif';ctx.textAlign='right';
+      ctx.fillText(formatYM(ym),wLogic-14,yOff+32);
+      // 费用明细（含水电读数）
+      ctx.font='14px sans-serif';
+      const rows=[
+        {l:'月租金',v:money(calc.rent),y:yOff+72},
+        {l:'水表读数',v:`${md.waterPrev||0}→${md.waterCurr||0}方`,y:yOff+96,c:'#64748b'},
+        {l:'水费 ('+calc.waterUsed+'方 × ¥'+rates.waterPrice+')',v:money(calc.waterFee),y:yOff+120},
+        {l:'电表读数',v:`${md.electricPrev||0}→${md.electricCurr||0}度`,y:yOff+144,c:'#64748b'},
+        {l:'电费 ('+calc.elecUsed+'度 × ¥'+rates.electricPrice+')',v:money(calc.elecFee),y:yOff+168},
+        {l:'扣除',v:calc.deduction>0?'-'+money(calc.deduction):'-',y:yOff+192,c:'#e6a700'},
+        {l:'欠款补缴',v:calc.arrearsRepayment>0?'-'+money(calc.arrearsRepayment):'-',y:yOff+216,c:'#e6a700'},
+      ];
+      rows.forEach(d=>{
+        ctx.fillStyle='#64748b';ctx.textAlign='left';ctx.fillText(d.l,14,d.y);
+        ctx.fillStyle=d.c||'#1e293b';ctx.textAlign='right';ctx.fillText(d.v,wLogic-14,d.y);
+      });
+      // 合计行
+      ctx.fillStyle='#f8fafc';ctx.fillRect(0,yOff+236,wLogic,24);
+      ctx.fillStyle='#1e293b';ctx.font='bold 15px sans-serif';ctx.textAlign='left';ctx.fillText('合计应收',14,yOff+254);
+      const isPaid=md.paid;
+      ctx.fillStyle=isPaid?'#22c55e':'#ef4444';ctx.font='bold 18px sans-serif';ctx.textAlign='right';ctx.fillText(money(calc.total),wLogic-14,yOff+254);
+      idx++;
     }
     const filename=`${bName}_费用明细_${selMonths[0]}${selMonths.length>1?'-'+selMonths[selMonths.length-1]:''}.png`;
     canvas.toBlob(async(blob)=>{
@@ -2860,17 +3161,15 @@ async function doBatchExport(b,selMonths,selRooms,fmt){
       toast(shared?'已分享/保存':'文件已下载');
     },'image/png');
   }else{
-    // CSV
+    // CSV：只导出有数据的记录
     let csv='\uFEFF';
     csv+=`${bName} 费用明细\n`;
     csv+=`导出时间,${new Date().toISOString().slice(0,10)}\n\n`;
-    csv+='房间号,租客,月份,月租金,用水量(方),水费,用电量(度),电费,扣除项,合计,缴费状态,备注\n';
-    selRooms.forEach(item=>{
+    csv+='房间号,租客,月份,月租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,扣除项,欠款补缴,合计,缴费状态,备注\n';
+    validEntries.forEach(({item,ym,md})=>{
       const{key,room}=item;const num2=key.split('-')[1];
-      selMonths.forEach(ym=>{
-        const md=room.months[ym];
-        if(md){const c=calcMonthFee(room,md);csv+=[num2,room.tenant||'',formatYM(ym),c.rent.toFixed(2),c.waterUsed.toFixed(1),c.waterFee.toFixed(2),c.elecUsed.toFixed(1),c.elecFee.toFixed(2),c.deduction.toFixed(2),c.total.toFixed(2),md.paid?'已缴费':'未缴费',md.note||''].join(',')+'\n';}
-      });
+      const c=calcMonthFee(room,md);
+      csv+=[num2,room.tenant||'',formatYM(ym),c.rent.toFixed(2),md.waterPrev||'',md.waterCurr||'',c.waterUsed.toFixed(1),c.waterFee.toFixed(2),md.electricPrev||'',md.electricCurr||'',c.elecUsed.toFixed(1),c.elecFee.toFixed(2),c.deduction.toFixed(2),c.arrearsRepayment.toFixed(2),c.total.toFixed(2),md.paid?'已缴费':'未缴费',md.note||''].join(',')+'\n';
     });
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
     const filename=`${bName}_费用明细_${selMonths[0]}${selMonths.length>1?'-'+selMonths[selMonths.length-1]:''}.csv`;
