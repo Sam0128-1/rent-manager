@@ -1403,8 +1403,8 @@ function openMonthWheelPicker(){
   [yearBox,monthBox].forEach(box=>{
     box.addEventListener('scroll',()=>{clearTimeout(scrollTimer);scrollTimer=setTimeout(updateSelection,100);});
   });
-  yearBox.addEventListener('wheel',e=>{e.preventDefault();yearBox.scrollTop+=e.deltaY},passive:false);
-  monthBox.addEventListener('wheel',e=>{e.preventDefault();monthBox.scrollTop+=e.deltaY},passive:false);
+  yearBox.addEventListener('wheel',function(e){e.preventDefault();yearBox.scrollTop+=e.deltaY},{passive:false});
+  monthBox.addEventListener('wheel',function(e){e.preventDefault();monthBox.scrollTop+=e.deltaY},{passive:false});
   overlay.addEventListener('click',e=>{if(e.target===overlay)closeWheel()});
   function closeWheel(){overlay.remove();}
   document.getElementById('mpWheelCancel').addEventListener('click',closeWheel);
