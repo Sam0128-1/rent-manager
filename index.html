@@ -1458,6 +1458,10 @@ function openExpenses(bid){
         <button class="btn btn-primary" id="btnAddClean" style="flex:1;background:var(--success)">🧹 清洁</button>
         <button class="btn btn-primary" id="btnAddSupply" style="flex:1;background:#e6a700">📦 耗材</button>
       </div>
+      <div class="btn-group" style="margin-top:8px">
+        <button class="btn btn-primary" id="btnAddWater" style="flex:1;background:#0ea5e9">💧 水费</button>
+        <button class="btn btn-primary" id="btnAddElec" style="flex:1;background:#f59e0b">⚡ 电费</button>
+      </div>
     </div>
     <div class="section" id="expFormSection" style="display:none"></div>
     <div class="section" id="expListSection"></div>
@@ -1465,6 +1469,8 @@ function openExpenses(bid){
   document.getElementById('btnAddRepair').addEventListener('click',()=>showExpForm('repair'));
   document.getElementById('btnAddClean').addEventListener('click',()=>showExpForm('clean'));
   document.getElementById('btnAddSupply').addEventListener('click',()=>showExpForm('supply'));
+  document.getElementById('btnAddWater').addEventListener('click',()=>showExpForm('water'));
+  document.getElementById('btnAddElec').addEventListener('click',()=>showExpForm('electric'));
   renderExpList(bid);
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
@@ -1511,16 +1517,26 @@ function toggleExpDetail(id){
 }
 function showExpDetail(id){
   const ex=(state.expenses||[]).find(e=>e.id===id);if(!ex)return;
-  const labels={repair:'维修',clean:'清洁',supply:'耗材'};
-  const fieldLabels={repair:['维修日期','维修位置','维修人','维修金额'],clean:['清洁日期','清洁位置','清洁人','清洁费用'],supply:['购买日期','耗材名称','购买渠道','购买金额']};
+  const labels={repair:'维修',clean:'清洁',supply:'耗材',water:'水费',electric:'电费'};
+  const fieldLabels={repair:['维修日期','维修位置','维修人','维修金额'],clean:['清洁日期','清洁位置','清洁人','清洁费用'],supply:['购买日期','耗材名称','购买渠道','购买金额'],water:['缴款日期','缴款账户','缴款金额'],electric:['缴款日期','缴款账户','缴款金额']};
   const fl=fieldLabels[ex.type]||[];
   const sec=document.getElementById('expFormSection');
-  sec.innerHTML=`<div class="section-title">📋 ${labels[ex.type]}支出详情</div>
-    <div class="fee-calc">
-      <div class="fee-calc-row"><span class="fc-label">${fl[0]}</span><span class="fc-value">${ex.date||'-'}</span></div>
+  let detailRows='';
+  if(ex.type==='water'||ex.type==='electric'){
+    // 水费/电费：缴款日期、缴款账户、缴款金额
+    detailRows=`<div class="fee-calc-row"><span class="fc-label">${fl[0]}</span><span class="fc-value">${ex.date||'-'}</span></div>
+      <div class="fee-calc-row"><span class="fc-label">${fl[1]}</span><span class="fc-value">${esc(ex.person)||'-'}</span></div>
+      <div class="fee-calc-row total"><span class="fc-label">${fl[2]}</span><span class="fc-value" style="color:#e6a700">¥${num(ex.amount).toFixed(2)}</span></div>`;
+  }else{
+    // 维修/清洁/耗材：日期、位置/名称、人/渠道、金额
+    detailRows=`<div class="fee-calc-row"><span class="fc-label">${fl[0]}</span><span class="fc-value">${ex.date||'-'}</span></div>
       <div class="fee-calc-row"><span class="fc-label">${fl[1]}</span><span class="fc-value">${esc(ex.location)||'-'}</span></div>
       <div class="fee-calc-row"><span class="fc-label">${fl[2]}</span><span class="fc-value">${esc(ex.person)||'-'}</span></div>
-      <div class="fee-calc-row total"><span class="fc-label">${fl[3]}</span><span class="fc-value" style="color:#e6a700">¥${num(ex.amount).toFixed(2)}</span></div>
+      <div class="fee-calc-row total"><span class="fc-label">${fl[3]}</span><span class="fc-value" style="color:#e6a700">¥${num(ex.amount).toFixed(2)}</span></div>`;
+  }
+  sec.innerHTML=`<div class="section-title">📋 ${labels[ex.type]}支出详情</div>
+    <div class="fee-calc">
+      ${detailRows}
       ${ex.note?`<div class="fee-calc-row"><span class="fc-label">备注</span><span class="fc-value">${esc(ex.note)}</span></div>`:''}
     </div>
     <div class="btn-group" style="margin-top:10px"><button class="btn btn-primary" id="btnEditExp">编辑</button><button class="btn btn-danger" id="btnDelDetail">删除</button></div>`;
@@ -1531,7 +1547,7 @@ function showExpDetail(id){
 }
 function showExpForm(type,editEx){
   const sec=document.getElementById('expFormSection');
-  const labels={repair:'维修',clean:'清洁',supply:'耗材'};
+  const labels={repair:'维修',clean:'清洁',supply:'耗材',water:'水费',electric:'电费'};
   const today=editEx?editEx.date:new Date().toISOString().slice(0,10);
   let fields='';
   if(type==='repair'){
@@ -1546,11 +1562,21 @@ function showExpForm(type,editEx){
     <div class="form-row"><label>清洁人</label><input type="text" id="expPerson" placeholder="清洁人员姓名" value="${editEx?esc(editEx.person):''}"></div>
     <div class="form-row"><label>清洁费用 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
     <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
-  }else{
+  }else if(type==='supply'){
     fields=`<div class="form-row"><label>购买日期</label><input type="date" id="expDate" value="${today}"></div>
     <div class="form-row"><label>耗材名称</label><input type="text" id="expLocation" placeholder="如：灯泡x10" value="${editEx?esc(editEx.location):''}"></div>
     <div class="form-row"><label>购买渠道</label><input type="text" id="expPerson" placeholder="如：淘宝/五金店" value="${editEx?esc(editEx.person):''}"></div>
     <div class="form-row"><label>购买金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
+    <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
+  }else if(type==='water'){
+    fields=`<div class="form-row"><label>缴款日期</label><input type="date" id="expDate" value="${today}"></div>
+    <div class="form-row"><label>缴款账户</label><input type="text" id="expPerson" placeholder="如：微信/支付宝/银行卡" value="${editEx?esc(editEx.person):''}"></div>
+    <div class="form-row"><label>缴款金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
+    <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
+  }else if(type==='electric'){
+    fields=`<div class="form-row"><label>缴款日期</label><input type="date" id="expDate" value="${today}"></div>
+    <div class="form-row"><label>缴款账户</label><input type="text" id="expPerson" placeholder="如：微信/支付宝/银行卡" value="${editEx?esc(editEx.person):''}"></div>
+    <div class="form-row"><label>缴款金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
     <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
   }
   sec.innerHTML=`<div class="section-title">${editEx?'✏️ 编辑':'➕ 添加'}${labels[type]}支出</div>${fields}
@@ -1563,7 +1589,7 @@ function showExpForm(type,editEx){
 function renderExpList(bid){
   const sec=document.getElementById('expListSection');if(!sec)return;
   const list=(state.expenses||[]).filter(e=>e.bid===bid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const types=[{key:'repair',label:'🔧 维修',color:'#3b82f6'},{key:'clean',label:'🧹 清洁',color:'var(--success)'},{key:'supply',label:'📦 耗材',color:'#e6a700'}];
+  const types=[{key:'repair',label:'🔧 维修',color:'#3b82f6'},{key:'clean',label:'🧹 清洁',color:'var(--success)'},{key:'supply',label:'📦 耗材',color:'#e6a700'},{key:'water',label:'💧 水费',color:'#0ea5e9'},{key:'electric',label:'⚡ 电费',color:'#f59e0b'}];
   let html='';
   types.forEach(t=>{
     const items=list.filter(e=>e.type===t.key);
@@ -1578,7 +1604,8 @@ function renderExpList(bid){
       html+=`<div style="text-align:center;color:var(--text-lighter);padding:12px;font-size:13px">暂无记录</div>`;
     }else{
       items.forEach(e=>{
-        const personLabel=e.type==='supply'?'购买渠道':(e.type==='repair'?'维修人':'清洁人');
+        const personLabel=e.type==='supply'?'购买渠道':(e.type==='repair'?'维修人':(e.type==='clean'?'清洁人':'缴款账户'));
+        const titleText=(e.type==='water'||e.type==='electric')?(e.date||'未填'):(esc(e.location)||'未填写');
         html+=`<div class="exp-swipe-wrap" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
           <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
             <button class="exp-action-edit" data-id="${e.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
@@ -1586,7 +1613,7 @@ function renderExpList(bid){
           </div>
           <div class="exp-swipe-card" data-id="${e.id}" style="position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;transition:transform .2s;z-index:1;cursor:pointer">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-weight:500">${esc(e.location)||'未填写'}</span>
+              <span style="font-weight:500">${titleText}</span>
               <span style="color:${t.color};font-weight:600">¥${num(e.amount).toFixed(2)}</span>
             </div>
             <div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 ${e.date||'未填'} · ${personLabel}：${esc(e.person)||'-'}</div>
@@ -1811,8 +1838,8 @@ function doSearch(keyword){
     const loc=(ex.location||'').toLowerCase();
     const per=(ex.person||'').toLowerCase();
     if(loc.includes(kw)||per.includes(kw)){
-      const typeLabels={repair:'维修',clean:'清洁',supply:'耗材'};
-      const typeColors={repair:'#3b82f6',clean:'var(--success)',supply:'#e6a700'};
+      const typeLabels={repair:'维修',clean:'清洁',supply:'耗材',water:'水费',electric:'电费'};
+      const typeColors={repair:'#3b82f6',clean:'var(--success)',supply:'#e6a700',water:'#0ea5e9',electric:'#f59e0b'};
       results.push({type:'expense',expId:ex.id,bid:ex.bid,bName,expType:ex.type,expTypeLabel:typeLabels[ex.type]||ex.type,expColor:typeColors[ex.type]||'var(--primary)',expDate:ex.date,expLocation:ex.location||'-',expPerson:ex.person||'-',expAmount:ex.amount});
     }
   });
@@ -1852,10 +1879,11 @@ function renderSearchResults(keyword){
   if(expResults.length>0){
     html+=`<div style="font-size:12px;color:var(--text-light);padding:8px 16px 4px">支出记录 (${expResults.length})</div>`;
     html+=expResults.map(r=>{
-      const personLabel=r.expType==='supply'?'购买渠道':(r.expType==='repair'?'维修人':'清洁人');
+      const personLabel=r.expType==='supply'?'购买渠道':(r.expType==='repair'?'维修人':(r.expType==='clean'?'清洁人':'缴款账户'));
+      const titleText=(r.expType==='water'||r.expType==='electric')?(r.expDate||'未填'):(esc(r.expLocation)||'-');
       return `<div class="search-result-item" data-expense="${r.expId}" style="border-left:3px solid ${r.expColor}">
         <div class="sr-info" style="width:100%">
-          <div class="sr-name">${esc(r.expLocation)}<span class="sr-tag" style="background:${r.expColor};color:#fff">${r.expTypeLabel}</span></div>
+          <div class="sr-name">${titleText}<span class="sr-tag" style="background:${r.expColor};color:#fff">${r.expTypeLabel}</span></div>
           <div class="sr-detail">${r.bName} · ${r.expDate||'未填'} · ${personLabel}：${esc(r.expPerson)} · ¥${num(r.expAmount).toFixed(2)}</div>
         </div>
       </div>`;
