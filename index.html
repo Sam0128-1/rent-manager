@@ -2959,26 +2959,23 @@ function generateRoomCanvas(key,filterStatus){
   ctx.scale(dpr,dpr);
   const w=W/dpr;
   const rh=rowH/dpr;
-  // 列定义：顺序布局，前一列结束=下一列开始
-  // pagePad=40px 左右对称留白
+  // 列定义：顺序布局，前一列结束=下一列开始，全部居中对齐
   const pad=40;
   const colsDef=[
-    {l:'月份',w:70,a:'center'},
-    {l:'租金',w:60,a:'right'},
-    {l:'水表读数',w:90,a:'center'},
-    {l:'水费',w:55,a:'right'},
-    {l:'电表读数',w:90,a:'center'},
-    {l:'电费',w:55,a:'right'},
-    {l:'扣除',w:50,a:'right'},
-    {l:'补缴',w:50,a:'right'},
-    {l:'合计',w:65,a:'right'},
-    {l:'状态',w:45,a:'center'}
+    {l:'月份',w:70},
+    {l:'租金',w:60},
+    {l:'水表读数',w:90},
+    {l:'水费',w:55},
+    {l:'电表读数',w:90},
+    {l:'电费',w:55},
+    {l:'扣除',w:50},
+    {l:'补缴',w:50},
+    {l:'合计',w:65},
+    {l:'状态',w:45}
   ];
-  // 计算每列的 x 起始位置（顺序衔接）
   let curX=pad;
   const cols=colsDef.map(c=>{const col={...c,x:curX};curX+=c.w;return col;});
-  function colCenter(i){return cols[i].x+cols[i].w/2;}
-  function colRight(i){return cols[i].x+cols[i].w-6;}
+  function cx(i){return cols[i].x+cols[i].w/2;}
   // 背景
   ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,totalH/dpr);
   // 标题栏
@@ -2994,45 +2991,30 @@ function generateRoomCanvas(key,filterStatus){
   // 表头
   const headY=80;
   ctx.fillStyle='#f1f5f9';ctx.fillRect(0,headY,w,40);
-  ctx.fillStyle='#1e293b';ctx.font='bold 12px sans-serif';
-  cols.forEach((c,i)=>{
-    ctx.textAlign=c.a==='right'?'right':'center';
-    const tx=c.a==='right'?colRight(i):colCenter(i);
-    ctx.fillText(c.l,tx,headY+25);
-  });
+  ctx.fillStyle='#1e293b';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+  cols.forEach((c,i)=>ctx.fillText(c.l,cx(i),headY+25));
   ctx.strokeStyle='#e2e8f0';ctx.lineWidth=0.5;
   ctx.beginPath();ctx.moveTo(0,headY+40);ctx.lineTo(w,headY+40);ctx.stroke();
-  // 数据行
-  ctx.font='12px sans-serif';
+  // 数据行（全部居中对齐）
+  ctx.font='12px sans-serif';ctx.textAlign='center';
   months.slice(0,monthCount).forEach((ym,i)=>{
     const md=room.months[ym];const calc=calcMonthFee(room,md);
     const y=headY+40+(i+1)*rh-rh*0.3;
     const rowTop=headY+40+i*rh;
     if(i%2===1){ctx.fillStyle='#f8fafc';ctx.fillRect(0,rowTop,w,rh);}
-    // 月份 (center)
-    ctx.fillStyle='#1e293b';ctx.textAlign='center';ctx.fillText(formatYM(ym),colCenter(0),y);
-    // 租金 (right)
-    ctx.textAlign='right';ctx.fillStyle='#1e293b';ctx.fillText(money(calc.rent),colRight(1),y);
-    // 水表读数 (center, 灰色)
-    ctx.textAlign='center';ctx.fillStyle='#64748b';ctx.fillText(`${md.waterPrev||0}→${md.waterCurr||0}`,colCenter(2),y);
-    // 水费 (right)
-    ctx.textAlign='right';ctx.fillStyle='#1e293b';ctx.fillText(money(calc.waterFee),colRight(3),y);
-    // 电表读数 (center, 灰色)
-    ctx.textAlign='center';ctx.fillStyle='#64748b';ctx.fillText(`${md.electricPrev||0}→${md.electricCurr||0}`,colCenter(4),y);
-    // 电费 (right)
-    ctx.textAlign='right';ctx.fillStyle='#1e293b';ctx.fillText(money(calc.elecFee),colRight(5),y);
-    // 扣除 (right, 橙色)
-    ctx.textAlign='right';ctx.fillStyle='#e6a700';ctx.fillText(calc.deduction>0?'-'+money(calc.deduction):'-',colRight(6),y);
-    // 补缴 (right, 橙色)
-    ctx.textAlign='right';ctx.fillStyle='#e6a700';ctx.fillText(calc.arrearsRepayment>0?'-'+money(calc.arrearsRepayment):'-',colRight(7),y);
-    // 合计 (right, 已缴绿/未缴红)
+    ctx.fillStyle='#1e293b';ctx.fillText(formatYM(ym),cx(0),y);
+    ctx.fillText(money(calc.rent),cx(1),y);
+    ctx.fillStyle='#64748b';ctx.fillText(`${md.waterPrev||0}→${md.waterCurr||0}`,cx(2),y);
+    ctx.fillStyle='#1e293b';ctx.fillText(money(calc.waterFee),cx(3),y);
+    ctx.fillStyle='#64748b';ctx.fillText(`${md.electricPrev||0}→${md.electricCurr||0}`,cx(4),y);
+    ctx.fillStyle='#1e293b';ctx.fillText(money(calc.elecFee),cx(5),y);
+    ctx.fillStyle='#e6a700';ctx.fillText(calc.deduction>0?'-'+money(calc.deduction):'-',cx(6),y);
+    ctx.fillStyle='#e6a700';ctx.fillText(calc.arrearsRepayment>0?'-'+money(calc.arrearsRepayment):'-',cx(7),y);
     const isPaid=md.paid;
-    ctx.textAlign='right';ctx.fillStyle=isPaid?'#22c55e':'#ef4444';ctx.font='bold 12px sans-serif';
-    ctx.fillText(money(calc.total),colRight(8),y);
+    ctx.fillStyle=isPaid?'#22c55e':'#ef4444';ctx.font='bold 12px sans-serif';
+    ctx.fillText(money(calc.total),cx(8),y);
     ctx.font='12px sans-serif';
-    // 状态 (center, 已缴绿/未缴红)
-    ctx.textAlign='center';ctx.fillStyle=isPaid?'#22c55e':'#ef4444';
-    ctx.fillText(isPaid?'已缴':'未缴',colCenter(9),y);
+    ctx.fillText(isPaid?'已缴':'未缴',cx(9),y);
   });
   // 汇总行
   const totalAll=months.reduce((s,ym)=>s+calcMonthFee(room,room.months[ym]).total,0);
