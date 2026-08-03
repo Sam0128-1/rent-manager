@@ -3326,9 +3326,9 @@ async function doBatchExport(b,selMonths,selRooms,fmt){
 /* ============================================================ CSV 备份/导入/模板 ============================================================ */
 // CSV 表头定义（顺序固定）
 const CSV_HEADERS=[
-  '楼栋名称','楼层','房间号','租客姓名','电话','身份证号','入住日期',
+  '楼栋名称','楼层','房间号','房间自定义名称','租客姓名','电话','身份证号','入住日期',
   '固定月租金','押金金额','押金方式','费用月份','月租金',
-  '上月水表','本月水表','上月电表','本月电表','缴费状态','备注','水费单价','电费单价'
+  '上月水表','本月水表','上月电表','本月电表','扣除项','欠款补缴','缴费状态','备注','水费单价','电费单价'
 ];
 // 转义 CSV 单元格（含逗号/引号/换行时加引号转义）
 function csvCell(v){
@@ -3352,20 +3352,20 @@ function exportStateAsCSV(){
         if(!room)continue;
         const months=Object.keys(room.months||{}).sort();
         if(months.length===0){
-          csv+=csvRow([b.name,f,num2,room.tenant,room.phone,room.idCard,room.moveInDate,room.fixedRent,room.deposit&&room.deposit.amount,room.deposit&&room.deposit.method,'','','','','','','',room.note,room.roomRates&&room.roomRates.waterPrice,room.roomRates&&room.roomRates.electricPrice]);
+          csv+=csvRow([b.name,f,num2,room.displayName||'',room.tenant,room.phone,room.idCard,room.moveInDate,room.fixedRent,room.deposit&&room.deposit.amount,room.deposit&&room.deposit.method,'','','','','','','','','',room.note,room.roomRates&&room.roomRates.waterPrice,room.roomRates&&room.roomRates.electricPrice]);
         }else{
           months.forEach(ym=>{
             const md=room.months[ym];
-            csv+=csvRow([b.name,f,num2,room.tenant,room.phone,room.idCard,room.moveInDate,room.fixedRent,room.deposit&&room.deposit.amount,room.deposit&&room.deposit.method,ym,md.rent,md.waterPrev,md.waterCurr,md.electricPrev,md.electricCurr,md.paid?'已缴费':'未缴费',md.note||'',room.roomRates&&room.roomRates.waterPrice,room.roomRates&&room.roomRates.electricPrice]);
+            csv+=csvRow([b.name,f,num2,room.displayName||'',room.tenant,room.phone,room.idCard,room.moveInDate,room.fixedRent,room.deposit&&room.deposit.amount,room.deposit&&room.deposit.method,ym,md.rent,md.waterPrev,md.waterCurr,md.electricPrev,md.electricCurr,md.deduction||'',md.arrearsRepayment||'',md.paid?'已缴费':'未缴费',md.note||'',room.roomRates&&room.roomRates.waterPrice,room.roomRates&&room.roomRates.electricPrice]);
           });
         }
       }
     });
   });
   csv+='\n';
-  csv+=csvRow(['#全局配置','','','','','','','','','','','','','','','','','','','']);
-  csv+=csvRow(['globalRates.waterPrice','','','','','','','','','','','','','','','','','','',state.globalRates.waterPrice]);
-  csv+=csvRow(['globalRates.electricPrice','','','','','','','','','','','','','','','','','','',state.globalRates.electricPrice]);
+  csv+=csvRow(['#全局配置','','','','','','','','','','','','','','','','','','','','','']);
+  csv+=csvRow(['globalRates.waterPrice','','','','','','','','','','','','','','','','','','','','',state.globalRates.waterPrice]);
+  csv+=csvRow(['globalRates.electricPrice','','','','','','','','','','','','','','','','','','','','',state.globalRates.electricPrice]);
   return csv;
 }
 
@@ -3375,20 +3375,23 @@ function getCSVTemplate(){
   csv+=csvRow(CSV_HEADERS);
   const curYear=new Date().getFullYear();
   // 示例1：同一房间(A栋1层101)的两个月费用记录
-  csv+=csvRow(['A栋','1','101','张三','13800138000','110101199001011234',`${curYear}-01-01`,'2000','1000','微信',`${curYear}-01`,'2000','100','105','200','220','已缴费','','6','1.2']);
-  csv+=csvRow(['A栋','1','101','张三','13800138000','110101199001011234',`${curYear}-01-01`,'2000','1000','微信',`${curYear}-02`,'2000','105','110','220','240','未缴费','','6','1.2']);
+  csv+=csvRow(['A栋','1','101','','张三','13800138000','110101199001011234',`${curYear}-01-01`,'2000','1000','微信',`${curYear}-01`,'2000','100','105','200','220','','','已缴费','','6','1.2']);
+  csv+=csvRow(['A栋','1','101','','张三','13800138000','110101199001011234',`${curYear}-01-01`,'2000','1000','微信',`${curYear}-02`,'2000','105','110','220','240','100','200','未缴费','','6','1.2']);
   // 示例2：另一间房，含押金
-  csv+=csvRow(['A栋','1','102','李四','13900139000','',`${curYear}-02-15`,'2500','2000','支付宝',`${curYear}-01`,'2500','50','60','300','350','已缴费','按月付','','']);
+  csv+=csvRow(['A栋','1','102','主卧','李四','13900139000','',`${curYear}-02-15`,'2500','2000','支付宝',`${curYear}-01`,'2500','50','60','300','350','','','已缴费','按月付','','']);
   // 示例3：空置房间（无租客信息，仅费用月份）
-  csv+=csvRow(['A栋','1','103','','','','','','','',`${curYear}-01`,'1500','','','','','已缴费','','','']);
+  csv+=csvRow(['A栋','1','103','','','','','','','',`${curYear}-01`,'1500','','','','','','','已缴费','','','']);
   csv+='\n';
   csv+=`#说明：\n`;
   csv+=`#1. 通过 楼栋名称+楼层+房间号 定位房间（自动匹配或创建）\n`;
-  csv+=`#2. 费用月份 填年月如 ${curYear}-01；同一房间的多个月份费用记录，用相同的楼栋+楼层+房间号 + 不同的费用月份 即可\n`;
-  csv+=`#3. 同一房间多条记录：租客信息只需在第一行填写，后续行可留空（不会覆盖已有数据）\n`;
-  csv+=`#4. 有租客姓名的房间会自动设为"已入住"状态\n`;
-  csv+=`#5. 缴费状态：已缴费 / 未缴费\n`;
-  csv+=`#6. 水费单价、电费单价 留空则使用全局默认值\n`;
+  csv+=`#2. 房间自定义名称：可留空，填写后会替代默认房间号显示\n`;
+  csv+=`#3. 费用月份 填年月如 ${curYear}-01；同一房间的多个月份费用记录，用相同的楼栋+楼层+房间号 + 不同的费用月份 即可\n`;
+  csv+=`#4. 同一房间多条记录：租客信息只需在第一行填写，后续行可留空（不会覆盖已有数据）\n`;
+  csv+=`#5. 有租客姓名的房间会自动设为"已入住"状态\n`;
+  csv+=`#6. 扣除项：如减免、优惠等，合计金额会扣除此项\n`;
+  csv+=`#7. 欠款补缴：租客补缴的欠款金额，合计金额会扣除此项\n`;
+  csv+=`#8. 缴费状态：已缴费 / 未缴费\n`;
+  csv+=`#9. 水费单价、电费单价 留空则使用全局默认值\n`;
   return csv;
 }
 
@@ -3494,6 +3497,7 @@ function importStateFromCSV(text){
     if(!state.rooms[key]){state.rooms[key]=defaultRoom();roomCount++;}
     const room=state.rooms[key];
     // 更新房间信息（有值才更新，不覆盖已有数据）
+    const displayName=get(row,'房间自定义名称');if(displayName)room.displayName=displayName;
     const tenant=get(row,'租客姓名');if(tenant)room.tenant=tenant;
     const phone=get(row,'电话');if(phone)room.phone=phone;
     const idCard=get(row,'身份证号');if(idCard)room.idCard=idCard;
@@ -3518,7 +3522,9 @@ function importStateFromCSV(text){
       else if(ym.includes('/')){const[y,m]=ym.split('/');normalizedYm=y+'-'+m.padStart(2,'0');}
       // 处理"2024-1"格式（补零）
       else if(ym.includes('-')){const[y,m]=ym.split('-');normalizedYm=y+'-'+m.padStart(2,'0');}
-      const md={rent:get(row,'月租金'),waterPrev:get(row,'上月水表'),waterCurr:get(row,'本月水表'),electricPrev:get(row,'上月电表'),electricCurr:get(row,'本月电表'),paid:get(row,'缴费状态')==='已缴费',note:get(row,'备注')||''};
+      const deduction=get(row,'扣除项');
+      const arrearsRepayment=get(row,'欠款补缴');
+      const md={rent:get(row,'月租金'),waterPrev:get(row,'上月水表'),waterCurr:get(row,'本月水表'),electricPrev:get(row,'上月电表'),electricCurr:get(row,'本月电表'),deduction:deduction?num(deduction):0,arrearsRepayment:arrearsRepayment?num(arrearsRepayment):0,paid:get(row,'缴费状态')==='已缴费',note:get(row,'备注')||''};
       room.months[normalizedYm]=md;monthCount++;
       if(room.status==='empty')room.status='occupied';
     }
@@ -3577,6 +3583,7 @@ function parseCSVForReview(text){
       bname:bname,
       floor:fIdx,
       roomNum:num2,
+      displayName:get(row,'房间自定义名称'),
       tenant:get(row,'租客姓名'),
       phone:get(row,'电话'),
       idCard:get(row,'身份证号'),
@@ -3590,6 +3597,8 @@ function parseCSVForReview(text){
       waterCurr:get(row,'本月水表'),
       elecPrev:get(row,'上月电表'),
       elecCurr:get(row,'本月电表'),
+      deduction:get(row,'扣除项'),
+      arrearsRepayment:get(row,'欠款补缴'),
       paid:get(row,'缴费状态'),
       note:get(row,'备注')
     });
@@ -3634,6 +3643,8 @@ function showImportReview(result){
               ${r.ym?`
               <div>水表(上/本): <input type="text" class="rv-input" data-idx="${i}" data-field="waterPrev" value="${esc(r.waterPrev)}" style="width:40px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px">/<input type="text" class="rv-input" data-idx="${i}" data-field="waterCurr" value="${esc(r.waterCurr)}" style="width:40px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
               <div>电表(上/本): <input type="text" class="rv-input" data-idx="${i}" data-field="elecPrev" value="${esc(r.elecPrev)}" style="width:40px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px">/<input type="text" class="rv-input" data-idx="${i}" data-field="elecCurr" value="${esc(r.elecCurr)}" style="width:40px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
+              <div>扣除: <input type="number" class="rv-input" data-idx="${i}" data-field="deduction" value="${esc(r.deduction)}" style="width:60px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
+              <div>补缴: <input type="number" class="rv-input" data-idx="${i}" data-field="arrearsRepayment" value="${esc(r.arrearsRepayment)}" style="width:60px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
               `:''}
             </div>
           </div>
@@ -3687,6 +3698,7 @@ function applyImportedData(data){
     const key=`${b.id}-${r.roomNum}`;
     if(!state.rooms[key]){state.rooms[key]=defaultRoom();roomCount++;}
     const room=state.rooms[key];
+    if(r.displayName)room.displayName=r.displayName;
     if(r.tenant)room.tenant=r.tenant;
     if(r.phone)room.phone=r.phone;
     if(r.idCard)room.idCard=r.idCard;
@@ -3697,7 +3709,7 @@ function applyImportedData(data){
     if(r.depMtd)room.deposit.method=r.depMtd;
     if(r.note)room.note=r.note;
     if(r.ym){
-      room.months[r.ym]={rent:r.rent,waterPrev:r.waterPrev,waterCurr:r.waterCurr,electricPrev:r.elecPrev,electricCurr:r.elecCurr,paid:r.paid==='已缴费',note:r.note||''};
+      room.months[r.ym]={rent:r.rent,waterPrev:r.waterPrev,waterCurr:r.waterCurr,electricPrev:r.elecPrev,electricCurr:r.elecCurr,deduction:r.deduction?num(r.deduction):0,arrearsRepayment:r.arrearsRepayment?num(r.arrearsRepayment):0,paid:r.paid==='已缴费',note:r.note||''};
       monthCount++;
       if(room.status==='empty')room.status='occupied';
     }
