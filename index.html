@@ -2965,12 +2965,12 @@ function generateRoomCanvas(key,filterStatus){
     {l:'月份',w:70},
     {l:'租金',w:60},
     {l:'水表读数',w:90},
-    {l:'水费',w:55},
+    {l:'水费',w:60},
     {l:'电表读数',w:90},
-    {l:'电费',w:55},
-    {l:'扣除',w:50},
-    {l:'补缴',w:50},
-    {l:'合计',w:65},
+    {l:'电费',w:60},
+    {l:'扣除',w:60},
+    {l:'补缴',w:60},
+    {l:'合计',w:75},
     {l:'状态',w:45}
   ];
   let curX=pad;
@@ -3018,12 +3018,21 @@ function generateRoomCanvas(key,filterStatus){
   });
   // 汇总行
   const totalAll=months.reduce((s,ym)=>s+calcMonthFee(room,room.months[ym]).total,0);
+  const unpaidTotal=months.filter(ym=>!room.months[ym].paid).reduce((s,ym)=>s+calcMonthFee(room,room.months[ym]).total,0);
   const sumTop=headY+40+monthCount*rh;
-  ctx.fillStyle='#f8fafc';ctx.fillRect(0,sumTop,w,rh+10);
+  const sumH=unpaidTotal>0?rh+30:rh+10;
+  ctx.fillStyle='#f8fafc';ctx.fillRect(0,sumTop,w,sumH);
   ctx.fillStyle='#1e293b';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
   ctx.fillText(`共计 ${months.length} 个月记录`,pad,sumTop+rh/2+5);
-  ctx.textAlign='right';ctx.fillStyle='#ef4444';
-  ctx.fillText(`累计合计：${money(totalAll)}`,w-pad,sumTop+rh/2+5);
+  if(unpaidTotal>0){
+    ctx.font='bold 13px sans-serif';ctx.fillStyle='#ef4444';ctx.textAlign='right';
+    ctx.fillText(`未缴费合计：${money(unpaidTotal)}`,w-pad,sumTop+rh/2+5);
+    ctx.font='bold 14px sans-serif';ctx.fillStyle='#1e293b';ctx.textAlign='right';
+    ctx.fillText(`累计合计：${money(totalAll)}`,w-pad,sumTop+rh/2+28);
+  }else{
+    ctx.font='bold 14px sans-serif';ctx.fillStyle='#1e293b';ctx.textAlign='right';
+    ctx.fillText(`累计合计：${money(totalAll)}`,w-pad,sumTop+rh/2+5);
+  }
   return canvas;
 }
 
