@@ -961,7 +961,7 @@ function val(id){const el=document.getElementById(id);return el?el.value.trim():
 function num(v){const n=parseFloat(v);return isNaN(n)?0:n;}
 function money(n){return '¥'+(num(n)).toFixed(2);}
 function currentYearMonth(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
-function formatYM(ym){if(!ym)return '';const parts=String(ym).split('-');if(parts.length<2)return ym;const y=parts[0];const m=parseInt(parts[1]);if(isNaN(m))return ym;return y+'年'+m+'月';}
+function formatYM(ym){if(!ym)return '';const parts=String(ym).split('-');if(parts.length<2)return ym;const y=parts[0];const m=String(parts[1]).padStart(2,'0');return y+'年'+m+'月';}
 function monthKey(y,m){return y+'-'+String(m).padStart(2,'0');}
 
 function getRoomRates(room){
@@ -2960,13 +2960,13 @@ function generateRoomCanvas(key,filterStatus){
   const w=W/dpr;
   const rh=rowH/dpr;
   // 列定义：顺序布局，前一列结束=下一列开始，全部居中对齐
-  const pad=40;
+  const pad=25;
   const colsDef=[
-    {l:'月份',w:70},
+    {l:'年月',w:80},
     {l:'租金',w:60},
-    {l:'水表读数',w:90},
+    {l:'水表读数',w:100},
     {l:'水费',w:60},
-    {l:'电表读数',w:90},
+    {l:'电表读数',w:100},
     {l:'电费',w:60},
     {l:'扣除',w:60},
     {l:'补缴',w:60},
@@ -2986,8 +2986,7 @@ function generateRoomCanvas(key,filterStatus){
   const dn=getRoomDisplayName(room,num);
   ctx.fillText(`${bName} ${dn} ${tenantName}`,w/2,34);
   ctx.font='12px sans-serif';ctx.fillStyle='rgba(255,255,255,.85)';
-  const now=new Date();
-  ctx.fillText(`水电费明细 · 电话：${room.phone||'-'}  ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,w/2,58);
+  ctx.fillText(`水电费明细 · 电话：${room.phone||'-'}`,w/2,58);
   // 表头
   const headY=80;
   ctx.fillStyle='#f1f5f9';ctx.fillRect(0,headY,w,40);
