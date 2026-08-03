@@ -1358,9 +1358,8 @@ function openMonthWheelPicker(){
   let html=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:flex-end" id="mpWheelOverlay">
     <div style="background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:480px;margin:auto;padding:20px 16px 28px;animation:mpSlideUp .25s ease-out">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <button id="mpWheelCancel" style="border:none;background:transparent;font-size:15px;color:var(--text-light);cursor:pointer;padding:4px 8px">取消</button>
         <div style="font-weight:600;font-size:16px">选择月份</div>
-        <button id="mpWheelReset" style="border:none;background:transparent;font-size:14px;color:var(--primary);cursor:pointer;padding:4px 8px">本月</button>
+        <button id="mpWheelCancel" style="border:none;background:transparent;font-size:15px;color:var(--text-light);cursor:pointer;padding:4px 8px">取消</button>
       </div>
       <div style="display:flex;gap:0;height:180px;overflow:hidden;position:relative">
         <div id="mpWheelYear" style="flex:1;overflow-y:auto;max-height:180px;text-align:center;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch"></div>
@@ -1368,7 +1367,7 @@ function openMonthWheelPicker(){
         <div style="position:absolute;top:50%;left:0;right:0;height:44px;margin-top:-22px;border-top:1px solid var(--primary);border-bottom:1px solid var(--primary);pointer-events:none"></div>
       </div>
       <div style="display:flex;gap:10px;margin-top:16px">
-        <button id="mpWheelClear" style="flex:1;padding:12px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--text);font-size:15px;cursor:pointer">恢复默认</button>
+        <button id="mpWheelClear" style="flex:1;padding:12px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--text);font-size:15px;cursor:pointer">回到本月</button>
         <button id="mpWheelConfirm" style="flex:1;padding:12px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:15px;cursor:pointer">确定</button>
       </div>
     </div>
@@ -1405,9 +1404,6 @@ function openMonthWheelPicker(){
   overlay.addEventListener('click',e=>{if(e.target===overlay)closeWheel()});
   function closeWheel(){overlay.remove();}
   document.getElementById('mpWheelCancel').addEventListener('click',closeWheel);
-  document.getElementById('mpWheelReset').addEventListener('click',()=>{
-    _overviewMonth=null;renderOverview();closeWheel();toast('已恢复本月');
-  });
   document.getElementById('mpWheelClear').addEventListener('click',()=>{
     _overviewMonth=null;renderOverview();closeWheel();toast('已恢复本月');
   });
@@ -1932,7 +1928,6 @@ function openRoom(key,archiveIdx){
     <div class="section">
       <div class="section-title">租客信息 <span class="st-action" id="btnAddTenant" style="font-size:12px">+ 添加租客</span></div>
       <div id="tenantList"></div>
-      <div class="form-row"><label>入住日期</label><input type="date" id="fDate" value="${esc(room.moveInDate)}"></div>
     </div>
     <div class="section">
       <div class="section-title">租金/押金</div>
@@ -2195,7 +2190,6 @@ function bindRoomEvents(key){
     clearTimeout(autoSaveTimer);
     autoSaveTimer=setTimeout(()=>{
       const r=state.rooms[key];if(!r)return;
-      r.moveInDate=val('fDate');
       r.note=val('fNote');r.fixedRent=val('fFixedRent');
       const ap=document.querySelector('.pill.active');if(ap)r.status=ap.dataset.status;
       r.deposit.amount=val('fDeposit');r.deposit.method=val('fDepositMethod');
@@ -2207,7 +2201,7 @@ function bindRoomEvents(key){
       save();renderAll();
     },500);
   }
-  ['fDate','fFixedRent','fDeposit','fDepositMethod','fNote'].forEach(id=>{
+  ['fFixedRent','fDeposit','fDepositMethod','fNote'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.addEventListener('input',autoSaveRoom);
   });
@@ -2769,8 +2763,6 @@ function autoRoomStatus(room){
 }
 function saveRoomQuiet(key){
   const room=state.rooms[key];if(!room)return;
-  const fDate=document.getElementById('fDate');if(!fDate)return;
-  room.moveInDate=fDate.value;
   room.note=val('fNote');room.fixedRent=val('fFixedRent');
   const activePill=document.querySelector('.pill.active');if(activePill)room.status=activePill.dataset.status;
   room.deposit.amount=val('fDeposit');room.deposit.method=val('fDepositMethod');
@@ -4301,7 +4293,7 @@ function flushSave(triggerAutoBackup){
       const fTenant=document.getElementById('fTenant');
       if(fTenant){
         r.tenant=val('fTenant');r.phone=val('fPhone');r.idCard=val('fIdCard');
-        r.moveInDate=val('fDate');r.note=val('fNote');r.fixedRent=val('fFixedRent');
+        r.note=val('fNote');r.fixedRent=val('fFixedRent');
         r.deposit.amount=val('fDeposit');r.deposit.method=val('fDepositMethod');
       }
     }
