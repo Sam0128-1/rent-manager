@@ -1378,9 +1378,6 @@ function openMonthWheelPicker(){
   const yearBox=document.getElementById('mpWheelYear');
   const monthBox=document.getElementById('mpWheelMonth');
   const itemH=36;
-  const pad=document.createElement('div');
-  pad.style.height='72px';
-  pad.style.flex='0 0 72px';
   // 年份列
   const yItems=years.map(y=>`<div data-y="${y}" style="scroll-snap-align:center;height:${itemH}px;line-height:${itemH}px;font-size:17px;color:${y===curYear?'var(--primary)':'var(--text)'}">${y}年</div>`).join('');
   yearBox.innerHTML=`<div style="height:72px"></div>${yItems}<div style="height:72px"></div>`;
@@ -1983,7 +1980,7 @@ function openRoom(key,archiveIdx){
 function bindRoomEvents(key){
   const room=state.rooms[key];
   const body=document.getElementById('sheetBody');
-  _statusManuallySet=false; // 打开房间时重置手动状态标记
+  let _statusManuallySet=false; // 打开房间时重置手动状态标记
   body.querySelectorAll('.pill').forEach(p=>p.addEventListener('click',()=>{
     const newStatus=p.dataset.status;
     const oldStatus=room.status;
@@ -2194,7 +2191,6 @@ function bindRoomEvents(key){
 
   // 自动保存（输入即保存，不关闭不提示）
   let autoSaveTimer;
-  let _statusManuallySet=false;
   function autoSaveRoom(){
     clearTimeout(autoSaveTimer);
     autoSaveTimer=setTimeout(()=>{
@@ -2780,7 +2776,10 @@ function saveRoomQuiet(key){
   room.deposit.amount=val('fDeposit');room.deposit.method=val('fDepositMethod');
   const ts=getAllTenants(room);
   if(ts.length>0){room.tenant=ts[0].name;room.phone=ts[0].phone;room.idCard=ts[0].idCard;room.idCardImg=ts[0].idCardImg;room.moveInDate=ts[0].moveInDate;}
-  autoRoomStatus(room);
+  // 只有当无租客信息时才自动设为空置（不覆盖手动设置的已入住状态）
+  const hasTenant=room.tenant||room.phone||room.idCard;
+  const hasTenant2=ts.length>0&&(ts[0].name||ts[0].phone);
+  if(!hasTenant&&!hasTenant2&&room.status!=='maintenance')room.status='empty';
   room.updatedAt=new Date().toISOString();save();renderAll();
 }
 function saveRoom(key){
