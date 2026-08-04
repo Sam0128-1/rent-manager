@@ -991,7 +991,7 @@ function calcMonthFee(room,monthData){
   const deduction=num(monthData.deduction);
   const arrearsRepayment=num(monthData.arrearsRepayment);
   const subtotal=rent+waterFee+elecFee;
-  return{waterUsed:wUsed>0?wUsed:0,waterFee,elecUsed:eUsed>0?eUsed:0,elecFee,rent,deduction,arrearsRepayment,total:Math.max(0,subtotal-deduction-arrearsRepayment)};
+  return{waterUsed:wUsed>0?wUsed:0,waterFee,elecUsed:eUsed>0?eUsed:0,elecFee,rent,deduction,arrearsRepayment,total:Math.max(0,subtotal-deduction+arrearsRepayment)};
 }
 
 let toastTimer;
@@ -1156,6 +1156,14 @@ function expandSidebar(){
     const t=e.touches[0];sx=t.clientX;sy=t.clientY;tracking=true;triggered=false;
     // 收起态：仅从左边缘向右滑；展开态：从侧栏区域向左滑可收起
     if(collapsed){if(sx>EDGE)tracking=false;}
+    // 如果有全屏页面打开，禁用侧栏手势（避免与右滑退出冲突）
+    if(tracking){
+      const fsOpen=document.getElementById('sheet').classList.contains('show')||
+                   document.getElementById('settingsSheet').classList.contains('show')||
+                   document.getElementById('monthSheet').classList.contains('show')||
+                   document.getElementById('batchSheet').classList.contains('show');
+      if(fsOpen)tracking=false;
+    }
   },{passive:true});
   document.addEventListener('touchmove',e=>{
     if(!tracking)return;
@@ -1175,6 +1183,14 @@ function expandSidebar(){
     const collapsed=document.body.classList.contains('sidebar-collapsed');
     mx=e.clientX;sy=e.clientY;mTracking=true;triggered=false;
     if(collapsed){if(mx>EDGE)mTracking=false;}
+    // 如果有全屏页面打开，禁用侧栏手势
+    if(mTracking){
+      const fsOpen=document.getElementById('sheet').classList.contains('show')||
+                   document.getElementById('settingsSheet').classList.contains('show')||
+                   document.getElementById('monthSheet').classList.contains('show')||
+                   document.getElementById('batchSheet').classList.contains('show');
+      if(fsOpen)mTracking=false;
+    }
   });
   document.addEventListener('mousemove',e=>{
     if(!mTracking)return;
@@ -2275,7 +2291,7 @@ function renderMonthList(key){
       </div>
       <div class="swipe-item-content ${md.paid?'paid':'unpaid'}" data-month="${ym}">
         <div class="mli-header"><span class="mli-month">${formatYM(ym)}</span><span class="mli-total">${money(calc.total)}</span></div>
-        <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}${calc.arrearsRepayment>0?' · 补缴-'+money(calc.arrearsRepayment):''}</div>
+        <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}${calc.arrearsRepayment>0?' · 补缴+'+money(calc.arrearsRepayment):''}</div>
         <span class="mli-status ${md.paid?'paid':'unpaid'}">${md.paid?'已缴费':'未缴费'}</span>
       </div>
     </div>`;
@@ -2291,7 +2307,7 @@ function renderMonthList(key){
         </div>
         <div class="swipe-item-content ${md.paid?'paid':'unpaid'}" data-month="${ym}">
           <div class="mli-header"><span class="mli-month">${formatYM(ym)}</span><span class="mli-total">${money(calc.total)}</span></div>
-          <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}${calc.arrearsRepayment>0?' · 补缴-'+money(calc.arrearsRepayment):''}</div>
+          <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}${calc.arrearsRepayment>0?' · 补缴+'+money(calc.arrearsRepayment):''}</div>
           <span class="mli-status ${md.paid?'paid':'unpaid'}">${md.paid?'已缴费':'未缴费'}</span>
         </div>
       </div>`;
@@ -2415,7 +2431,7 @@ function openMonthEdit(key,ym){
       <div class="fee-calc">
         <div class="fee-calc-row"><span class="fc-label">小计（租金+水电）</span><span class="fc-value" id="subtotalFee">¥0.00</span></div>
         <div class="fee-calc-row"><span class="fc-label" style="color:var(--danger)">扣除项</span><span class="fc-value" id="deductionFee" style="color:var(--danger)">-¥0.00</span></div>
-        <div class="fee-calc-row"><span class="fc-label" style="color:var(--danger)">欠款补缴</span><span class="fc-value" id="arrearsFee" style="color:var(--danger)">-¥0.00</span></div>
+        <div class="fee-calc-row"><span class="fc-label" style="color:var(--success)">欠款补缴</span><span class="fc-value" id="arrearsFee" style="color:var(--success)">+¥0.00</span></div>
         <div class="fee-calc-row total"><span class="fc-label">本月应收</span><span class="fc-value" id="totalFee">¥0.00</span></div>
       </div>
       <div class="switch-row" style="margin-top:10px"><span class="switch-label">已缴费</span><div class="switch ${md.paid?'on':''}" id="paidSwitch"></div></div>
@@ -2484,7 +2500,7 @@ function updateMonthCalc(){
   const deduction=num(val('mDeduction'));
   const arrearsRepayment=num(val('mArrearsRepayment'));
   const subtotal=rent+wFee+eFee;
-  const total=Math.max(0,subtotal-deduction-arrearsRepayment);
+  const total=Math.max(0,subtotal-deduction+arrearsRepayment);
   const wuEl=document.getElementById('waterUsed'),wfEl=document.getElementById('waterFee'),euEl=document.getElementById('elecUsed'),efEl=document.getElementById('elecFee'),tEl=document.getElementById('totalFee'),stEl=document.getElementById('subtotalFee'),dEl=document.getElementById('deductionFee'),aEl=document.getElementById('arrearsFee');
   if(wuEl)wuEl.textContent=(wUsed>0?wUsed:0).toFixed(1)+' 方';
   if(wfEl)wfEl.textContent=money(wFee);
@@ -2492,7 +2508,7 @@ function updateMonthCalc(){
   if(efEl)efEl.textContent=money(eFee);
   if(stEl)stEl.textContent=money(subtotal);
   if(dEl)dEl.textContent='-¥'+deduction.toFixed(2);
-  if(aEl)aEl.textContent='-¥'+arrearsRepayment.toFixed(2);
+  if(aEl)aEl.textContent='+¥'+arrearsRepayment.toFixed(2);
   if(tEl)tEl.textContent=money(total);
 }
 
@@ -3028,7 +3044,7 @@ function generateRoomCanvas(key,filterStatus){
     ctx.fillStyle='#64748b';ctx.fillText(`${md.electricPrev||0}→${md.electricCurr||0}`,cx(4),y);
     ctx.fillStyle='#1e293b';ctx.fillText(money(calc.elecFee),cx(5),y);
     ctx.fillStyle='#e6a700';ctx.fillText(calc.deduction>0?'-'+money(calc.deduction):'-',cx(6),y);
-    ctx.fillStyle='#e6a700';ctx.fillText(calc.arrearsRepayment>0?'-'+money(calc.arrearsRepayment):'-',cx(7),y);
+    ctx.fillStyle='#16a34a';ctx.fillText(calc.arrearsRepayment>0?'+'+money(calc.arrearsRepayment):'-',cx(7),y);
     const isPaid=md.paid;
     ctx.fillStyle=isPaid?'#22c55e':'#ef4444';ctx.font='bold 12px sans-serif';
     ctx.fillText(money(calc.total),cx(8),y);
@@ -3284,7 +3300,7 @@ async function doBatchExport(b,selMonths,selRooms,fmt){
         {l:'电表读数',v:`${md.electricPrev||0}→${md.electricCurr||0}度`,y:yOff+144,c:'#64748b'},
         {l:'电费 ('+calc.elecUsed+'度 × ¥'+rates.electricPrice+')',v:money(calc.elecFee),y:yOff+168},
         {l:'扣除',v:calc.deduction>0?'-'+money(calc.deduction):'-',y:yOff+192,c:'#e6a700'},
-        {l:'欠款补缴',v:calc.arrearsRepayment>0?'-'+money(calc.arrearsRepayment):'-',y:yOff+216,c:'#e6a700'},
+        {l:'欠款补缴',v:calc.arrearsRepayment>0?'+'+money(calc.arrearsRepayment):'-',y:yOff+216,c:'#16a34a'},
       ];
       rows.forEach(d=>{
         ctx.fillStyle='#64748b';ctx.textAlign='left';ctx.fillText(d.l,14,d.y);
@@ -4239,6 +4255,95 @@ document.getElementById('buildingEditPopover').addEventListener('click',e=>e.sto
       }
     });
     document.addEventListener('mouseup',()=>{tracking=false;});
+  });
+})();
+
+/* ===== 全屏页面右滑退出手势 ===== */
+// 支持从屏幕左边缘向右滑动来关闭全屏页面（房间详情/全局设置/录入费用/批量导出）
+(function initFullScreenSwipeRight(){
+  const EDGE=30;        // 左边缘触发区域宽度
+  const THRESHOLD=80;   // 右滑触发阈值
+  // 全屏页面与对应关闭函数的映射
+  const targets=[
+    {el:document.getElementById('sheet'),closeFn:()=>closeSheet()},
+    {el:document.getElementById('settingsSheet'),closeFn:()=>closeSettings()},
+    {el:document.getElementById('monthSheet'),closeFn:()=>closeMonthSheet()},
+    {el:document.getElementById('batchSheet'),closeFn:()=>closeBatchExport()}
+  ].filter(t=>t.el);
+
+  let startX=0,startY=0,tracking=false,activeTarget=null,dragging=false;
+
+  // 判断当前是否有全屏页面处于打开状态
+  function getActiveTarget(){
+    return targets.find(t=>t.el.classList.contains('show'));
+  }
+
+  document.addEventListener('touchstart',e=>{
+    const t=e.touches[0];
+    // 仅在左边缘区域开始触摸
+    if(t.clientX>EDGE){tracking=false;return;}
+    const tgt=getActiveTarget();
+    if(!tgt){tracking=false;return;}
+    startX=t.clientX;startY=t.clientY;tracking=true;activeTarget=tgt;dragging=false;
+  },{passive:true});
+
+  document.addEventListener('touchmove',e=>{
+    if(!tracking||!activeTarget)return;
+    const t=e.touches[0];
+    const dx=t.clientX-startX;
+    const dy=t.clientY-startY;
+    // 仅处理右滑（dx>0）且水平位移大于垂直位移的情况
+    if(dx>0&&dx>Math.abs(dy)){
+      dragging=true;
+      // 跟随手指右滑平移页面，增加阻尼感（0.5倍）
+      activeTarget.el.style.transition='none';
+      activeTarget.el.style.transform='translateX('+dx+'px)';
+    }else if(dragging){
+      // 已经开始拖动后，即使垂直滑动也保持水平位置
+      activeTarget.el.style.transform='translateX('+Math.max(0,dx)+'px)';
+    }
+  },{passive:true});
+
+  document.addEventListener('touchend',e=>{
+    if(!tracking||!activeTarget){tracking=false;return;}
+    tracking=false;
+    const t=e.changedTouches[0];
+    const dx=t.clientX-startX;
+    activeTarget.el.style.transition='';
+    activeTarget.el.style.transform='';
+    if(dragging&&dx>THRESHOLD){
+      activeTarget.closeFn();
+    }
+    activeTarget=null;dragging=false;
+  },{passive:true});
+
+  // 桌面端鼠标拖拽（兼容测试）
+  let mTracking=false,mx=0,my=0,mTarget=null,mDragging=false;
+  document.addEventListener('mousedown',e=>{
+    if(e.clientX>EDGE)return;
+    const tgt=getActiveTarget();
+    if(!tgt)return;
+    mx=e.clientX;my=e.clientY;mTracking=true;mTarget=tgt;mDragging=false;
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!mTracking||!mTarget)return;
+    const dx=e.clientX-mx,dy=e.clientY-my;
+    if(dx>0&&dx>Math.abs(dy)){
+      mDragging=true;
+      mTarget.el.style.transition='none';
+      mTarget.el.style.transform='translateX('+dx+'px)';
+    }
+  });
+  document.addEventListener('mouseup',e=>{
+    if(!mTracking||!mTarget){mTracking=false;return;}
+    mTracking=false;
+    const dx=e.clientX-mx;
+    mTarget.el.style.transition='';
+    mTarget.el.style.transform='';
+    if(mDragging&&dx>THRESHOLD){
+      mTarget.closeFn();
+    }
+    mTarget=null;mDragging=false;
   });
 })();
 
