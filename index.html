@@ -48,6 +48,8 @@
     transition:transform .3s cubic-bezier(.32,.72,0,1);
   }
   body.sidebar-collapsed .sidebar{transform:translateX(-200px)}
+  .sidebar-overlay{display:none;position:fixed;inset:0;z-index:105;background:transparent}
+  body:not(.sidebar-collapsed) .sidebar-overlay{display:block}
   .sidebar-header{
     padding:14px 14px 10px;border-bottom:1px solid var(--border);flex-shrink:0;
     display:flex;align-items:center;justify-content:space-between;
@@ -357,6 +359,7 @@
 <body>
 
 <!-- 左侧楼栋菜单 -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 <div class="sidebar">
   <div class="sidebar-header">
     <div class="sidebar-header-title">楼栋菜单</div>
@@ -1781,8 +1784,8 @@ function renderFloors(){
   list.innerHTML='';
   const ym=currentYearMonth();
   const floorsCount=(b.floors||[]).length;
-  // 如果没有记录，默认展开1楼
-  if(_lastExpandedFloor===null||_lastExpandedFloor<1||_lastExpandedFloor>floorsCount)_lastExpandedFloor=1;
+  // 默认全部折叠（不自动展开任何楼层）
+  if(_lastExpandedFloor!==null&&(_lastExpandedFloor<1||_lastExpandedFloor>floorsCount))_lastExpandedFloor=null;
   for(let fIdx=floorsCount-1;fIdx>=0;fIdx--){
     const f=fIdx+1;
     const floor=b.floors[fIdx];
@@ -1801,7 +1804,7 @@ function renderFloors(){
     floorEl.innerHTML=`
       <div class="floor-header">
         <div class="floor-title"><span class="floor-badge">${f}F</span><span>${f} 楼</span></div>
-        <div class="floor-info">${occCount}/${totalCount} 入住 <span class="floor-arrow">${f===_lastExpandedFloor?'▼':'▶'}</span></div>
+        <div class="floor-info">${occCount}/${totalCount} 入住 <span class="floor-arrow">▶</span></div>
       </div>
       <div class="floor-body">
         <div class="rooms-grid">
@@ -4210,19 +4213,8 @@ document.getElementById('btnAddBuilding').addEventListener('click',openBuildingA
 document.getElementById('btnCollapseSidebar').addEventListener('click',collapseSidebar);
 document.getElementById('btnOpenSidebar').addEventListener('click',expandSidebar);
 document.getElementById('btnArchiveList').addEventListener('click',showAllArchives);
-// 侧栏展开时，点击右侧主区域任意位置收起侧栏
-document.getElementById('main').addEventListener('click',(e)=>{
-  if(!document.body.classList.contains('sidebar-collapsed')){
-    // 排除点击交互元素（房间格子、概览等仍可正常响应，但侧栏会收起）
-    collapseSidebar();
-  }
-});
-document.querySelector('.header').addEventListener('click',(e)=>{
-  // 点击 header 非按钮区域时也收起侧栏（但不拦截按钮点击）
-  if(!document.body.classList.contains('sidebar-collapsed')&&!e.target.closest('button')){
-    collapseSidebar();
-  }
-});
+// 侧栏展开时，点击透明遮罩层收起侧栏（不触发底层按钮）
+document.getElementById('sidebarOverlay').addEventListener('click',collapseSidebar);
 document.getElementById('sheetClose').addEventListener('click',closeSheet);
 document.getElementById('monthClose').addEventListener('click',closeMonthSheet);
 document.getElementById('overlay').addEventListener('click',()=>{closeSheet();closeSettings();closeExportModal();closeArchiveModal();closeRatePopover();});
