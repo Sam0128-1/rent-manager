@@ -1,0 +1,33 @@
+{
+  "name": "rent-management-app",
+  "version": "1.0.0",
+  "description": "多楼栋房租费用统计管理工具",
+  "main": "index.html",
+  "scripts": {
+    "init": "npx cap init",
+    "add:android": "npm install @capacitor/android && npx cap add android",
+    "add:ios": "npm install @capacitor/ios && npx cap add ios",
+    "sync": "npx cap sync",
+    "open:android": "npx cap open android",
+    "open:ios": "npx cap open ios",
+    "build:web": "echo 'Web 版本无需构建，直接 sync 即可' && npx cap sync"
+  },
+  "keywords": [
+    "rent",
+    "management",
+    "pwa",
+    "capacitor",
+    "mobile-app"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@capacitor/cli": "^5.0.0",
+    "@capacitor/core": "^5.0.0",
+    "@capacitor/android": "^5.0.0",
+    "@capacitor/ios": "^5.0.0",
+    "@capacitor/splash-screen": "^5.0.0",
+    "@capacitor/status-bar": "^5.0.0",
+    "@capacitor/keyboard": "^5.0.0"
+  }
+}

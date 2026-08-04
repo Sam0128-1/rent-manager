@@ -1,0 +1,38 @@
+{
+  "appId": "com.rent.management",
+  "appName": "房租费用统计",
+  "webDir": ".",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#5C6DFF"
+  },
+  "ios": {
+    "backgroundColor": "#5C6DFF",
+    "scrollEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#5C6DFF",
+      "showSpinner": false,
+      "androidScaleType": "CENTER_CROP",
+      "iosSpinnerStyle": "small",
+      "splashFullScreen": true,
+      "splashImmersive": true
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#5C6DFF",
+      "overlaysWebView": false
+    },
+    "Keyboard": {
+      "resize": "body",
+      "style": "DARK",
+      "resizeOnFullScreen": true
+    }
+  }
+}
