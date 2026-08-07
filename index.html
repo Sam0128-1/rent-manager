@@ -3688,15 +3688,29 @@ function showImportReview(result){
     </div>
   `;
   // 绑定编辑事件——更新临时数据
+  // 同步输入框值到 data 数组（兼容移动端可能不触发 input 事件的情况）
+  function syncAllInputsToData(){
+    body.querySelectorAll('.rv-input').forEach(input=>{
+      const idx=parseInt(input.dataset.idx);
+      const field=input.dataset.field;
+      if(isNaN(idx)||!field)return;
+      if(field==='floor'||field==='roomNum'){data[idx][field]=parseInt(input.value)||0;}
+      else if(field==='bname'){data[idx][field]=input.value.trim();}
+      else{data[idx][field]=input.value;}
+    });
+  }
   body.querySelectorAll('.rv-input').forEach(input=>{
-    input.addEventListener('input',()=>{
+    const onEvt=()=>{
       const idx=parseInt(input.dataset.idx);
       const field=input.dataset.field;
       if(field==='floor'||field==='roomNum'){data[idx][field]=parseInt(input.value)||0;}
       else if(field==='bname'){data[idx][field]=input.value.trim();}
       else{data[idx][field]=input.value;}
       if(field==='bname'||field==='floor'||field==='roomNum'||field==='ym'){validateAllReview();}
-    });
+    };
+    input.addEventListener('input',onEvt);
+    input.addEventListener('change',onEvt);
+    input.addEventListener('blur',onEvt);
   });
   // 冲突检测：楼栋名+楼层+房间号+同月重复
   function validateReviewRow(idx){
@@ -3753,6 +3767,7 @@ function showImportReview(result){
   validateAllReview();
   document.getElementById('btnReviewCancel').addEventListener('click',closeSheet);
   document.getElementById('btnReviewConfirm').addEventListener('click',()=>{
+    syncAllInputsToData(); // 强制同步，确保移动端输入变化全部写入
     if(!validateAllReview()){toast('存在冲突，请查看标红项');return;}
     applyImportedData(data);
   });
@@ -3801,7 +3816,24 @@ function applyImportedData(data){
       if(room.status==='empty')room.status='occupied';
     }
   });
-  initRooms();save();renderAll();closeSheet();
+  initRooms();save();renderAll();
+  // 自动展开有已入住房间的楼层（导入后方便用户立即看到数据）
+  const bld=getBuilding(state.current);
+  if(bld){
+    for(let fIdx=0;fIdx<bld.floors.length;fIdx++){
+      const f=fIdx+1;const floor=bld.floors[fIdx];let hasOcc=false;
+      for(let r=1;r<=floor.rooms;r++){
+        const room=state.rooms[`${bld.id}-${f*100+r}`];
+        if(room&&room.status==='occupied'){hasOcc=true;break;}
+      }
+      if(hasOcc){
+        const els=document.querySelectorAll('.floor');
+        const displayIdx=bld.floors.length-1-fIdx; // 倒序显示
+        if(els[displayIdx]){els[displayIdx].classList.add('expanded');_lastExpandedFloor=f;}
+      }
+    }
+  }
+  closeSheet();
   toast(`导入成功：${buildingCount}栋、${roomCount}间房、${monthCount}条费用`);
 }
 
