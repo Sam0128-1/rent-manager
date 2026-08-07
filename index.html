@@ -3662,9 +3662,10 @@ function showImportReview(result){
         ${data.map((r,i)=>`
           <div class="building-mgmt-item" style="padding:10px;margin-bottom:6px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <span style="font-weight:600;font-size:14px">${esc(r.bname)} ${r.floor}楼 ${r.roomNum}房</span>
-              <span style="font-size:12px;color:${r.ym?'var(--success)':'var(--text-lighter)'}">${r.ym?formatYM(r.ym):'仅房间信息'}</span>
+              <span style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:2px">${esc(r.bname)} <input type="number" class="rv-input rv-floor" data-idx="${i}" data-field="floor" value="${r.floor}" style="width:36px;font-size:12px;border:1px solid var(--border);border-radius:4px;padding:2px 4px">楼 <input type="number" class="rv-input rv-room" data-idx="${i}" data-field="roomNum" value="${r.roomNum}" style="width:46px;font-size:12px;border:1px solid var(--border);border-radius:4px;padding:2px 4px">房</span>
+              <input type="month" class="rv-input" data-idx="${i}" data-field="ym" value="${esc(r.ym)}" style="font-size:12px;border:1px solid var(--border);border-radius:4px;padding:2px 6px;color:${r.ym?'var(--success)':'var(--text-lighter)'}" title="费用月份（可修改）">
             </div>
+            <div class="rv-conflict-hint" data-idx="${i}" style="display:none;color:var(--danger);font-size:11px;margin:-2px 0 4px"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px;color:var(--text-light)">
               <div>租客: <input type="text" class="rv-input" data-idx="${i}" data-field="tenant" value="${esc(r.tenant)}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
               <div>电话: <input type="text" class="rv-input" data-idx="${i}" data-field="phone" value="${esc(r.phone)}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
@@ -3688,15 +3689,40 @@ function showImportReview(result){
   `;
   // 绑定编辑事件——更新临时数据
   body.querySelectorAll('.rv-input').forEach(input=>{
-    input.addEventListener('change',()=>{
+    input.addEventListener('input',()=>{
       const idx=parseInt(input.dataset.idx);
       const field=input.dataset.field;
-      data[idx][field]=input.value;
+      data[idx][field]=(field==='floor'||field==='roomNum')?(parseInt(input.value)||0):input.value;
+      if(field==='floor'||field==='roomNum')validateReviewRow(idx);
     });
   });
+  // 冲突检测：楼层与房间号是否匹配（房间号>=100时，前两位必须等于楼层）
+  function validateReviewRow(idx){
+    const r=data[idx];
+    const floorEl=body.querySelector('.rv-floor[data-idx="'+idx+'"]');
+    const roomEl=body.querySelector('.rv-room[data-idx="'+idx+'"]');
+    const hintEl=body.querySelector('.rv-conflict-hint[data-idx="'+idx+'"]');
+    const f=parseInt(r.floor),n=parseInt(r.roomNum);
+    let conflict=false,hint='';
+    if(isNaN(f)||f<1){conflict=true;hint='楼层无效';}
+    else if(isNaN(n)||n<1){conflict=true;hint='房间号无效';}
+    else if(n>=100&&Math.floor(n/100)!==f){conflict=true;hint='房间号'+n+'对应'+Math.floor(n/100)+'楼，当前填'+f+'楼，请修正';}
+    if(floorEl)floorEl.style.borderColor=conflict?'var(--danger)':'var(--border)';
+    if(roomEl)roomEl.style.borderColor=conflict?'var(--danger)':'var(--border)';
+    if(hintEl){hintEl.style.display=conflict?'':'none';hintEl.textContent=hint;}
+    return !conflict;
+  }
+  function validateAllReview(){
+    let ok=true;
+    for(let i=0;i<data.length;i++){if(!validateReviewRow(i))ok=false;}
+    const btn=document.getElementById('btnReviewConfirm');
+    if(btn){btn.disabled=!ok;btn.style.opacity=ok?'1':'0.5';btn.textContent=ok?'确认导入':'请先修正标红项';}
+    return ok;
+  }
+  validateAllReview();
   document.getElementById('btnReviewCancel').addEventListener('click',closeSheet);
   document.getElementById('btnReviewConfirm').addEventListener('click',()=>{
-    // 将核对后的数据写入 state
+    if(!validateAllReview()){toast('请先修正标红的冲突项');return;}
     applyImportedData(data);
   });
   document.getElementById('overlay').classList.add('show');
