@@ -3695,7 +3695,7 @@ function showImportReview(result){
       if(field==='floor'||field==='roomNum'){data[idx][field]=parseInt(input.value)||0;}
       else if(field==='bname'){data[idx][field]=input.value.trim();}
       else{data[idx][field]=input.value;}
-      if(field==='bname'||field==='floor'||field==='roomNum'||field==='ym')validateReviewRow(idx);
+      if(field==='bname'||field==='floor'||field==='roomNum'||field==='ym'){validateAllReview();}
     });
   });
   // 冲突检测：楼栋名+楼层+房间号+同月重复
