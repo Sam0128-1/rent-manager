@@ -178,15 +178,26 @@
   .overview-num{font-size:18px;font-weight:700}
   .overview-label{font-size:11px;color:var(--text-light);margin-top:2px}
 
-  .floor{background:var(--card);margin:10px 10px;border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
-  .floor-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer}
-  .floor-title{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px}
-  .floor-badge{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
-  .floor-info{font-size:12px;color:var(--text-light);display:flex;align-items:center;gap:8px}
-  .floor-arrow{transition:transform .25s;font-size:11px;color:var(--text-lighter)}
-  .floor.expanded .floor-arrow{transform:rotate(90deg)}
-  .floor-body{display:none;padding:4px 12px 12px}
-  .floor.expanded .floor-body{display:block}
+  .floors-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:10px}
+  .floor-tab{background:var(--card);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;border:2px solid transparent;box-shadow:var(--shadow);transition:all .15s}
+  .floor-tab:active{transform:scale(.92)}
+  .floor-tab.active{border-color:var(--primary);background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff}
+  .floor-tab .ft-badge{font-weight:700;font-size:15px;line-height:1.2}
+  .floor-tab .ft-info{font-size:11px;color:var(--text-light);margin-top:3px}
+  .floor-tab.active .ft-info{color:rgba(255,255,255,.9)}
+  .floor-expanded{background:var(--card);margin:0 10px 12px;border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+  .floor-expanded-title{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;margin-bottom:10px}
+  .floor-expanded-title .feb{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
+  .expense-card{background:var(--card);margin:0 10px 12px;border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+  .expense-card-title{font-weight:600;font-size:15px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+  .expense-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .expense-btn{border:none;border-radius:10px;padding:12px 4px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:transform .1s}
+  .expense-btn:active{transform:scale(.92)}
+  .expense-btn .eb-icon{font-size:18px}
+  .repair-item{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin:4px 0;cursor:pointer}
+  .repair-item.pending{border-color:var(--danger);background:#fef2f2}
+  .repair-item-title{display:flex;justify-content:space-between;align-items:center}
+  .repair-item-meta{font-size:12px;color:var(--text-light);margin-top:4px}
 
   .rooms-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
   .room-cell{aspect-ratio:.8;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-weight:600;font-size:14px;transition:transform .1s;border:2px solid transparent;position:relative;padding:2px 0}
@@ -410,6 +421,7 @@
     </div>
   </div>
   <div id="floorList"></div>
+  <div id="expenseCard"></div>
   <div id="searchResults" class="search-results"></div>
 </div>
 
@@ -537,7 +549,7 @@
 /* ============================================================ 数据层 ============================================================ */
 const STORAGE_KEY='building_workbench_v4';
 const OLD_KEY='building_workbench_v3';
-const APP_VERSION='000.00.01';
+const APP_VERSION='001.02.00';
 const STATUS_MAP={
   empty:{label:'空置',cls:'room-empty',text:'空'},
   occupied:{label:'已入住',cls:'room-occupied',text:'住'},
@@ -553,7 +565,8 @@ let state={
   ],
   globalRates:{waterPrice:6,electricPrice:1.2},
   rooms:{},
-  expenses:[]
+  expenses:[],
+  repairs:[]
 };
 let _lastJson=null; // 供 云同步、备份恢复 等 用于检测 state 变化
 
@@ -641,6 +654,7 @@ function load(){
       state.globalRates=d.globalRates||{waterPrice:6,electricPrice:1.2};
       state.rooms=d.rooms||{};
       state.expenses=d.expenses||[];
+      state.repairs=d.repairs||[];
       loaded=true;
     }else{
       // localStorage 为空，尝试从 IndexedDB 恢复
@@ -662,6 +676,7 @@ function load(){
               state.globalRates=d.globalRates||{waterPrice:6,electricPrice:1.2};
               state.rooms=d.rooms||{};
               state.expenses=d.expenses||[];
+              state.repairs=d.repairs||[];
               initRooms();save();renderAll();
               console.log('已从IndexedDB恢复数据');
               setTimeout(()=>toast('数据已从本地恢复'),500);
@@ -687,6 +702,7 @@ function load(){
               state.globalRates=d.globalRates||{waterPrice:6,electricPrice:1.2};
               state.rooms=d.rooms||{};
               state.expenses=d.expenses||[];
+              state.repairs=d.repairs||[];
               initRooms();save();renderAll();
               console.log('已从快照恢复数据');
               setTimeout(()=>toast('数据已从快照恢复'),500);
@@ -712,6 +728,7 @@ function load(){
           state.globalRates=d.globalRates||{waterPrice:6,electricPrice:1.2};
           state.rooms=d.rooms||{};
           state.expenses=d.expenses||[];
+          state.repairs=d.repairs||[];
           if(d.buildings&&d.buildings.length){
             state.buildings=d.buildings.map(b=>{
               if(Array.isArray(b.floors))return b;
@@ -1781,11 +1798,10 @@ function renderFloors(){
   const b=getBuilding(state.current);
   if(!b)return;
   const list=document.getElementById('floorList');
-  list.innerHTML='';
-  const ym=currentYearMonth();
   const floorsCount=(b.floors||[]).length;
-  // 默认全部折叠（不自动展开任何楼层）
   if(_lastExpandedFloor!==null&&(_lastExpandedFloor<1||_lastExpandedFloor>floorsCount))_lastExpandedFloor=null;
+  // 计算各楼层入住情况（倒序：高楼层在前）
+  const floorData=[];
   for(let fIdx=floorsCount-1;fIdx>=0;fIdx--){
     const f=fIdx+1;
     const floor=b.floors[fIdx];
@@ -1799,16 +1815,23 @@ function renderFloors(){
       totalCount++;
       if(room.status!=='empty'&&room.status!=='maintenance')occCount++;
     }
-    const floorEl=document.createElement('div');
-    floorEl.className='floor'+(f===_lastExpandedFloor?' expanded':'');
-    floorEl.innerHTML=`
-      <div class="floor-header">
-        <div class="floor-title"><span class="floor-badge">${f}F</span><span>${f} 楼</span></div>
-        <div class="floor-info">${occCount}/${totalCount} 入住 <span class="floor-arrow">▶</span></div>
-      </div>
-      <div class="floor-body">
+    floorData.push({f,occCount,totalCount,rooms});
+  }
+  // 楼层标签网格（5列一行）
+  let html='<div class="floors-grid">';
+  floorData.forEach(fd=>{
+    const active=fd.f===_lastExpandedFloor?' active':'';
+    html+=`<div class="floor-tab${active}" data-floor="${fd.f}"><div class="ft-badge">${fd.f}F</div><div class="ft-info">${fd.occCount}/${fd.totalCount}</div></div>`;
+  });
+  html+='</div>';
+  // 展开的楼层房间（一次只展开一个）
+  if(_lastExpandedFloor!==null){
+    const fd=floorData.find(d=>d.f===_lastExpandedFloor);
+    if(fd){
+      html+=`<div class="floor-expanded">
+        <div class="floor-expanded-title"><span class="feb">${fd.f}F</span><span>${fd.f} 楼 · ${fd.occCount}/${fd.totalCount} 入住</span></div>
         <div class="rooms-grid">
-          ${rooms.map(({num:num2,room})=>{
+          ${fd.rooms.map(({num:num2,room})=>{
             const dispStatus=getRoomDisplayStatus(room);
             const s=STATUS_MAP[dispStatus]||STATUS_MAP.empty;
             let arrearsTotal=0;
@@ -1829,21 +1852,166 @@ function renderFloors(){
             </div>`;
           }).join('')}
         </div>
-      </div>
-    `;
-    floorEl.querySelector('.floor-header').addEventListener('click',()=>{
-      floorEl.classList.toggle('expanded');
-      if(floorEl.classList.contains('expanded'))_lastExpandedFloor=f;
-      else if(_lastExpandedFloor===f){
-        // 如果取消展开，不改变记录（下次还是展开这个楼层）
-      }
-    });
-    floorEl.querySelectorAll('.room-cell').forEach(cell=>cell.addEventListener('click',()=>openRoom(cell.dataset.room)));
-    list.appendChild(floorEl);
+      </div>`;
+    }
   }
+  list.innerHTML=html;
+  // 楼层标签点击：展开/收起
+  list.querySelectorAll('.floor-tab').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+      const f=parseInt(tab.dataset.floor);
+      _lastExpandedFloor=(_lastExpandedFloor===f)?null:f;
+      renderFloors();
+    });
+  });
+  // 房间点击
+  list.querySelectorAll('.room-cell').forEach(cell=>cell.addEventListener('click',()=>openRoom(cell.dataset.room)));
 }
 
-function renderAll(){renderSidebar();renderOverview();renderFloors();}
+/* ============================================================ 支出卡片 + 维修情况 ============================================================ */
+function renderExpenseCard(){
+  const b=getBuilding(state.current);
+  if(!b)return;
+  const card=document.getElementById('expenseCard');
+  if(!card)return;
+  const repairs=(state.repairs||[]).filter(r=>r.bid===b.id);
+  const pendingRepairs=repairs.filter(r=>!r.repairDate);
+  card.innerHTML=`
+    <div class="expense-card">
+      <div class="expense-card-title">
+        <span>支出记账</span>
+        ${pendingRepairs.length>0?'<span style="font-size:12px;color:var(--danger);font-weight:400">'+pendingRepairs.length+'项待维修</span>':''}
+      </div>
+      <div class="expense-grid">
+        <button class="expense-btn" id="ecRepair" style="background:#3b82f6"><span class="eb-icon">🔧</span>维修</button>
+        <button class="expense-btn" id="ecClean" style="background:var(--success)"><span class="eb-icon">🧹</span>清洁</button>
+        <button class="expense-btn" id="ecSupply" style="background:#e6a700"><span class="eb-icon">📦</span>耗材</button>
+        <button class="expense-btn" id="ecWater" style="background:#0ea5e9"><span class="eb-icon">💧</span>水费</button>
+        <button class="expense-btn" id="ecElec" style="background:#f59e0b"><span class="eb-icon">⚡</span>电费</button>
+        <button class="expense-btn" id="ecRepairs" style="background:#ef4444"><span class="eb-icon">🏗️</span>维修情况${pendingRepairs.length>0?'<span style="background:#fff;color:#ef4444;border-radius:9px;padding:0 6px;font-size:11px;margin-left:2px">'+pendingRepairs.length+'</span>':''}</button>
+      </div>
+    </div>`;
+  document.getElementById('ecRepair').addEventListener('click',()=>{openExpenses(b.id);showExpForm('repair');});
+  document.getElementById('ecClean').addEventListener('click',()=>{openExpenses(b.id);showExpForm('clean');});
+  document.getElementById('ecSupply').addEventListener('click',()=>{openExpenses(b.id);showExpForm('supply');});
+  document.getElementById('ecWater').addEventListener('click',()=>{openExpenses(b.id);showExpForm('water');});
+  document.getElementById('ecElec').addEventListener('click',()=>{openExpenses(b.id);showExpForm('electric');});
+  document.getElementById('ecRepairs').addEventListener('click',()=>openRepairs(b.id));
+}
+
+let _repairBuildingId=null;
+function openRepairs(bid){
+  _repairBuildingId=bid;
+  const b=getBuilding(bid);if(!b)return;
+  document.getElementById('sheetTitle').textContent=b.name+' · 维修情况';
+  const body=document.getElementById('sheetBody');
+  body.innerHTML=`
+    <div class="section">
+      <button class="btn btn-primary" id="btnAddRepairRec" style="width:100%">➕ 添加维修记录</button>
+    </div>
+    <div class="section" id="repairFormSection" style="display:none"></div>
+    <div class="section" id="repairListSection"></div>`;
+  document.getElementById('btnAddRepairRec').addEventListener('click',()=>showRepairForm());
+  renderRepairList(bid);
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+}
+function showRepairForm(editR){
+  const sec=document.getElementById('repairFormSection');
+  const b=getBuilding(_repairBuildingId);if(!b)return;
+  let roomOpts='<option value="whole" '+(editR&&editR.roomNum==='whole'?'selected':'')+'>整栋</option>';
+  (b.floors||[]).forEach((floor,fIdx)=>{
+    const f=fIdx+1;
+    for(let r=1;r<=floor.rooms;r++){
+      const num2=f*100+r;
+      roomOpts+='<option value="'+num2+'" '+(editR&&String(editR.roomNum)===String(num2)?'selected':'')+'>'+num2+'</option>';
+    }
+  });
+  const today=new Date().toISOString().slice(0,10);
+  sec.innerHTML=`<div class="section-title">${editR?'✏️ 编辑':'➕ 添加'}维修记录</div>
+    <div class="form-row"><label>房号</label><select id="rpRoom">${roomOpts}</select></div>
+    <div class="form-row"><label>维修要求方</label><input type="text" id="rpRequester" placeholder="如：租客/房东" value="${editR?esc(editR.requester):''}"></div>
+    <div class="form-row"><label>维修位置</label><input type="text" id="rpLocation" placeholder="如：3楼走廊" value="${editR?esc(editR.location):''}"></div>
+    <div class="form-row"><label>维修点</label><input type="text" id="rpPoint" placeholder="如：灯管" value="${editR?esc(editR.point):''}"></div>
+    <div class="form-row"><label>维修办法</label><textarea id="rpMethod" placeholder="维修方案" style="min-height:48px">${editR?esc(editR.method):''}</textarea></div>
+    <div class="form-row"><label>材料费 (¥)</label><input type="number" id="rpMaterialFee" placeholder="0" min="0" step="0.01" value="${editR?editR.materialFee:''}"></div>
+    <div class="form-row"><label>人工费 (¥)</label><input type="number" id="rpLaborFee" placeholder="0" min="0" step="0.01" value="${editR?editR.laborFee:''}"></div>
+    <div class="form-row"><label>提出日期</label><input type="date" id="rpRequestDate" value="${editR?editR.requestDate:today}"></div>
+    <div class="form-row"><label>维修日期</label><input type="date" id="rpRepairDate" value="${editR?(editR.repairDate||''):''}"></div>
+    <div class="form-row"><label>备注</label><textarea id="rpNote" placeholder="可选" style="min-height:48px">${editR?esc(editR.note):''}</textarea></div>
+    <div class="btn-group"><button class="btn btn-primary" id="btnSaveRepair">${editR?'更新':'保存'}</button><button class="btn btn-secondary" id="btnCancelRepair">取消</button></div>`;
+  sec.style.display='';
+  document.getElementById('btnSaveRepair').addEventListener('click',()=>saveRepair(editR?editR.id:null));
+  document.getElementById('btnCancelRepair').addEventListener('click',()=>{sec.style.display='none';sec.innerHTML='';});
+  sec.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function saveRepair(editId){
+  const roomNum=val('rpRoom');
+  const requester=val('rpRequester');
+  const location=val('rpLocation');
+  const point=val('rpPoint');
+  const method=val('rpMethod');
+  const materialFee=num(val('rpMaterialFee'));
+  const laborFee=num(val('rpLaborFee'));
+  const requestDate=val('rpRequestDate');
+  const repairDate=val('rpRepairDate');
+  const note=val('rpNote');
+  if(!requestDate){toast('请选择提出日期');return;}
+  if(!state.repairs)state.repairs=[];
+  if(editId){
+    const idx=state.repairs.findIndex(r=>r.id===editId);
+    if(idx>=0){state.repairs[idx]={...state.repairs[idx],roomNum,requester,location,point,method,materialFee,laborFee,requestDate,repairDate,note};}
+    toast('已更新');
+  }else{
+    state.repairs.push({id:'rp'+Date.now()+Math.random().toString(36).slice(2,6),bid:_repairBuildingId,roomNum,requester,location,point,method,materialFee,laborFee,requestDate,repairDate,note});
+    toast('维修记录已保存');
+  }
+  save();renderRepairList(_repairBuildingId);
+  document.getElementById('repairFormSection').style.display='none';
+  document.getElementById('repairFormSection').innerHTML='';
+  renderAll();
+}
+function deleteRepair(id){
+  state.repairs=(state.repairs||[]).filter(r=>r.id!==id);
+  save();renderRepairList(_repairBuildingId);renderAll();
+  toast('已删除');
+}
+function editRepair(id){
+  const r=(state.repairs||[]).find(r=>r.id===id);if(!r)return;
+  showRepairForm(r);
+}
+function renderRepairList(bid){
+  const sec=document.getElementById('repairListSection');if(!sec)return;
+  const list=(state.repairs||[]).filter(r=>r.bid===bid).sort((a,b)=>(b.requestDate||'').localeCompare(a.requestDate||''));
+  let html='<div class="section-title">📋 维修记录</div>';
+  if(list.length===0){
+    html+='<div class="empty-hint" style="padding:20px;text-align:center">暂无维修记录，点击上方按钮添加</div>';
+  }else{
+    list.forEach(r=>{
+      const pending=!r.repairDate;
+      const totalFee=num(r.materialFee)+num(r.laborFee);
+      const roomLabel=r.roomNum==='whole'?'整栋':r.roomNum;
+      html+=`<div class="repair-item ${pending?'pending':''}" data-id="${r.id}">
+        <div class="repair-item-title">
+          <span style="font-weight:600;${pending?'color:var(--danger)':''}">${esc(roomLabel)} · ${esc(r.point||'未填维修点')}</span>
+          <span style="font-weight:600;${pending?'color:var(--danger)':''}">¥${totalFee.toFixed(2)}</span>
+        </div>
+        <div class="repair-item-meta">提出日期：${r.requestDate||'-'} · 维修日期：${r.repairDate||'<span style="color:var(--danger);font-weight:600">未填</span>'}</div>
+        ${r.location?`<div class="repair-item-meta">位置：${esc(r.location)}</div>`:''}
+        ${r.method?`<div class="repair-item-meta">办法：${esc(r.method)}</div>`:''}
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button class="btn btn-secondary" style="flex:1;padding:6px;font-size:12px" data-edit="${r.id}">编辑</button>
+          <button class="btn btn-secondary" style="flex:1;padding:6px;font-size:12px;color:var(--danger)" data-del="${r.id}">删除</button>
+        </div>
+      </div>`;
+    });
+  }
+  sec.innerHTML=html;
+  sec.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();editRepair(btn.dataset.edit);}));
+  sec.querySelectorAll('[data-del]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();deleteRepair(btn.dataset.del);}));
+}
+
+function renderAll(){renderSidebar();renderOverview();renderFloors();renderExpenseCard();}
 
 /* ============================================================ 搜索 ============================================================ */
 function doSearch(keyword){
@@ -1881,12 +2049,12 @@ function renderSearchResults(keyword){
   const overview=document.querySelector('.overview');
   if(!keyword.trim()){
     container.classList.remove('show');container.innerHTML='';
-    floorList.style.display='';overview.style.display='';
+    floorList.style.display='';overview.style.display='';document.getElementById('expenseCard').style.display='';
     document.getElementById('main').classList.remove('searching');
     return;
   }
   document.getElementById('main').classList.add('searching');
-  floorList.style.display='none';overview.style.display='none';
+  floorList.style.display='none';overview.style.display='none';document.getElementById('expenseCard').style.display='none';
   container.classList.add('show');
   const results=doSearch(keyword);
   if(results.length===0){container.innerHTML='<div class="empty-hint">未找到匹配的结果</div>';return;}
@@ -3820,18 +3988,15 @@ function applyImportedData(data){
   // 自动展开有已入住房间的楼层（导入后方便用户立即看到数据）
   const bld=getBuilding(state.current);
   if(bld){
-    for(let fIdx=0;fIdx<bld.floors.length;fIdx++){
+    for(let fIdx=bld.floors.length-1;fIdx>=0;fIdx--){
       const f=fIdx+1;const floor=bld.floors[fIdx];let hasOcc=false;
       for(let r=1;r<=floor.rooms;r++){
         const room=state.rooms[`${bld.id}-${f*100+r}`];
         if(room&&room.status==='occupied'){hasOcc=true;break;}
       }
-      if(hasOcc){
-        const els=document.querySelectorAll('.floor');
-        const displayIdx=bld.floors.length-1-fIdx; // 倒序显示
-        if(els[displayIdx]){els[displayIdx].classList.add('expanded');_lastExpandedFloor=f;}
-      }
+      if(hasOcc){_lastExpandedFloor=f;break;}
     }
+    if(_lastExpandedFloor!==null)renderFloors();
   }
   closeSheet();
   toast(`导入成功：${buildingCount}栋、${roomCount}间房、${monthCount}条费用`);
@@ -4099,7 +4264,7 @@ function openBackupManager(){
     if(document.getElementById('clearConfirmBtn').disabled)return;
     if(clearCountdownTimer){clearInterval(clearCountdownTimer);clearCountdownTimer=null;}
     localStorage.removeItem(STORAGE_KEY);
-    state={current:'A',buildings:[{id:'A',name:'A栋',floors:[{rooms:5},{rooms:5},{rooms:5},{rooms:5},{rooms:5}]},{id:'B',name:'B栋',floors:[{rooms:5},{rooms:5},{rooms:5},{rooms:5},{rooms:5}]}],globalRates:{waterPrice:6,electricPrice:1.2},rooms:{},expenses:[]};
+    state={current:'A',buildings:[{id:'A',name:'A栋',floors:[{rooms:5},{rooms:5},{rooms:5},{rooms:5},{rooms:5}]},{id:'B',name:'B栋',floors:[{rooms:5},{rooms:5},{rooms:5},{rooms:5},{rooms:5}]}],globalRates:{waterPrice:6,electricPrice:1.2},rooms:{},expenses:[],repairs:[]};
     initRooms();save();renderAll();closeSettings();
     document.getElementById('clearOverlay').classList.remove('show');
     document.getElementById('clearDataModal').classList.remove('show');
