@@ -415,7 +415,7 @@
     <div class="overview-grid" id="overviewGrid">
       <div class="overview-item" style="grid-column:1/-1;display:flex;justify-content:space-around;align-items:center"><div style="text-align:center"><div class="overview-num" id="ovTotalRooms" style="color:var(--primary)">0</div><div class="overview-label">房间</div></div><div style="text-align:center"><div class="overview-num" id="ovOccupied" style="color:var(--success)">0</div><div class="overview-label">已入住</div></div><div class="clickable" id="ovVacantWrap" style="text-align:center;cursor:pointer"><div class="overview-num" id="ovVacant" style="color:var(--text-light)">0</div><div class="overview-label">空置 ▶</div></div></div>
       <div class="overview-item clickable" id="ovArrearsWrap"><div class="overview-num" id="ovArrears" style="color:var(--danger)">¥0</div><div class="overview-label">欠缴租金 ▶</div></div>
-      <div class="overview-item clickable" id="ovExpenseWrap"><div class="overview-num" id="ovExpense" style="color:#e6a700">¥0</div><div class="overview-label">支出 ▶</div></div>
+      <div class="overview-item clickable" id="ovExpenseWrap"><div class="overview-num" id="ovExpense" style="color:#e6a700">¥0 <span id="ovExpArrow" style="font-size:11px">▶</span></div><div class="overview-label">支出</div><div class="ov-detail" id="ovExpenseDetail" style="display:none"></div></div>
       <div class="overview-item clickable" id="ovMonthWrap"><div class="overview-num" id="ovMonthIncome" style="color:var(--success)">¥0 <span id="ovMonthArrow" style="font-size:11px">▶</span></div><div class="overview-label">月租金(已收)</div><div class="ov-detail" id="ovMonthDetail" style="display:none"></div></div>
       <div class="overview-item clickable" id="ovYearWrap"><div class="overview-num" id="ovYearIncome" style="color:var(--primary)">¥0 <span id="ovYearArrow" style="font-size:11px">▶</span></div><div class="overview-label">年租金(已收)</div><div class="ov-detail" id="ovYearDetail" style="display:none"></div></div>
     </div>
@@ -1337,15 +1337,28 @@ function renderOverview(){
       });
     }
   });
-  // 支出统计
+  // 支出统计（按类型分项）
   let monthExpense=0,yearExpense=0;
+  const expTypes=['repair','clean','supply','water','electric'];
+  const expByTypeMonth={repair:0,clean:0,supply:0,water:0,electric:0};
+  const expByTypeYear={repair:0,clean:0,supply:0,water:0,electric:0};
   const curMonth=selYm;
   (state.expenses||[]).forEach(ex=>{
     if(ex.bid!==bid)return;
     const exMonth=ex.date?ex.date.slice(0,7):'';
     const exYear=ex.date?ex.date.slice(0,4):'';
-    if(exMonth===curMonth)monthExpense+=num(ex.amount);
-    if(exYear===selYear)yearExpense+=num(ex.amount);
+    if(expTypes.indexOf(ex.type)<0)return;
+    if(exMonth===curMonth){monthExpense+=num(ex.amount);expByTypeMonth[ex.type]+=num(ex.amount);}
+    if(exYear===selYear){yearExpense+=num(ex.amount);expByTypeYear[ex.type]+=num(ex.amount);}
+  });
+  // 维修情况统计（材料费+人工费）
+  (state.repairs||[]).forEach(r=>{
+    if(r.bid!==bid)return;
+    const rMonth=r.requestDate?r.requestDate.slice(0,7):'';
+    const rYear=r.requestDate?r.requestDate.slice(0,4):'';
+    const fee=num(r.materialFee)+num(r.laborFee);
+    if(rMonth===curMonth)monthExpense+=fee;
+    if(rYear===selYear)yearExpense+=fee;
   });
   // 更新UI
   document.getElementById('ovTitleText').textContent=b.name+' · 概览';
@@ -1358,8 +1371,18 @@ function renderOverview(){
   document.getElementById('ovArrears').textContent='¥'+arrears.toFixed(2);
   // 支出卡片根据是否选月显示当月或全年
   const expLabel=_overviewMonth?'支出('+_overviewMonth+')':'支出(全年)';
-  document.getElementById('ovExpense').innerHTML=`¥${(_overviewMonth?monthExpense:yearExpense).toFixed(2)} <span id="ovExpArrow" style="font-size:11px">▶</span>`;
-  document.querySelector('#ovExpenseWrap .overview-label').textContent=expLabel+' ▶';
+  const expTotal=_overviewMonth?monthExpense:yearExpense;
+  const expByType=_overviewMonth?expByTypeMonth:expByTypeYear;
+  document.getElementById('ovExpense').innerHTML=`¥${expTotal.toFixed(2)} <span id="ovExpArrow" style="font-size:11px">▶</span>`;
+  document.querySelector('#ovExpenseWrap .overview-label').textContent=expLabel;
+  // 支出展开详情：五项分项统计
+  const typeLabels={repair:'🔧 维修',clean:'🧹 清洁',supply:'📦 耗材',water:'💧 水费',electric:'⚡ 电费'};
+  let expDetailHtml='';
+  expTypes.forEach(t=>{
+    expDetailHtml+=`<div class="ovd-row"><span class="ovd-label">${typeLabels[t]}</span><span class="ovd-val">¥${expByType[t].toFixed(2)}</span></div>`;
+  });
+  expDetailHtml+=`<div class="ovd-row total"><span class="ovd-label">合计</span><span class="ovd-val">¥${expTotal.toFixed(2)}</span></div>`;
+  document.getElementById('ovExpenseDetail').innerHTML=expDetailHtml;
   document.getElementById('ovMonthDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${mRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${mWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${mElec.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label" style="color:#e6a700">支出</span><span class="ovd-val" style="color:#e6a700">-¥${monthExpense.toFixed(2)}</span></div><div class="ovd-row total"><span class="ovd-label">净收入</span><span class="ovd-val">¥${(monthIncome-monthExpense).toFixed(2)}</span></div>`;
   document.getElementById('ovYearDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${yRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${yWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${yElec.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label" style="color:#e6a700">支出</span><span class="ovd-val" style="color:#e6a700">-¥${yearExpense.toFixed(2)}</span></div><div class="ovd-row total"><span class="ovd-label">净收入</span><span class="ovd-val">¥${(yearIncome-yearExpense).toFixed(2)}</span></div>`;
   // 绑定展开/收起
@@ -1373,11 +1396,11 @@ function renderOverview(){
   if(arrearsList.length>0){
     newWrap.addEventListener('click',()=>showArrearsDetail(arrearsList,b.name));
   }
-  // 支出卡片点击
+  // 支出栏点击：展开/收起分项统计（与月/年租金一致）
   const ew=document.getElementById('ovExpenseWrap');
   const newEw=ew.cloneNode(true);
   ew.parentNode.replaceChild(newEw,ew);
-  newEw.addEventListener('click',()=>openExpenses(bid));
+  newEw.addEventListener('click',()=>{const d=document.getElementById('ovExpenseDetail');const a=document.getElementById('ovExpArrow');d.style.display=d.style.display==='none'?'block':'none';a.textContent=d.style.display==='none'?'▶':'▼';});
   // 空置房间点击
   const vw=document.getElementById('ovVacantWrap');
   const newVw=vw.cloneNode(true);
@@ -1484,8 +1507,10 @@ function showVacantRooms(vacantList,bname){
 
 /* ============================================================ 支出记账 ============================================================ */
 let _expBuildingId=null;
+let _expSingleType=null;
 function openExpenses(bid){
   _expBuildingId=bid;
+  _expSingleType=null;
   const b=getBuilding(bid);if(!b)return;
   const bname=b.name;
   const ym=currentYearMonth();
@@ -1539,14 +1564,14 @@ function saveExp(type,editId){
     state.expenses.push({id:'exp'+Date.now()+Math.random().toString(36).slice(2,6),bid:_expBuildingId,type,date,location:location||'',person:person||'',amount:num(amount),note:note||''});
     toast('支出已保存');
   }
-  save();renderExpList(_expBuildingId);
+  save();renderExpList(_expBuildingId,_expSingleType);
   document.getElementById('expFormSection').style.display='none';
   document.getElementById('expFormSection').innerHTML='';
   renderAll();
 }
 function deleteExp(id){
   state.expenses=(state.expenses||[]).filter(e=>e.id!==id);
-  save();renderExpList(_expBuildingId);renderAll();
+  save();renderExpList(_expBuildingId,_expSingleType);renderAll();
   toast('已删除');
 }
 function editExp(id){
@@ -1633,10 +1658,45 @@ function showExpForm(type,editEx){
   document.getElementById('btnCancelExp').addEventListener('click',()=>{sec.style.display='none';sec.innerHTML='';});
   sec.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-function renderExpList(bid){
+function renderExpList(bid,filterType){
   const sec=document.getElementById('expListSection');if(!sec)return;
-  const list=(state.expenses||[]).filter(e=>e.bid===bid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const types=[{key:'repair',label:'🔧 维修',color:'#3b82f6'},{key:'clean',label:'🧹 清洁',color:'var(--success)'},{key:'supply',label:'📦 耗材',color:'#e6a700'},{key:'water',label:'💧 水费',color:'#0ea5e9'},{key:'electric',label:'⚡ 电费',color:'#f59e0b'}];
+  let list=(state.expenses||[]).filter(e=>e.bid===bid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const allTypes=[{key:'repair',label:'🔧 维修',color:'#3b82f6'},{key:'clean',label:'🧹 清洁',color:'var(--success)'},{key:'supply',label:'📦 耗材',color:'#e6a700'},{key:'water',label:'💧 水费',color:'#0ea5e9'},{key:'electric',label:'⚡ 电费',color:'#f59e0b'}];
+  // 独立页面模式：只显示该项的记录，不带分组折叠
+  if(filterType){
+    const t=allTypes.find(x=>x.key===filterType)||allTypes[0];
+    const items=list.filter(e=>e.type===filterType);
+    const subTotal=items.reduce((s,e)=>s+num(e.amount),0);
+    let html=`<div class="section-title">📋 ${t.label}记录（共${items.length}条 · ¥${subTotal.toFixed(2)}）</div>`;
+    if(items.length===0){
+      html+='<div class="empty-hint" style="padding:20px;text-align:center">暂无记录，请在上方填写后保存</div>';
+    }else{
+      html+='<div>';
+      items.forEach(e=>{
+        const personLabel=e.type==='supply'?'购买渠道':(e.type==='repair'?'维修人':(e.type==='clean'?'清洁人':'缴款账户'));
+        const titleText=(e.type==='water'||e.type==='electric')?(e.date||'未填'):(esc(e.location)||'未填写');
+        html+=`<div class="exp-swipe-wrap" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
+          <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
+            <button class="exp-action-edit" data-id="${e.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
+            <button class="exp-action-del" data-id="${e.id}" style="width:56px;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer">删除</button>
+          </div>
+          <div class="exp-swipe-card" data-id="${e.id}" style="position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;transition:transform .2s;z-index:1;cursor:pointer">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-weight:500">${titleText}</span>
+              <span style="color:${t.color};font-weight:600">¥${num(e.amount).toFixed(2)}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 ${e.date||'未填'} · ${personLabel}：${esc(e.person)||'-'}</div>
+          </div>
+        </div>`;
+      });
+      html+='</div>';
+    }
+    sec.innerHTML=html;
+    bindExpListEvents(sec);
+    return;
+  }
+  // 全部模式（从概览进入）：分组显示
+  const types=allTypes;
   let html='';
   types.forEach(t=>{
     const items=list.filter(e=>e.type===t.key);
@@ -1681,7 +1741,10 @@ function renderExpList(bid){
       arrow.textContent=items.style.display==='none'?'▶':'▼';
     });
   });
-  // 绑定点击查看详情
+  bindExpListEvents(sec);
+}
+// 公共事件绑定（编辑/删除/点击详情/滑动）
+function bindExpListEvents(sec){
   sec.querySelectorAll('.exp-swipe-card').forEach(card=>{
     let startX=0,startY=0,swiping=false,moved=false;
     card.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;swiping=true;moved=false;},{passive:true});
@@ -1699,12 +1762,10 @@ function renderExpList(bid){
       else{card.style.transform='translateX(0)';}
       if(!moved){toggleExpDetail(card.dataset.id);}
     });
-    // PC端点击
     card.addEventListener('click',e=>{
       if(!moved&&'ontouchstart' in window===false){toggleExpDetail(card.dataset.id);}
     });
   });
-  // 绑定编辑/删除按钮
   sec.querySelectorAll('.exp-action-edit').forEach(btn=>{
     btn.addEventListener('click',e=>{e.stopPropagation();editExp(btn.dataset.id);});
   });
@@ -1800,9 +1861,9 @@ function renderFloors(){
   const list=document.getElementById('floorList');
   const floorsCount=(b.floors||[]).length;
   if(_lastExpandedFloor!==null&&(_lastExpandedFloor<1||_lastExpandedFloor>floorsCount))_lastExpandedFloor=null;
-  // 计算各楼层入住情况（倒序：高楼层在前）
+  // 计算各楼层入住情况（正序：低楼层在左，高楼层在右）
   const floorData=[];
-  for(let fIdx=floorsCount-1;fIdx>=0;fIdx--){
+  for(let fIdx=0;fIdx<floorsCount;fIdx++){
     const f=fIdx+1;
     const floor=b.floors[fIdx];
     let occCount=0,totalCount=0;
@@ -1883,20 +1944,37 @@ function renderExpenseCard(){
         ${pendingRepairs.length>0?'<span style="font-size:12px;color:var(--danger);font-weight:400">'+pendingRepairs.length+'项待维修</span>':''}
       </div>
       <div class="expense-grid">
+        <button class="expense-btn" id="ecRepairs" style="background:#ef4444"><span class="eb-icon">🏗️</span>维修情况${pendingRepairs.length>0?'<span style="background:#fff;color:#ef4444;border-radius:9px;padding:0 6px;font-size:11px;margin-left:2px">'+pendingRepairs.length+'</span>':''}</button>
         <button class="expense-btn" id="ecRepair" style="background:#3b82f6"><span class="eb-icon">🔧</span>维修</button>
         <button class="expense-btn" id="ecClean" style="background:var(--success)"><span class="eb-icon">🧹</span>清洁</button>
         <button class="expense-btn" id="ecSupply" style="background:#e6a700"><span class="eb-icon">📦</span>耗材</button>
         <button class="expense-btn" id="ecWater" style="background:#0ea5e9"><span class="eb-icon">💧</span>水费</button>
         <button class="expense-btn" id="ecElec" style="background:#f59e0b"><span class="eb-icon">⚡</span>电费</button>
-        <button class="expense-btn" id="ecRepairs" style="background:#ef4444"><span class="eb-icon">🏗️</span>维修情况${pendingRepairs.length>0?'<span style="background:#fff;color:#ef4444;border-radius:9px;padding:0 6px;font-size:11px;margin-left:2px">'+pendingRepairs.length+'</span>':''}</button>
       </div>
     </div>`;
-  document.getElementById('ecRepair').addEventListener('click',()=>{openExpenses(b.id);showExpForm('repair');});
-  document.getElementById('ecClean').addEventListener('click',()=>{openExpenses(b.id);showExpForm('clean');});
-  document.getElementById('ecSupply').addEventListener('click',()=>{openExpenses(b.id);showExpForm('supply');});
-  document.getElementById('ecWater').addEventListener('click',()=>{openExpenses(b.id);showExpForm('water');});
-  document.getElementById('ecElec').addEventListener('click',()=>{openExpenses(b.id);showExpForm('electric');});
   document.getElementById('ecRepairs').addEventListener('click',()=>openRepairs(b.id));
+  document.getElementById('ecRepair').addEventListener('click',()=>openExpSingle(b.id,'repair'));
+  document.getElementById('ecClean').addEventListener('click',()=>openExpSingle(b.id,'clean'));
+  document.getElementById('ecSupply').addEventListener('click',()=>openExpSingle(b.id,'supply'));
+  document.getElementById('ecWater').addEventListener('click',()=>openExpSingle(b.id,'water'));
+  document.getElementById('ecElec').addEventListener('click',()=>openExpSingle(b.id,'electric'));
+}
+
+// 独立支出项页面：直接显示表单+该项历史记录（不再显示6个项目按钮）
+function openExpSingle(bid,type){
+  _expBuildingId=bid;
+  _expSingleType=type;
+  const b=getBuilding(bid);if(!b)return;
+  const labels={repair:'维修',clean:'清洁',supply:'耗材',water:'水费',electric:'电费'};
+  document.getElementById('sheetTitle').textContent=b.name+' · '+labels[type]+'支出';
+  const body=document.getElementById('sheetBody');
+  body.innerHTML=`
+    <div class="section" id="expFormSection"></div>
+    <div class="section" id="expListSection"></div>`;
+  showExpForm(type);
+  renderExpList(bid,type);
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
 }
 
 let _repairBuildingId=null;
@@ -1906,12 +1984,9 @@ function openRepairs(bid){
   document.getElementById('sheetTitle').textContent=b.name+' · 维修情况';
   const body=document.getElementById('sheetBody');
   body.innerHTML=`
-    <div class="section">
-      <button class="btn btn-primary" id="btnAddRepairRec" style="width:100%">➕ 添加维修记录</button>
-    </div>
-    <div class="section" id="repairFormSection" style="display:none"></div>
+    <div class="section" id="repairFormSection"></div>
     <div class="section" id="repairListSection"></div>`;
-  document.getElementById('btnAddRepairRec').addEventListener('click',()=>showRepairForm());
+  showRepairForm();
   renderRepairList(bid);
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
