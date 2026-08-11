@@ -1576,17 +1576,12 @@ function saveExp(type,editId){
     toast('已更新');
   }else{
     state.expenses.push({id:'exp'+Date.now()+Math.random().toString(36).slice(2,6),bid:_expBuildingId,type,date,location:location||'',person:person||'',amount:num(amount),note:note||'',isPaid});
-    toast('支出已保存，可继续添加下一条');
-    // 新增后：保留表单显示，仅清空可编辑字段（日期保留默认，方便连续记录）
-    if(!editId){
-      const loc=document.getElementById('expLocation');if(loc)loc.value='';
-      const per=document.getElementById('expPerson');if(per)per.value='';
-      const amt=document.getElementById('expAmount');if(amt)amt.value='';
-      const nt=document.getElementById('expNote');if(nt)nt.value='';
-      const paid=document.getElementById('expIsPaid');if(paid)paid.checked=false;
-    }
+    toast('支出已保存');
   }
   save();renderExpList(_expBuildingId,_expSingleType);
+  // 保存后收起表单
+  const sec=document.getElementById('expFormSection');
+  if(sec){sec.style.display='none';sec.innerHTML='';}
   renderAll();
 }
 function deleteExp(id){
@@ -1685,12 +1680,20 @@ function showExpForm(type,editEx){
 }
 function renderExpList(bid,filterType){
   const sec=document.getElementById('expListSection');if(!sec)return;
-  let list=(state.expenses||[]).filter(e=>e.bid===bid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const allTypes=[{key:'repair',label:'🔧 维修',color:'#3b82f6'},{key:'clean',label:'🧹 清洁',color:'var(--success)'},{key:'supply',label:'📦 耗材',color:'#e6a700'},{key:'water',label:'💧 水费',color:'#0ea5e9'},{key:'electric',label:'⚡ 电费',color:'#f59e0b'}];
+  // 未完成：repair/clean/supply 未结账（repair也由维修情况管理，但这里是支出记录）
+  function expIncomplete(e){return (e.type==='repair'||e.type==='clean'||e.type==='supply')&&!e.isPaid;}
+  const rawList=(state.expenses||[]).filter(e=>e.bid===bid);
+  function expSort(list){return list.sort((a,b)=>{
+    const aIn=expIncomplete(a)?0:1;const bIn=expIncomplete(b)?0:1;
+    if(aIn!==bIn)return aIn-bIn;
+    return (b.date||'').localeCompare(a.date||'');
+  });}
+  let list=expSort(rawList.slice());
   // 独立页面模式：只显示该项的记录，不带分组折叠
   if(filterType){
     const t=allTypes.find(x=>x.key===filterType)||allTypes[0];
-    const items=list.filter(e=>e.type===filterType);
+    const items=expSort(rawList.filter(e=>e.type===filterType).slice());
     const subTotal=items.reduce((s,e)=>s+num(e.amount),0);
     let html=`<div class="section-title">📋 ${t.label}记录（共${items.length}条 · ¥${subTotal.toFixed(2)}）</div>`;
     if(items.length===0){
@@ -1966,19 +1969,32 @@ function renderExpenseCard(){
   const card=document.getElementById('expenseCard');
   if(!card)return;
   const repairs=(state.repairs||[]).filter(r=>r.bid===b.id);
-  const pendingRepairs=repairs.filter(r=>!r.repairDate);
+  // 维修未完成：未填维修日期 OR 未结账
+  const repairIncomplete=repairs.filter(r=>!r.repairDate||!r.isPaid).length;
+  // 清洁/耗材支出记录中未结账的数量
+  const expenses=(state.expenses||[]).filter(e=>e.bid===b.id);
+  const cleanIncomplete=expenses.filter(e=>e.type==='clean'&&!e.isPaid).length;
+  const supplyIncomplete=expenses.filter(e=>e.type==='supply'&&!e.isPaid).length;
+  const totalIncomplete=repairIncomplete+cleanIncomplete+supplyIncomplete;
+  function badge(n,colorText='#fff',colorBg='rgba(255,255,255,.25)'){
+    if(n<=0)return '';
+    return `<span style="display:inline-block;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:9px;padding:0 5px;font-size:11px;font-weight:700;margin-top:4px;background:${colorBg};color:${colorText}">${n}</span>`;
+  }
   card.innerHTML=`
     <div class="expense-card">
       <div class="expense-card-title">
         <span>支出记账</span>
-        ${pendingRepairs.length>0?'<span style="font-size:12px;color:var(--danger);font-weight:400">'+pendingRepairs.length+'项待维修</span>':''}
+        ${totalIncomplete>0?'<span style="font-size:12px;color:var(--danger);font-weight:400">共'+totalIncomplete+'项未完成</span>':''}
       </div>
       <div class="expense-grid">
-        <button class="expense-btn big" id="ecRepairs" style="background:#ef4444;grid-column:1;grid-row:1 / span 2"><span class="eb-icon">🏗️</span>维修${pendingRepairs.length>0?'<span style="background:#fff;color:#ef4444;border-radius:9px;padding:0 6px;font-size:11px;margin-left:2px">'+pendingRepairs.length+'</span>':''}</button>
+        <button class="expense-btn big" id="ecRepairs" style="background:#ef4444;grid-column:1;grid-row:1 / span 2">
+          <span class="eb-icon">🏗️</span>
+          <div style="display:flex;flex-direction:column;align-items:center">维修${badge(repairIncomplete,'#ef4444','#fff')}</div>
+        </button>
         <button class="expense-btn" id="ecElec" style="background:#f59e0b;grid-column:2;grid-row:1"><span class="eb-icon">⚡</span>电费</button>
         <button class="expense-btn" id="ecWater" style="background:#0ea5e9;grid-column:3;grid-row:1"><span class="eb-icon">💧</span>水费</button>
-        <button class="expense-btn" id="ecClean" style="background:var(--success);grid-column:2;grid-row:2"><span class="eb-icon">🧹</span>清洁</button>
-        <button class="expense-btn" id="ecSupply" style="background:#e6a700;grid-column:3;grid-row:2"><span class="eb-icon">📦</span>耗材</button>
+        <button class="expense-btn" id="ecClean" style="background:var(--success);grid-column:2;grid-row:2"><span class="eb-icon">🧹</span><div style="display:flex;flex-direction:column;align-items:center">清洁${badge(cleanIncomplete,'var(--success)','#fff')}</div></button>
+        <button class="expense-btn" id="ecSupply" style="background:#e6a700;grid-column:3;grid-row:2"><span class="eb-icon">📦</span><div style="display:flex;flex-direction:column;align-items:center">耗材${badge(supplyIncomplete,'#e6a700','#fff')}</div></button>
       </div>
     </div>`;
   document.getElementById('ecRepairs').addEventListener('click',()=>openRepairs(b.id));
@@ -2068,17 +2084,12 @@ function saveRepair(editId){
     toast('已更新');
   }else{
     state.repairs.push({id:'rp'+Date.now()+Math.random().toString(36).slice(2,6),bid:_repairBuildingId,roomNum,requester,location,point,method,materialFee,laborFee,requestDate,repairDate,note,isPaid});
-    toast('维修记录已保存，可继续添加下一条');
-    // 新增后保留表单，仅清空可编辑字段（提出日期保留默认）
-    if(!editId){
-      ['rpRoom','rpRequester','rpLocation','rpPoint','rpMethod','rpNote'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-      const mf=document.getElementById('rpMaterialFee');if(mf)mf.value='';
-      const lf=document.getElementById('rpLaborFee');if(lf)lf.value='';
-      const rd=document.getElementById('rpRepairDate');if(rd)rd.value='';
-      const paid=document.getElementById('rpIsPaid');if(paid)paid.checked=false;
-    }
+    toast('维修记录已保存');
   }
   save();renderRepairList(_repairBuildingId);
+  // 保存后收起表单
+  const sec=document.getElementById('repairFormSection');
+  if(sec){sec.style.display='none';sec.innerHTML='';}
   renderAll();
 }
 function deleteRepair(id){
@@ -2092,7 +2103,14 @@ function editRepair(id){
 }
 function renderRepairList(bid){
   const sec=document.getElementById('repairListSection');if(!sec)return;
-  const list=(state.repairs||[]).filter(r=>r.bid===bid).sort((a,b)=>(b.requestDate||'').localeCompare(a.requestDate||''));
+  // 未完成：未填维修日期 OR 未结账；完成的按日期降序；未完成组内也按日期降序
+  function repairIncomplete(r){return !r.repairDate||!r.isPaid;}
+  function repairSortKey(r){return r.repairDate||r.requestDate||'';}
+  const list=(state.repairs||[]).filter(r=>r.bid===bid).sort((a,b)=>{
+    const aIn=repairIncomplete(a)?0:1;const bIn=repairIncomplete(b)?0:1;
+    if(aIn!==bIn)return aIn-bIn;
+    return (repairSortKey(b)||'').localeCompare(repairSortKey(a)||'');
+  });
   let html='<div class="section-title">📋 维修记录</div>';
   if(list.length===0){
     html+='<div class="empty-hint" style="padding:20px;text-align:center">暂无维修记录，点击上方按钮添加</div>';
