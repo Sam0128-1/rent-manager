@@ -190,14 +190,27 @@
   .floor-expanded-title .feb{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
   .expense-card{background:var(--card);margin:0 10px 12px;border-radius:14px;padding:14px;box-shadow:var(--shadow)}
   .expense-card-title{font-weight:600;font-size:15px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
-  .expense-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-  .expense-btn{border:none;border-radius:10px;padding:12px 4px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:transform .1s}
+  .expense-grid{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto;gap:8px}
+  .expense-btn{border:none;border-radius:10px;padding:16px 4px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:transform .1s}
   .expense-btn:active{transform:scale(.92)}
-  .expense-btn .eb-icon{font-size:18px}
+  .expense-btn .eb-icon{font-size:22px}
+  .expense-btn.big{grid-row:span 2;min-height:130px;font-size:22px}
+  .expense-btn.big .eb-icon{font-size:34px}
   .repair-item{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin:4px 0;cursor:pointer}
   .repair-item.pending{border-color:var(--danger);background:#fef2f2}
+  .repair-item.unpaid{border-color:#f59e0b;background:#fffbeb}
   .repair-item-title{display:flex;justify-content:space-between;align-items:center}
   .repair-item-meta{font-size:12px;color:var(--text-light);margin-top:4px}
+  .exp-item.unpaid{background:#fffbeb;border-color:#f59e0b}
+  .form-switch{display:flex;align-items:center;justify-content:space-between;padding:0}
+  .form-switch label{margin-bottom:0}
+  .switch{position:relative;display:inline-block;width:44px;height:24px}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#cbd5e1;transition:.3s;border-radius:24px}
+  .slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}
+  input:checked + .slider{background:var(--success)}
+  input:checked + .slider:before{transform:translateX(20px)}
+  .add-record-btn{width:100%;padding:14px;font-size:15px;font-weight:600}
 
   .rooms-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
   .room-cell{aspect-ratio:.8;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-weight:600;font-size:14px;transition:transform .1s;border:2px solid transparent;position:relative;padding:2px 0}
@@ -1553,20 +1566,27 @@ function saveExp(type,editId){
   const person=val('expPerson');
   const amount=val('expAmount');
   const note=val('expNote');
+  const isPaid=document.getElementById('expIsPaid')?document.getElementById('expIsPaid').checked:false;
   if(!date){toast('请选择日期');return;}
   if(!amount||num(amount)<=0){toast('请输入金额');return;}
   if(!state.expenses)state.expenses=[];
   if(editId){
     const idx=state.expenses.findIndex(e=>e.id===editId);
-    if(idx>=0){state.expenses[idx]={...state.expenses[idx],type,date,location:location||'',person:person||'',amount:num(amount),note:note||''};}
+    if(idx>=0){state.expenses[idx]={...state.expenses[idx],type,date,location:location||'',person:person||'',amount:num(amount),note:note||'',isPaid};}
     toast('已更新');
   }else{
-    state.expenses.push({id:'exp'+Date.now()+Math.random().toString(36).slice(2,6),bid:_expBuildingId,type,date,location:location||'',person:person||'',amount:num(amount),note:note||''});
-    toast('支出已保存');
+    state.expenses.push({id:'exp'+Date.now()+Math.random().toString(36).slice(2,6),bid:_expBuildingId,type,date,location:location||'',person:person||'',amount:num(amount),note:note||'',isPaid});
+    toast('支出已保存，可继续添加下一条');
+    // 新增后：保留表单显示，仅清空可编辑字段（日期保留默认，方便连续记录）
+    if(!editId){
+      const loc=document.getElementById('expLocation');if(loc)loc.value='';
+      const per=document.getElementById('expPerson');if(per)per.value='';
+      const amt=document.getElementById('expAmount');if(amt)amt.value='';
+      const nt=document.getElementById('expNote');if(nt)nt.value='';
+      const paid=document.getElementById('expIsPaid');if(paid)paid.checked=false;
+    }
   }
   save();renderExpList(_expBuildingId,_expSingleType);
-  document.getElementById('expFormSection').style.display='none';
-  document.getElementById('expFormSection').innerHTML='';
   renderAll();
 }
 function deleteExp(id){
@@ -1621,24 +1641,29 @@ function showExpForm(type,editEx){
   const sec=document.getElementById('expFormSection');
   const labels={repair:'维修',clean:'清洁',supply:'耗材',water:'水费',electric:'电费'};
   const today=editEx?editEx.date:new Date().toISOString().slice(0,10);
+  const showPaidSwitch=(type==='clean'||type==='supply'||type==='repair');
+  const paidChecked=(editEx&&editEx.isPaid)?'checked':'';
   let fields='';
   if(type==='repair'){
     fields=`<div class="form-row"><label>维修日期</label><input type="date" id="expDate" value="${today}"></div>
     <div class="form-row"><label>维修位置</label><input type="text" id="expLocation" placeholder="如：3楼走廊灯" value="${editEx?esc(editEx.location):''}"></div>
     <div class="form-row"><label>维修人</label><input type="text" id="expPerson" placeholder="维修师傅姓名" value="${editEx?esc(editEx.person):''}"></div>
     <div class="form-row"><label>维修金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
+    ${showPaidSwitch?`<div class="form-row form-switch"><label>已结账</label><label class="switch"><input type="checkbox" id="expIsPaid" ${paidChecked}><span class="slider"></span></label></div>`:''}
     <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
   }else if(type==='clean'){
     fields=`<div class="form-row"><label>清洁日期</label><input type="date" id="expDate" value="${today}"></div>
     <div class="form-row"><label>清洁位置</label><input type="text" id="expLocation" placeholder="如：5楼公共区域" value="${editEx?esc(editEx.location):''}"></div>
     <div class="form-row"><label>清洁人</label><input type="text" id="expPerson" placeholder="清洁人员姓名" value="${editEx?esc(editEx.person):''}"></div>
     <div class="form-row"><label>清洁费用 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
+    ${showPaidSwitch?`<div class="form-row form-switch"><label>已结账</label><label class="switch"><input type="checkbox" id="expIsPaid" ${paidChecked}><span class="slider"></span></label></div>`:''}
     <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
   }else if(type==='supply'){
     fields=`<div class="form-row"><label>购买日期</label><input type="date" id="expDate" value="${today}"></div>
     <div class="form-row"><label>耗材名称</label><input type="text" id="expLocation" placeholder="如：灯泡x10" value="${editEx?esc(editEx.location):''}"></div>
     <div class="form-row"><label>购买渠道</label><input type="text" id="expPerson" placeholder="如：淘宝/五金店" value="${editEx?esc(editEx.person):''}"></div>
     <div class="form-row"><label>购买金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
+    ${showPaidSwitch?`<div class="form-row form-switch"><label>已结账</label><label class="switch"><input type="checkbox" id="expIsPaid" ${paidChecked}><span class="slider"></span></label></div>`:''}
     <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
   }else if(type==='water'){
     fields=`<div class="form-row"><label>缴款日期</label><input type="date" id="expDate" value="${today}"></div>
@@ -1669,21 +1694,26 @@ function renderExpList(bid,filterType){
     const subTotal=items.reduce((s,e)=>s+num(e.amount),0);
     let html=`<div class="section-title">📋 ${t.label}记录（共${items.length}条 · ¥${subTotal.toFixed(2)}）</div>`;
     if(items.length===0){
-      html+='<div class="empty-hint" style="padding:20px;text-align:center">暂无记录，请在上方填写后保存</div>';
+      html+='<div class="empty-hint" style="padding:20px;text-align:center">暂无记录，点击上方按钮添加</div>';
     }else{
       html+='<div>';
       items.forEach(e=>{
         const personLabel=e.type==='supply'?'购买渠道':(e.type==='repair'?'维修人':(e.type==='clean'?'清洁人':'缴款账户'));
         const titleText=(e.type==='water'||e.type==='electric')?(e.date||'未填'):(esc(e.location)||'未填写');
-        html+=`<div class="exp-swipe-wrap" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
+        // 标黄条件：维修情况/清洁/耗材 只填了日期（有日期）但未结账
+        const paidTypes=['repair','clean','supply'];
+        const unpaid=paidTypes.includes(e.type)&&e.date&&!e.isPaid;
+        const cardStyle=unpaid?'background:#fffbeb;border:1px solid #f59e0b':'background:#fff;border:1px solid #e2e8f0';
+        const paidBadge=paidTypes.includes(e.type)?(e.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">已结账</span>':'<span style="font-size:11px;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">未结账</span>'):'';
+        html+=`<div class="exp-swipe-wrap exp-item ${unpaid?'unpaid':''}" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
           <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
             <button class="exp-action-edit" data-id="${e.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
             <button class="exp-action-del" data-id="${e.id}" style="width:56px;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer">删除</button>
           </div>
-          <div class="exp-swipe-card" data-id="${e.id}" style="position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;transition:transform .2s;z-index:1;cursor:pointer">
+          <div class="exp-swipe-card" data-id="${e.id}" style="position:relative;${cardStyle};border-radius:8px;padding:10px 12px;transition:transform .2s;z-index:1;cursor:pointer">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-weight:500">${titleText}</span>
-              <span style="color:${t.color};font-weight:600">¥${num(e.amount).toFixed(2)}</span>
+              <div style="display:flex;align-items:center;gap:4px"><span style="font-weight:500">${titleText}</span></div>
+              <div style="display:flex;align-items:center">${paidBadge}<span style="color:${t.color};font-weight:600">¥${num(e.amount).toFixed(2)}</span></div>
             </div>
             <div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 ${e.date||'未填'} · ${personLabel}：${esc(e.person)||'-'}</div>
           </div>
@@ -1944,35 +1974,37 @@ function renderExpenseCard(){
         ${pendingRepairs.length>0?'<span style="font-size:12px;color:var(--danger);font-weight:400">'+pendingRepairs.length+'项待维修</span>':''}
       </div>
       <div class="expense-grid">
-        <button class="expense-btn" id="ecRepairs" style="background:#ef4444"><span class="eb-icon">🏗️</span>维修情况${pendingRepairs.length>0?'<span style="background:#fff;color:#ef4444;border-radius:9px;padding:0 6px;font-size:11px;margin-left:2px">'+pendingRepairs.length+'</span>':''}</button>
-        <button class="expense-btn" id="ecRepair" style="background:#3b82f6"><span class="eb-icon">🔧</span>维修</button>
-        <button class="expense-btn" id="ecClean" style="background:var(--success)"><span class="eb-icon">🧹</span>清洁</button>
-        <button class="expense-btn" id="ecSupply" style="background:#e6a700"><span class="eb-icon">📦</span>耗材</button>
-        <button class="expense-btn" id="ecWater" style="background:#0ea5e9"><span class="eb-icon">💧</span>水费</button>
-        <button class="expense-btn" id="ecElec" style="background:#f59e0b"><span class="eb-icon">⚡</span>电费</button>
+        <button class="expense-btn big" id="ecRepairs" style="background:#ef4444;grid-column:1;grid-row:1 / span 2"><span class="eb-icon">🏗️</span>维修${pendingRepairs.length>0?'<span style="background:#fff;color:#ef4444;border-radius:9px;padding:0 6px;font-size:11px;margin-left:2px">'+pendingRepairs.length+'</span>':''}</button>
+        <button class="expense-btn" id="ecElec" style="background:#f59e0b;grid-column:2;grid-row:1"><span class="eb-icon">⚡</span>电费</button>
+        <button class="expense-btn" id="ecWater" style="background:#0ea5e9;grid-column:3;grid-row:1"><span class="eb-icon">💧</span>水费</button>
+        <button class="expense-btn" id="ecClean" style="background:var(--success);grid-column:2;grid-row:2"><span class="eb-icon">🧹</span>清洁</button>
+        <button class="expense-btn" id="ecSupply" style="background:#e6a700;grid-column:3;grid-row:2"><span class="eb-icon">📦</span>耗材</button>
       </div>
     </div>`;
   document.getElementById('ecRepairs').addEventListener('click',()=>openRepairs(b.id));
-  document.getElementById('ecRepair').addEventListener('click',()=>openExpSingle(b.id,'repair'));
   document.getElementById('ecClean').addEventListener('click',()=>openExpSingle(b.id,'clean'));
   document.getElementById('ecSupply').addEventListener('click',()=>openExpSingle(b.id,'supply'));
   document.getElementById('ecWater').addEventListener('click',()=>openExpSingle(b.id,'water'));
   document.getElementById('ecElec').addEventListener('click',()=>openExpSingle(b.id,'electric'));
 }
 
-// 独立支出项页面：直接显示表单+该项历史记录（不再显示6个项目按钮）
+// 独立支出项页面：先显示"添加记录"按钮，点击后显示表单
 function openExpSingle(bid,type){
   _expBuildingId=bid;
   _expSingleType=type;
   const b=getBuilding(bid);if(!b)return;
   const labels={repair:'维修',clean:'清洁',supply:'耗材',water:'水费',electric:'电费'};
+  const addBtnLabel={repair:'添加维修记录',clean:'添加清洁记录',supply:'添加耗材记录',water:'添加水费记录',electric:'添加电费记录'};
   document.getElementById('sheetTitle').textContent=b.name+' · '+labels[type]+'支出';
   const body=document.getElementById('sheetBody');
   body.innerHTML=`
-    <div class="section" id="expFormSection"></div>
+    <div class="section" id="expAddSection">
+      <button class="btn btn-primary add-record-btn" id="btnAddExpRecord">➕ ${addBtnLabel[type]||'添加记录'}</button>
+    </div>
+    <div class="section" id="expFormSection" style="display:none"></div>
     <div class="section" id="expListSection"></div>`;
-  showExpForm(type);
   renderExpList(bid,type);
+  document.getElementById('btnAddExpRecord').addEventListener('click',()=>showExpForm(type));
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
 }
@@ -1981,30 +2013,24 @@ let _repairBuildingId=null;
 function openRepairs(bid){
   _repairBuildingId=bid;
   const b=getBuilding(bid);if(!b)return;
-  document.getElementById('sheetTitle').textContent=b.name+' · 维修情况';
+  document.getElementById('sheetTitle').textContent=b.name+' · 维修';
   const body=document.getElementById('sheetBody');
   body.innerHTML=`
-    <div class="section" id="repairFormSection"></div>
+    <div class="section" id="repairAddSection">
+      <button class="btn btn-primary add-record-btn" id="btnAddRepairRecord" style="background:#ef4444">➕ 添加维修记录</button>
+    </div>
+    <div class="section" id="repairFormSection" style="display:none"></div>
     <div class="section" id="repairListSection"></div>`;
-  showRepairForm();
   renderRepairList(bid);
+  document.getElementById('btnAddRepairRecord').addEventListener('click',()=>showRepairForm());
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
 }
 function showRepairForm(editR){
   const sec=document.getElementById('repairFormSection');
-  const b=getBuilding(_repairBuildingId);if(!b)return;
-  let roomOpts='<option value="whole" '+(editR&&editR.roomNum==='whole'?'selected':'')+'>整栋</option>';
-  (b.floors||[]).forEach((floor,fIdx)=>{
-    const f=fIdx+1;
-    for(let r=1;r<=floor.rooms;r++){
-      const num2=f*100+r;
-      roomOpts+='<option value="'+num2+'" '+(editR&&String(editR.roomNum)===String(num2)?'selected':'')+'>'+num2+'</option>';
-    }
-  });
   const today=new Date().toISOString().slice(0,10);
   sec.innerHTML=`<div class="section-title">${editR?'✏️ 编辑':'➕ 添加'}维修记录</div>
-    <div class="form-row"><label>房号</label><select id="rpRoom">${roomOpts}</select></div>
+    <div class="form-row"><label>房号</label><input type="text" id="rpRoom" placeholder="如：301 或 整栋" value="${editR?(editR.roomNum==='whole'?'整栋':(editR.roomNum||'')):''}"></div>
     <div class="form-row"><label>维修要求方</label><input type="text" id="rpRequester" placeholder="如：租客/房东" value="${editR?esc(editR.requester):''}"></div>
     <div class="form-row"><label>维修位置</label><input type="text" id="rpLocation" placeholder="如：3楼走廊" value="${editR?esc(editR.location):''}"></div>
     <div class="form-row"><label>维修点</label><input type="text" id="rpPoint" placeholder="如：灯管" value="${editR?esc(editR.point):''}"></div>
@@ -2013,6 +2039,7 @@ function showRepairForm(editR){
     <div class="form-row"><label>人工费 (¥)</label><input type="number" id="rpLaborFee" placeholder="0" min="0" step="0.01" value="${editR?editR.laborFee:''}"></div>
     <div class="form-row"><label>提出日期</label><input type="date" id="rpRequestDate" value="${editR?editR.requestDate:today}"></div>
     <div class="form-row"><label>维修日期</label><input type="date" id="rpRepairDate" value="${editR?(editR.repairDate||''):''}"></div>
+    <div class="form-row form-switch"><label>已结账</label><label class="switch"><input type="checkbox" id="rpIsPaid" ${editR&&editR.isPaid?'checked':''}><span class="slider"></span></label></div>
     <div class="form-row"><label>备注</label><textarea id="rpNote" placeholder="可选" style="min-height:48px">${editR?esc(editR.note):''}</textarea></div>
     <div class="btn-group"><button class="btn btn-primary" id="btnSaveRepair">${editR?'更新':'保存'}</button><button class="btn btn-secondary" id="btnCancelRepair">取消</button></div>`;
   sec.style.display='';
@@ -2021,7 +2048,8 @@ function showRepairForm(editR){
   sec.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function saveRepair(editId){
-  const roomNum=val('rpRoom');
+  const roomRaw=val('rpRoom')||'';
+  const roomNum=roomRaw.replace(/^\s+|\s+$/g,'')==='整栋'?'whole':roomRaw;
   const requester=val('rpRequester');
   const location=val('rpLocation');
   const point=val('rpPoint');
@@ -2031,19 +2059,26 @@ function saveRepair(editId){
   const requestDate=val('rpRequestDate');
   const repairDate=val('rpRepairDate');
   const note=val('rpNote');
+  const isPaid=document.getElementById('rpIsPaid')?document.getElementById('rpIsPaid').checked:false;
   if(!requestDate){toast('请选择提出日期');return;}
   if(!state.repairs)state.repairs=[];
   if(editId){
     const idx=state.repairs.findIndex(r=>r.id===editId);
-    if(idx>=0){state.repairs[idx]={...state.repairs[idx],roomNum,requester,location,point,method,materialFee,laborFee,requestDate,repairDate,note};}
+    if(idx>=0){state.repairs[idx]={...state.repairs[idx],roomNum,requester,location,point,method,materialFee,laborFee,requestDate,repairDate,note,isPaid};}
     toast('已更新');
   }else{
-    state.repairs.push({id:'rp'+Date.now()+Math.random().toString(36).slice(2,6),bid:_repairBuildingId,roomNum,requester,location,point,method,materialFee,laborFee,requestDate,repairDate,note});
-    toast('维修记录已保存');
+    state.repairs.push({id:'rp'+Date.now()+Math.random().toString(36).slice(2,6),bid:_repairBuildingId,roomNum,requester,location,point,method,materialFee,laborFee,requestDate,repairDate,note,isPaid});
+    toast('维修记录已保存，可继续添加下一条');
+    // 新增后保留表单，仅清空可编辑字段（提出日期保留默认）
+    if(!editId){
+      ['rpRoom','rpRequester','rpLocation','rpPoint','rpMethod','rpNote'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+      const mf=document.getElementById('rpMaterialFee');if(mf)mf.value='';
+      const lf=document.getElementById('rpLaborFee');if(lf)lf.value='';
+      const rd=document.getElementById('rpRepairDate');if(rd)rd.value='';
+      const paid=document.getElementById('rpIsPaid');if(paid)paid.checked=false;
+    }
   }
   save();renderRepairList(_repairBuildingId);
-  document.getElementById('repairFormSection').style.display='none';
-  document.getElementById('repairFormSection').innerHTML='';
   renderAll();
 }
 function deleteRepair(id){
@@ -2064,12 +2099,19 @@ function renderRepairList(bid){
   }else{
     list.forEach(r=>{
       const pending=!r.repairDate;
+      // 标黄条件：有维修日期（维修项的日期）但未结账
+      const unpaid=!pending&&!r.isPaid;
       const totalFee=num(r.materialFee)+num(r.laborFee);
       const roomLabel=r.roomNum==='whole'?'整栋':r.roomNum;
-      html+=`<div class="repair-item ${pending?'pending':''}" data-id="${r.id}">
+      const rowClass=pending?'pending':(unpaid?'unpaid':'');
+      html+=`<div class="repair-item ${rowClass}" data-id="${r.id}">
         <div class="repair-item-title">
           <span style="font-weight:600;${pending?'color:var(--danger)':''}">${esc(roomLabel)} · ${esc(r.point||'未填维修点')}</span>
-          <span style="font-weight:600;${pending?'color:var(--danger)':''}">¥${totalFee.toFixed(2)}</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${unpaid?'<span style="font-size:11px;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 6px">未结账</span>':''}
+            ${r.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px">已结账</span>':''}
+            <span style="font-weight:600;${pending?'color:var(--danger)':''}">¥${totalFee.toFixed(2)}</span>
+          </div>
         </div>
         <div class="repair-item-meta">提出日期：${r.requestDate||'-'} · 维修日期：${r.repairDate||'<span style="color:var(--danger);font-weight:600">未填</span>'}</div>
         ${r.location?`<div class="repair-item-meta">位置：${esc(r.location)}</div>`:''}
