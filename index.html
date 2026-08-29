@@ -1404,7 +1404,7 @@ function renderOverview(){
   document.getElementById('ovExpense').innerHTML=`¥${expTotal.toFixed(2)} <span id="ovExpArrow" style="font-size:11px">▶</span>`;
   document.querySelector('#ovExpenseWrap .overview-label').textContent=expLabel;
   // 支出展开详情：五项分项统计
-  const typeLabels={repair:'🔧 维修',clean:'🧹 清洁',supply:'📦 耗材',water:'💧 水费',electric:'⚡ 电费'};
+  const typeLabels={repair:'🔧 维修',clean:'🧹 清洁',supply:'📦 其它',water:'💧 水费',electric:'⚡ 电费'};
   let expDetailHtml='';
   expTypes.forEach(t=>{
     expDetailHtml+=`<div class="ovd-row"><span class="ovd-label">${typeLabels[t]}</span><span class="ovd-val">¥${expByType[t].toFixed(2)}</span></div>`;
@@ -1556,7 +1556,7 @@ function openExpenses(bid){
       <div class="btn-group">
         <button class="btn btn-primary" id="btnAddRepair" style="flex:1">🔧 维修</button>
         <button class="btn btn-primary" id="btnAddClean" style="flex:1;background:var(--success)">🧹 清洁</button>
-        <button class="btn btn-primary" id="btnAddSupply" style="flex:1;background:#e6a700">📦 耗材</button>
+        <button class="btn btn-primary" id="btnAddSupply" style="flex:1;background:#e6a700">📦 其它</button>
       </div>
       <div class="btn-group" style="margin-top:8px">
         <button class="btn btn-primary" id="btnAddWater" style="flex:1;background:#0ea5e9">💧 水费</button>
@@ -1619,8 +1619,8 @@ function toggleExpDetail(id){
 }
 function showExpDetail(id){
   const ex=(state.expenses||[]).find(e=>e.id===id);if(!ex)return;
-  const labels={repair:'维修',clean:'清洁',supply:'耗材',water:'水费',electric:'电费'};
-  const fieldLabels={repair:['维修日期','维修位置','维修人','维修金额'],clean:['清洁日期','清洁位置','清洁人','清洁费用'],supply:['购买日期','耗材名称','购买渠道','购买金额'],water:['缴款日期','缴款账户','缴款金额'],electric:['缴款日期','缴款账户','缴款金额']};
+  const labels={repair:'维修',clean:'清洁',supply:'其它',water:'水费',electric:'电费'};
+  const fieldLabels={repair:['维修日期','维修位置','维修人','维修金额'],clean:['清洁日期','清洁位置','清洁人','清洁费用'],supply:['日期','名称','渠道','金额'],water:['缴款日期','缴款账户','缴款金额'],electric:['缴款日期','缴款账户','缴款金额']};
   const fl=fieldLabels[ex.type]||[];
   const sec=document.getElementById('expFormSection');
   let detailRows='';
@@ -1630,7 +1630,7 @@ function showExpDetail(id){
       <div class="fee-calc-row"><span class="fc-label">${fl[1]}</span><span class="fc-value">${esc(ex.person)||'-'}</span></div>
       <div class="fee-calc-row total"><span class="fc-label">${fl[2]}</span><span class="fc-value" style="color:#e6a700">¥${num(ex.amount).toFixed(2)}</span></div>`;
   }else{
-    // 维修/清洁/耗材：日期、位置/名称、人/渠道、金额
+    // 维修/清洁/其它：日期、位置/名称、人/渠道、金额
     detailRows=`<div class="fee-calc-row"><span class="fc-label">${fl[0]}</span><span class="fc-value">${ex.date||'-'}</span></div>
       <div class="fee-calc-row"><span class="fc-label">${fl[1]}</span><span class="fc-value">${esc(ex.location)||'-'}</span></div>
       <div class="fee-calc-row"><span class="fc-label">${fl[2]}</span><span class="fc-value">${esc(ex.person)||'-'}</span></div>
@@ -1649,7 +1649,7 @@ function showExpDetail(id){
 }
 function showExpForm(type,editEx){
   const sec=document.getElementById('expFormSection');
-  const labels={repair:'维修',clean:'清洁',supply:'耗材',water:'水费',electric:'电费'};
+  const labels={repair:'维修',clean:'清洁',supply:'其它',water:'水费',electric:'电费'};
   const today=editEx?editEx.date:new Date().toISOString().slice(0,10);
   const showPaidSwitch=(type==='clean'||type==='supply'||type==='repair');
   const paidChecked=(editEx&&editEx.isPaid)?'checked':'';
@@ -1669,10 +1669,10 @@ function showExpForm(type,editEx){
     ${showPaidSwitch?`<div class="form-row form-switch"><label>已结账</label><label class="switch"><input type="checkbox" id="expIsPaid" ${paidChecked}><span class="slider"></span></label></div>`:''}
     <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
   }else if(type==='supply'){
-    fields=`<div class="form-row"><label>购买日期</label><input type="date" id="expDate" value="${today}"></div>
-    <div class="form-row"><label>耗材名称</label><input type="text" id="expLocation" placeholder="如：灯泡x10" value="${editEx?esc(editEx.location):''}"></div>
-    <div class="form-row"><label>购买渠道</label><input type="text" id="expPerson" placeholder="如：淘宝/五金店" value="${editEx?esc(editEx.person):''}"></div>
-    <div class="form-row"><label>购买金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
+    fields=`<div class="form-row"><label>日期</label><input type="date" id="expDate" value="${today}"></div>
+    <div class="form-row"><label>名称</label><input type="text" id="expLocation" placeholder="如：办公用品" value="${editEx?esc(editEx.location):''}"></div>
+    <div class="form-row"><label>渠道</label><input type="text" id="expPerson" placeholder="如：淘宝/实体店" value="${editEx?esc(editEx.person):''}"></div>
+    <div class="form-row"><label>金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
     ${showPaidSwitch?`<div class="form-row form-switch"><label>已结账</label><label class="switch"><input type="checkbox" id="expIsPaid" ${paidChecked}><span class="slider"></span></label></div>`:''}
     <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
   }else if(type==='water'){
@@ -1695,7 +1695,7 @@ function showExpForm(type,editEx){
 }
 function renderExpList(bid,filterType){
   const sec=document.getElementById('expListSection');if(!sec)return;
-  const allTypes=[{key:'repair',label:'🔧 维修',color:'#3b82f6'},{key:'clean',label:'🧹 清洁',color:'var(--success)'},{key:'supply',label:'📦 耗材',color:'#e6a700'},{key:'water',label:'💧 水费',color:'#0ea5e9'},{key:'electric',label:'⚡ 电费',color:'#f59e0b'}];
+  const allTypes=[{key:'repair',label:'🔧 维修',color:'#3b82f6'},{key:'clean',label:'🧹 清洁',color:'var(--success)'},{key:'supply',label:'📦 其它',color:'#e6a700'},{key:'water',label:'💧 水费',color:'#0ea5e9'},{key:'electric',label:'⚡ 电费',color:'#f59e0b'}];
   // 未完成：repair/clean/supply 未结账（repair也由维修情况管理，但这里是支出记录）
   function expIncomplete(e){return (e.type==='repair'||e.type==='clean'||e.type==='supply')&&!e.isPaid;}
   const rawList=(state.expenses||[]).filter(e=>e.bid===bid);
@@ -1716,9 +1716,9 @@ function renderExpList(bid,filterType){
     }else{
       html+='<div>';
       items.forEach(e=>{
-        const personLabel=e.type==='supply'?'购买渠道':(e.type==='repair'?'维修人':(e.type==='clean'?'清洁人':'缴款账户'));
+        const personLabel=e.type==='supply'?'渠道':(e.type==='repair'?'维修人':(e.type==='clean'?'清洁人':'缴款账户'));
         const titleText=(e.type==='water'||e.type==='electric')?(e.date||'未填'):(esc(e.location)||'未填写');
-        // 标黄条件：维修情况/清洁/耗材 只填了日期（有日期）但未结账
+        // 标黄条件：维修情况/清洁/其它 只填了日期（有日期）但未结账
         const paidTypes=['repair','clean','supply'];
         const unpaid=paidTypes.includes(e.type)&&e.date&&!e.isPaid;
         const cardStyle=unpaid?'background:#fffbeb;border:1px solid #f59e0b':'background:#fff;border:1px solid #e2e8f0';
@@ -1996,7 +1996,7 @@ function renderExpenseCard(){
   const repairs=(state.repairs||[]).filter(r=>r.bid===b.id);
   // 维修未完成：未填维修日期 OR 未结账
   const repairIncomplete=repairs.filter(r=>!r.repairDate||!r.isPaid).length;
-  // 清洁/耗材支出记录中未结账的数量
+  // 清洁/其它支出记录中未结账的数量
   const expenses=(state.expenses||[]).filter(e=>e.bid===b.id);
   const cleanIncomplete=expenses.filter(e=>e.type==='clean'&&!e.isPaid).length;
   const supplyIncomplete=expenses.filter(e=>e.type==='supply'&&!e.isPaid).length;
@@ -2019,7 +2019,7 @@ function renderExpenseCard(){
         <button class="expense-btn" id="ecElec" style="background:#f59e0b;grid-column:2;grid-row:1"><span class="eb-icon">⚡</span>电费</button>
         <button class="expense-btn" id="ecWater" style="background:#0ea5e9;grid-column:3;grid-row:1"><span class="eb-icon">💧</span>水费</button>
         <button class="expense-btn" id="ecClean" style="background:var(--success);grid-column:2;grid-row:2"><span class="eb-icon">🧹</span><div style="display:flex;flex-direction:column;align-items:center">清洁${badge(cleanIncomplete,'var(--success)','#fff')}</div></button>
-        <button class="expense-btn" id="ecSupply" style="background:#e6a700;grid-column:3;grid-row:2"><span class="eb-icon">📦</span><div style="display:flex;flex-direction:column;align-items:center">耗材${badge(supplyIncomplete,'#e6a700','#fff')}</div></button>
+        <button class="expense-btn" id="ecSupply" style="background:#e6a700;grid-column:3;grid-row:2"><span class="eb-icon">📦</span><div style="display:flex;flex-direction:column;align-items:center">其它${badge(supplyIncomplete,'#e6a700','#fff')}</div></button>
       </div>
     </div>`;
   document.getElementById('ecRepairs').addEventListener('click',()=>openRepairs(b.id));
@@ -2034,8 +2034,8 @@ function openExpSingle(bid,type){
   _expBuildingId=bid;
   _expSingleType=type;
   const b=getBuilding(bid);if(!b)return;
-  const labels={repair:'维修',clean:'清洁',supply:'耗材',water:'水费',electric:'电费'};
-  const addBtnLabel={repair:'添加维修记录',clean:'添加清洁记录',supply:'添加耗材记录',water:'添加水费记录',electric:'添加电费记录'};
+  const labels={repair:'维修',clean:'清洁',supply:'其它',water:'水费',electric:'电费'};
+  const addBtnLabel={repair:'添加维修记录',clean:'添加清洁记录',supply:'添加记录',water:'添加水费记录',electric:'添加电费记录'};
   document.getElementById('sheetTitle').textContent=b.name+' · '+labels[type]+'支出';
   const body=document.getElementById('sheetBody');
   body.innerHTML=`
@@ -2196,7 +2196,7 @@ function doSearch(keyword){
     const loc=(ex.location||'').toLowerCase();
     const per=(ex.person||'').toLowerCase();
     if(loc.includes(kw)||per.includes(kw)){
-      const typeLabels={repair:'维修',clean:'清洁',supply:'耗材',water:'水费',electric:'电费'};
+      const typeLabels={repair:'维修',clean:'清洁',supply:'其它',water:'水费',electric:'电费'};
       const typeColors={repair:'#3b82f6',clean:'var(--success)',supply:'#e6a700',water:'#0ea5e9',electric:'#f59e0b'};
       results.push({type:'expense',expId:ex.id,bid:ex.bid,bName,expType:ex.type,expTypeLabel:typeLabels[ex.type]||ex.type,expColor:typeColors[ex.type]||'var(--primary)',expDate:ex.date,expLocation:ex.location||'-',expPerson:ex.person||'-',expAmount:ex.amount});
     }
