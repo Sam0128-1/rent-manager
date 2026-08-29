@@ -228,14 +228,14 @@
   .overlay.show{display:block;opacity:1}
   .overlay.closing{opacity:0}
   .sheet{position:fixed;left:0;right:0;bottom:0;z-index:230;background:var(--bg);border-radius:16px 16px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom);padding-top:calc(env(safe-area-inset-top) + 0px);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-  .sheet.fullscreen-mode{border-radius:0;max-height:none;height:100vh;height:100dvh;top:0;padding-top:calc(env(safe-area-inset-top) + 0px);background:#fff}
+  .sheet.fullscreen-mode{border-radius:0;max-height:none;height:100vh;height:100dvh;top:0;padding-top:calc(env(safe-area-inset-top) + 44px);background:#fff;overscroll-behavior:auto}
   .sheet.fullscreen-mode .sheet-handle{display:none}
-  .sheet.fullscreen-mode .sheet-header{position:sticky;top:calc(env(safe-area-inset-top) + 0px);z-index:5;background:#fff;border-radius:0}
+  .sheet.fullscreen-mode .sheet-header{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top) + 0px);z-index:250;background:#fff;border-radius:0;padding-top:6px;padding-bottom:8px}
   .sheet.show{transform:translateY(0)}
-  .page-fullscreen{position:fixed;inset:0;z-index:220;background:#fff;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom);padding-top:calc(env(safe-area-inset-top) + 0px);overscroll-behavior:contain}
+  .page-fullscreen{position:fixed;inset:0;z-index:220;background:#fff;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom);padding-top:calc(env(safe-area-inset-top) + 44px);overscroll-behavior:auto}
   .page-fullscreen .sheet-handle{display:none}
   .page-fullscreen.show{transform:translateY(0)}
-  .page-fullscreen .sheet-header{position:sticky;top:calc(env(safe-area-inset-top) + 0px);z-index:5;background:#fff;border-radius:0}
+  .page-fullscreen .sheet-header{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top) + 0px);z-index:250;background:#fff;border-radius:0;padding-top:6px;padding-bottom:8px}
   /* 后打开的全屏页面层级更高 */
   #batchSheet{z-index:224}
   #sheet.fullscreen-mode{z-index:228}
@@ -312,10 +312,10 @@
   .mli-total{font-size:15px;font-weight:700;color:var(--danger);line-height:1.15}
   .mli-paid{font-size:12px;font-weight:600;color:#b45309;line-height:1.15;margin-top:2px;background:#fff7ed;padding:2px 6px;border-radius:6px}
   .mli-paid.over{color:#15803d;background:#f0fdf4}
-  .mli-status{font-size:10px;padding:1px 8px;border-radius:8px;font-weight:500;display:inline-block;margin-top:4px}
-  .mli-status.paid{background:var(--success-bg);color:#15803d}
-  .mli-status.unpaid{background:var(--danger-bg);color:#b91c1c}
-  .mli-status.partial{background:#fff7ed;color:#b45309;border:1px solid #fed7aa}
+  .mli-status{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;display:inline-block;margin-top:4px;color:#fff}
+  .mli-status.paid{background:#15803d}
+  .mli-status.unpaid{background:#dc2626}
+  .mli-status.partial{background:#d97706}
   .mli-detail{font-size:12px;color:var(--text-light);line-height:1.6}
 
   .archive-item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px}
@@ -2313,7 +2313,9 @@ function openRoom(key,archiveIdx){
     </div>
     <div class="section" id="tenantSection">
       <div class="section-title">
-        租客信息 <span class="st-action" id="btnAddTenant" style="font-size:12px">+ 添加租客</span>
+        <span>租客信息</span>
+        <span id="tenantNames" style="color:var(--text);font-weight:500;font-size:13px"></span>
+        <span class="st-action" id="btnAddTenant" style="font-size:12px;margin-left:auto">+ 添加租客</span>
       </div>
       <div id="tenantList"></div>
     </div>
@@ -2433,6 +2435,14 @@ function bindRoomEvents(key){
     });
     container.innerHTML=html;
     bindTenantCardEvents();
+    // section-title 显示租客名字串
+    const nameEl=document.getElementById('tenantNames');
+    if(nameEl){
+      const valid=list.filter(t=>t.name||t.phone);
+      if(valid.length===0){nameEl.textContent='';}
+      else if(valid.length===1){nameEl.textContent=' · '+esc(valid[0].name||valid[0].phone);}
+      else{nameEl.textContent=' · '+valid.map(t=>esc(t.name||t.phone||'未命名')).join('、');}
+    }
   }
 
   function bindTenantCardEvents(){
