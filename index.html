@@ -1348,11 +1348,11 @@ function renderOverview(){
       }else{
         occ++;
       }
-      // 选中月份的费用
+      // 选中月份的费用（部分缴费也计入已收）
       const md=room.months[selYm];
-      if(md&&isMonthPaid(room,md)){const c=calcMonthFee(room,md);monthIncome+=c.actualPaid;mRent+=c.rent;mWater+=c.waterFee;mElec+=c.elecFee;}
+      if(md){const c=calcMonthFee(room,md);if(c.actualPaid>0){monthIncome+=c.actualPaid;mRent+=c.rent;mWater+=c.waterFee;mElec+=c.elecFee;}}
       for(const mym in room.months){
-        if(mym.startsWith(selYear)&&isMonthPaid(room,room.months[mym])){const c=calcMonthFee(room,room.months[mym]);yearIncome+=c.actualPaid;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;}
+        if(mym.startsWith(selYear)){const c=calcMonthFee(room,room.months[mym]);if(c.actualPaid>0){yearIncome+=c.actualPaid;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;}}
       }
       // 欠费统计：只取最新月份的欠费金额（不累计多月）
       const roomArrears=getRoomLatestArrears(room);
@@ -1366,15 +1366,15 @@ function renderOverview(){
       (room.archived||[]).forEach((a,aIdx)=>{
         const archMd=a.months?a.months[selYm]:null;
         const archRoomObj={roomRates:a.roomRates||{},months:{}};
-        if(archMd&&isMonthPaid(archRoomObj,archMd)){
+        if(archMd){
           const c=calcMonthFee(archRoomObj,archMd);
-          monthIncome+=c.actualPaid;mRent+=c.rent;mWater+=c.waterFee;mElec+=c.elecFee;
+          if(c.actualPaid>0){monthIncome+=c.actualPaid;mRent+=c.rent;mWater+=c.waterFee;mElec+=c.elecFee;}
         }
         if(a.months){
           for(const mym in a.months){
-            if(mym.startsWith(selYear)&&isMonthPaid(archRoomObj,a.months[mym])){
+            if(mym.startsWith(selYear)){
               const c=calcMonthFee(archRoomObj,a.months[mym]);
-              yearIncome+=c.actualPaid;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;
+              if(c.actualPaid>0){yearIncome+=c.actualPaid;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;}
             }
           }
           // 归档租客欠费：只取最新月份的欠费金额
@@ -1862,12 +1862,13 @@ function showArrearsDetail(list,bname){
           </div>
           <div class="swipe-item-content unpaid" data-idx="${i}" data-room="${item.key}">
             <div class="mli-header"><span class="mli-month">${item.num2}房 · ${item.tenant||'未命名'}${item.archiveIdx!==undefined?'<span class="sr-tag" style="background:#cbd5e1;color:#fff;margin-left:6px">已归档</span>':''}</span><span class="mli-status unpaid">${formatYM(item.ym)}</span></div>
-            <div class="mli-detail">租金${money(item.calc.rent)} · 水费${money(item.calc.waterFee)} · 电费${money(item.calc.elecFee)}</div>
-            <div class="mli-total">合计：${money(item.calc.total)}</div>
+            <div class="mli-detail">租金${money(item.calc.rent)} · 水费${money(item.calc.waterFee)} · 电费${money(item.calc.elecFee)}${item.calc.deduction>0?' · 扣除-'+money(item.calc.deduction):''}${item.calc.arrearsRepayment>0?' · 上月欠款+'+money(item.calc.arrearsRepayment):''}</div>
+            <div class="mli-detail" style="color:var(--text-lighter)">应收：${money(item.calc.total)}${item.calc.actualPaid>0?' · 已收：'+money(item.calc.actualPaid):''}</div>
+            <div class="mli-total" style="color:var(--danger)">欠缴：${money(item.calc.arrearsLeft)}</div>
           </div>
         </div>
       `).join('')}
-      <div class="fee-calc" style="margin-top:8px"><div class="fee-calc-row total"><span class="fc-label">欠缴总计</span><span class="fc-value">${money(list.reduce((s,i)=>s+i.calc.total,0))}</span></div></div>
+      <div class="fee-calc" style="margin-top:8px"><div class="fee-calc-row total"><span class="fc-label">欠缴总计</span><span class="fc-value">${money(list.reduce((s,i)=>s+i.calc.arrearsLeft,0))}</span></div></div>
     </div>
   `;
   // 绑定左滑
