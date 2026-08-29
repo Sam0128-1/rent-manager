@@ -188,10 +188,10 @@
   .floor-expanded{background:var(--card);margin:0 10px 12px;border-radius:14px;padding:12px;box-shadow:var(--shadow)}
   .floor-expanded-title{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;margin-bottom:10px}
   .floor-expanded-title .feb{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
-  .expense-card{background:var(--card);margin:0 10px 12px;border-radius:14px;padding:14px;box-shadow:var(--shadow);overflow:hidden}
+  .expense-card{background:var(--card);margin:0 10px 12px;border-radius:14px;padding:14px;box-shadow:var(--shadow)}
   .expense-card-title{font-weight:600;font-size:15px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
-  .expense-grid{display:grid;grid-template-columns:1fr 1fr 1fr;grid-auto-rows:minmax(56px,auto);gap:8px;align-items:stretch}
-  .expense-btn{border:none;border-radius:10px;padding:12px 4px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:transform .1s;min-height:60px;box-sizing:border-box}
+  .expense-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(56px,auto);gap:8px;align-items:stretch;width:100%;box-sizing:border-box}
+  .expense-btn{border:none;border-radius:10px;padding:12px 4px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:transform .1s;min-height:60px;box-sizing:border-box;width:100%}
   .expense-btn:active{transform:scale(.92)}
   .expense-btn .eb-icon{font-size:20px;line-height:1}
   .expense-btn.big{grid-row:span 2;min-height:calc(120px + 8px);font-size:22px;padding:14px 4px}
@@ -228,11 +228,11 @@
   .overlay.show{display:block;opacity:1}
   .overlay.closing{opacity:0}
   .sheet{position:fixed;left:0;right:0;bottom:0;z-index:230;background:var(--bg);border-radius:16px 16px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom);padding-top:calc(env(safe-area-inset-top) + 0px);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-  .sheet.fullscreen-mode{border-radius:0;max-height:none;height:100vh;height:100dvh;top:0;padding-top:calc(env(safe-area-inset-top) + 12px)}
+  .sheet.fullscreen-mode{border-radius:0;max-height:none;height:100vh;height:100dvh;top:0;padding-top:calc(env(safe-area-inset-top) + 12px);background:#fff}
   .sheet.fullscreen-mode .sheet-handle{display:none}
   .sheet.fullscreen-mode .sheet-header{position:sticky;top:calc(env(safe-area-inset-top) + 12px);z-index:5;background:#fff;border-radius:0;padding-top:8px}
   .sheet.show{transform:translateY(0)}
-  .page-fullscreen{position:fixed;inset:0;z-index:220;background:var(--bg);transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom);padding-top:calc(env(safe-area-inset-top) + 12px);overscroll-behavior:contain}
+  .page-fullscreen{position:fixed;inset:0;z-index:220;background:#fff;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom);padding-top:calc(env(safe-area-inset-top) + 12px);overscroll-behavior:contain}
   .page-fullscreen .sheet-handle{display:none}
   .page-fullscreen.show{transform:translateY(0)}
   .page-fullscreen .sheet-header{position:sticky;top:calc(env(safe-area-inset-top) + 12px);z-index:5;background:#fff;border-radius:0;padding-top:8px}
@@ -298,7 +298,7 @@
   .swipe-item-wrap{position:relative;overflow:hidden;margin-bottom:8px;border-radius:10px}
   .swipe-item-content{position:relative;z-index:1;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:transform .25s cubic-bezier(.32,.72,0,1);touch-action:pan-y}
   .swipe-item-content.unpaid{border-left:3px solid var(--danger)}
-  .swipe-item-content.partial{border-left:3px solid #f59e0b;background:#fffbeb}
+  .swipe-item-content.partial{border-left:3px solid #f59e0b;background:#fef3c7}
   .swipe-item-content.paid{border-left:3px solid var(--success)}
   .swipe-item-content.swiped{transform:translateX(-150px)}
   .swipe-actions{position:absolute;right:0;top:0;bottom:0;display:flex;z-index:0}
@@ -2313,8 +2313,10 @@ function openRoom(key,archiveIdx){
     </div>
     <div class="section" id="tenantSection">
       <div class="section-title" id="tenantSectionToggle" style="cursor:pointer;user-select:none">
-        租客信息 <span class="st-action" id="btnAddTenant" style="font-size:12px">+ 添加租客</span>
-        <span id="tenantToggleIcon" style="margin-left:auto;color:var(--text-lighter);font-size:13px;font-weight:400">展开 ▼</span>
+        <span id="tenantTitleText">租客信息</span>
+        <span id="tenantNames" style="color:var(--text);font-weight:500;font-size:13px"></span>
+        <span class="st-action" id="btnAddTenant" style="font-size:12px;margin-left:auto">+ 添加租客</span>
+        <span id="tenantToggleIcon" style="color:var(--text-lighter);font-size:13px;font-weight:400;margin-left:8px">展开 ▼</span>
       </div>
       <div id="tenantList" style="display:none"></div>
     </div>
@@ -2434,6 +2436,14 @@ function bindRoomEvents(key){
     });
     container.innerHTML=html;
     bindTenantCardEvents();
+    // 同步更新 section-title 里显示的租客名字串
+    const nameEl=document.getElementById('tenantNames');
+    if(nameEl){
+      const valid=list.filter(t=>t.name||t.phone);
+      if(valid.length===0){nameEl.textContent='';}
+      else if(valid.length===1){nameEl.textContent=' · '+esc(valid[0].name||valid[0].phone);}
+      else{nameEl.textContent=' · '+valid.map(t=>esc(t.name||t.phone||'未命名')).join('、')+`（${valid.length}人）`;}
+    }
   }
 
   function bindTenantCardEvents(){
@@ -2684,7 +2694,6 @@ function renderMonthList(key){
     else if(calc.actualPaid>0||calc.deduction>0||calc.arrearsRepayment>0){
       // 有任一项"已缴类"时标记为部分缴费
       statusLabel='部分缴费';
-      if(calc.arrearsLeft>0)statusLabel+=' 欠'+money(calc.arrearsLeft);
       statusCls='partial';
     }
     // 右边渲染：上=总欠（红色），下=已缴合计（部分缴=黄 / 已缴清且多缴=绿 / 已缴清=绿）
