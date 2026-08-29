@@ -2749,12 +2749,18 @@ function openMonthEdit(key,ym){
   const room=state.rooms[key];
   const rates=getRoomRates(room);
   if(!ym)ym=currentYearMonth();
-  // 如果该月没有记录，尝试从上月自动带出水表/电表上月读数
+  // 如果该月没有记录，尝试从上月自动带出水表/电表上月读数和上月欠款
   if(!room.months[ym]){
     const[y,m]=ym.split('-').map(n=>parseInt(n));
     let prevY=y,prevM=m-1;if(prevM<1){prevM=12;prevY--;}
     const prevYm=monthKey(prevY,prevM);
     const prevMd=room.months[prevYm];
+    // 计算上月欠款金额
+    let prevArrears='';
+    if(prevMd){
+      const prevCalc=calcMonthFee(room,prevMd);
+      if(prevCalc.arrearsLeft>0){prevArrears=prevCalc.arrearsLeft.toFixed(2);}
+    }
     room.months[ym]={
       rent:room.fixedRent||(prevMd?prevMd.rent:''),
       waterPrev:prevMd?prevMd.waterCurr:'',
@@ -2762,7 +2768,7 @@ function openMonthEdit(key,ym){
       electricPrev:prevMd?prevMd.electricCurr:'',
       electricCurr:'',
       deduction:'',
-      arrearsRepayment:'',
+      arrearsRepayment:prevArrears,
       actualPaid:'',
       note:''
     };
@@ -2815,9 +2821,8 @@ function openMonthEdit(key,ym){
       <div class="form-row"><label>扣除金额 (¥)</label><input type="number" id="mDeduction" value="${esc(md.deduction)}" placeholder="0" min="0" step="0.01"></div>
     </div>
     <div class="section">
-      <div class="section-title">欠款 <span style="font-size:11px;color:var(--text-lighter);font-weight:400">（本月新增的欠费金额；会计入本月应收合计）</span></div>
-      <div class="form-row"><label>欠款金额 (¥)</label><input type="number" id="mArrearsRepayment" value="${esc(md.arrearsRepayment)}" placeholder="0" min="0" step="0.01"></div>
-      <div class="info-hint" id="totalArrearsHint" style="margin-top:6px">计算中…</div>
+      <div class="section-title">上月欠款</div>
+      <div class="form-row"><label>上月欠款金额 (¥)</label><input type="number" id="mArrearsRepayment" value="${esc(md.arrearsRepayment)}" placeholder="0" min="0" step="0.01"></div>
     </div>
     <div class="section">
       <div class="section-title">实际缴费 <span style="font-size:11px;color:var(--text-lighter);font-weight:400">（租客本月实际已支付金额；若小于本月应收则差额自动计入欠费）</span></div>
@@ -2828,7 +2833,7 @@ function openMonthEdit(key,ym){
       <div class="fee-calc">
         <div class="fee-calc-row"><span class="fc-label">小计（租金+水电）</span><span class="fc-value" id="subtotalFee">¥0.00</span></div>
         <div class="fee-calc-row"><span class="fc-label" style="color:var(--danger)">扣除项</span><span class="fc-value" id="deductionFee" style="color:var(--danger)">-¥0.00</span></div>
-        <div class="fee-calc-row"><span class="fc-label" style="color:var(--danger)">欠款</span><span class="fc-value" id="arrearsFee" style="color:var(--danger)">+¥0.00</span></div>
+        <div class="fee-calc-row"><span class="fc-label" style="color:var(--danger)">上月欠款</span><span class="fc-value" id="arrearsFee" style="color:var(--danger)">+¥0.00</span></div>
         <div class="fee-calc-row"><span class="fc-label">本月应收</span><span class="fc-value" id="totalFee" style="font-weight:700">¥0.00</span></div>
         <div class="fee-calc-row"><span class="fc-label" style="color:var(--primary)">实际缴费</span><span class="fc-value" id="actualPaidFee" style="color:var(--primary)">-¥0.00</span></div>
         <div class="fee-calc-row total"><span class="fc-label">本月欠费</span><span class="fc-value" id="arrearsLeftFee">¥0.00</span></div>
@@ -2876,20 +2881,9 @@ function updateMonthCalc(){
   const arrearsRepayment=num(val('mArrearsRepayment'));
   const actualPaid=num(val('mActualPaid'));
   const subtotal=rent+wFee+eFee;
-  // 本月应收 = 租金水电小计 - 扣除项 + 欠款（本月新增欠费，增加应缴）
+  // 本月应收 = 租金水电小计 - 扣除项 + 上月欠款
   const total=Math.max(0,subtotal-deduction+arrearsRepayment);
   const arrearsLeft=Math.max(0,total-actualPaid);
-  // 累计欠费 = 除本月外所有历史欠费 + 本月欠费
-  let totalArrears=0;
-  if(room&&room.months){
-    const curYm=val('monthYm');
-    Object.keys(room.months).forEach(ym=>{
-      if(ym===curYm)return;
-      const c=calcMonthFee(room,room.months[ym]);
-      totalArrears+=c.arrearsLeft;
-    });
-  }
-  totalArrears+=arrearsLeft;
   const wuEl=document.getElementById('waterUsed'),wfEl=document.getElementById('waterFee'),euEl=document.getElementById('elecUsed'),efEl=document.getElementById('elecFee'),tEl=document.getElementById('totalFee'),stEl=document.getElementById('subtotalFee'),dEl=document.getElementById('deductionFee'),aEl=document.getElementById('arrearsFee');
   if(wuEl)wuEl.textContent=(wUsed>0?wUsed:0).toFixed(1)+' 方';
   if(wfEl)wfEl.textContent=money(wFee);
@@ -2905,14 +2899,6 @@ function updateMonthCalc(){
   if(alEl){
     alEl.textContent=arrearsLeft>0?money(arrearsLeft):'¥0.00';
     alEl.style.color=arrearsLeft>0?'var(--danger)':'var(--success)';
-  }
-  const taEl=document.getElementById('totalArrearsHint');
-  if(taEl){
-    if(totalArrears<=0){
-      taEl.innerHTML='<span style="color:var(--success)">✅ 当前累计欠费：¥0.00（无欠费）</span>';
-    }else{
-      taEl.innerHTML='<span style="color:var(--danger)">⚠️ 该租客累计欠费：'+money(totalArrears)+'（含本月）</span>';
-    }
   }
 }
 
