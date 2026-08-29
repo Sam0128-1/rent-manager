@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -1042,10 +1042,10 @@ function calcMonthFee(room,monthData){
   const arrearsRepayment=num(monthData.arrearsRepayment);
   const actualPaid=num(monthData.actualPaid);
   const subtotal=rent+waterFee+elecFee;
-  // 合计应收 = 本月费用小计 - 扣除项（优惠/减免） - 欠款补缴（本月补上之前欠的，会降低本月应缴金额）
-  const total=Math.max(0,subtotal-deduction-arrearsRepayment);
-  // paid 判定：已缴合计（扣除+欠款补缴+实际缴费）>= 本月应收合计 视为已缴清；兼容旧 paid 字段
-  const paidSumMd=actualPaid+deduction+arrearsRepayment;
+  // 合计应收 = 本月费用小计 - 扣除项（优惠/减免） + 欠款（本月新增的欠费金额，增加应缴）
+  const total=Math.max(0,subtotal-deduction+arrearsRepayment);
+  // paid 判定：已缴合计（扣除+实际缴费）>= 本月应收合计 视为已缴清；兼容旧 paid 字段
+  const paidSumMd=actualPaid+deduction;
   let paid=false;
   if('actualPaid' in monthData){paid=total>0?(paidSumMd+0.001>=total):true;}
   else if('paid' in monthData){paid=!!monthData.paid;}
@@ -2659,9 +2659,9 @@ function renderMonthList(key){
   const monthItemHtml=(ym)=>{
     const md=room.months[ym];
     const calc=calcMonthFee(room,md);
-    // 已缴合计 = 扣除项（优惠/减免视同已缴）+ 欠款补缴（本月补缴的之前欠款）+ 实际缴费
-    const paidSum=calc.deduction+calc.arrearsRepayment+calc.actualPaid;
-    // 多缴金额：实际现金支付 超过 本月应收合计 的部分（扣除和补缴是抵扣，不算多找零）
+    // 已缴合计 = 扣除项（优惠/减免视同已缴）+ 实际缴费
+    const paidSum=calc.deduction+calc.actualPaid;
+    // 多缴金额：实际现金支付 超过 本月应收合计 的部分
     const overPaid=Math.max(0,calc.actualPaid-calc.total);
     const paid=calc.paid;
     let statusLabel='未缴费',statusCls='unpaid';
@@ -2669,8 +2669,8 @@ function renderMonthList(key){
       if(overPaid>0){statusLabel='已缴清（多缴 ¥'+overPaid.toFixed(2)+'）';statusCls='paid';}
       else{statusLabel='已缴清';statusCls='paid';}
     }
-    else if(calc.actualPaid>0||calc.deduction>0||calc.arrearsRepayment>0){
-      // 有任一项"已缴类"时标记为部分缴费
+    else if(calc.actualPaid>0||calc.deduction>0){
+      // 有扣除或实际缴费时标记为部分缴费
       statusLabel='部分缴费';
       statusCls='partial';
     }
@@ -2679,7 +2679,7 @@ function renderMonthList(key){
     const rightHtml = `
       <div class="mli-right">
         <div class="mli-total" title="当月总欠（本月应收 − 已缴后剩余欠费）">${money(calc.arrearsLeft>0?calc.arrearsLeft:calc.total)}</div>
-        ${paidSum>0?`<div class="mli-paid ${paidCls}" title="已缴合计（扣除项+欠款补缴+实际缴费）">已缴 ${money(paidSum)}${overPaid>0?' （多缴 ¥'+overPaid.toFixed(2)+'）':''}</div>`:''}
+        ${paidSum>0?`<div class="mli-paid ${paidCls}" title="已缴合计（扣除项+实际缴费）">已缴 ${money(paidSum)}${overPaid>0?' （多缴 ¥'+overPaid.toFixed(2)+'）':''}</div>`:''}
       </div>`;
     return `<div class="swipe-item-wrap">
       <div class="swipe-actions">
@@ -2688,7 +2688,7 @@ function renderMonthList(key){
       </div>
       <div class="swipe-item-content ${statusCls}" data-month="${ym}">
         <div class="mli-header"><span class="mli-month">${formatYM(ym)}</span>${rightHtml}</div>
-        <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}${calc.arrearsRepayment>0?' · 补缴-'+money(calc.arrearsRepayment):''}${calc.actualPaid>0?' · 已收'+money(calc.actualPaid):''}</div>
+        <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}${calc.arrearsRepayment>0?' · 欠款+'+money(calc.arrearsRepayment):''}${calc.actualPaid>0?' · 已收'+money(calc.actualPaid):''}</div>
         <span class="mli-status ${statusCls}">${statusLabel}</span>
       </div>
     </div>`;
@@ -2815,8 +2815,8 @@ function openMonthEdit(key,ym){
       <div class="form-row"><label>扣除金额 (¥)</label><input type="number" id="mDeduction" value="${esc(md.deduction)}" placeholder="0" min="0" step="0.01"></div>
     </div>
     <div class="section">
-      <div class="section-title">欠款补缴 <span style="font-size:11px;color:var(--text-lighter);font-weight:400">（之前未缴清的欠款，本月补缴金额；会在本月合计中扣除）</span></div>
-      <div class="form-row"><label>补缴金额 (¥)</label><input type="number" id="mArrearsRepayment" value="${esc(md.arrearsRepayment)}" placeholder="0" min="0" step="0.01"></div>
+      <div class="section-title">欠款 <span style="font-size:11px;color:var(--text-lighter);font-weight:400">（本月新增的欠费金额；会计入本月应收合计）</span></div>
+      <div class="form-row"><label>欠款金额 (¥)</label><input type="number" id="mArrearsRepayment" value="${esc(md.arrearsRepayment)}" placeholder="0" min="0" step="0.01"></div>
       <div class="info-hint" id="totalArrearsHint" style="margin-top:6px">计算中…</div>
     </div>
     <div class="section">
@@ -2828,7 +2828,7 @@ function openMonthEdit(key,ym){
       <div class="fee-calc">
         <div class="fee-calc-row"><span class="fc-label">小计（租金+水电）</span><span class="fc-value" id="subtotalFee">¥0.00</span></div>
         <div class="fee-calc-row"><span class="fc-label" style="color:var(--danger)">扣除项</span><span class="fc-value" id="deductionFee" style="color:var(--danger)">-¥0.00</span></div>
-        <div class="fee-calc-row"><span class="fc-label" style="color:var(--success)">欠款补缴</span><span class="fc-value" id="arrearsFee" style="color:var(--success)">-¥0.00</span></div>
+        <div class="fee-calc-row"><span class="fc-label" style="color:var(--danger)">欠款</span><span class="fc-value" id="arrearsFee" style="color:var(--danger)">+¥0.00</span></div>
         <div class="fee-calc-row"><span class="fc-label">本月应收</span><span class="fc-value" id="totalFee" style="font-weight:700">¥0.00</span></div>
         <div class="fee-calc-row"><span class="fc-label" style="color:var(--primary)">实际缴费</span><span class="fc-value" id="actualPaidFee" style="color:var(--primary)">-¥0.00</span></div>
         <div class="fee-calc-row total"><span class="fc-label">本月欠费</span><span class="fc-value" id="arrearsLeftFee">¥0.00</span></div>
@@ -2876,8 +2876,8 @@ function updateMonthCalc(){
   const arrearsRepayment=num(val('mArrearsRepayment'));
   const actualPaid=num(val('mActualPaid'));
   const subtotal=rent+wFee+eFee;
-  // 本月应收 = 租金水电小计 - 扣除项 - 欠款补缴（本月补上之前欠的，所以抵扣本月应缴）
-  const total=Math.max(0,subtotal-deduction-arrearsRepayment);
+  // 本月应收 = 租金水电小计 - 扣除项 + 欠款（本月新增欠费，增加应缴）
+  const total=Math.max(0,subtotal-deduction+arrearsRepayment);
   const arrearsLeft=Math.max(0,total-actualPaid);
   // 累计欠费 = 除本月外所有历史欠费 + 本月欠费
   let totalArrears=0;
@@ -2897,7 +2897,7 @@ function updateMonthCalc(){
   if(efEl)efEl.textContent=money(eFee);
   if(stEl)stEl.textContent=money(subtotal);
   if(dEl)dEl.textContent='-¥'+deduction.toFixed(2);
-  if(aEl)aEl.textContent='-¥'+arrearsRepayment.toFixed(2);
+  if(aEl)aEl.textContent='+¥'+arrearsRepayment.toFixed(2);
   if(tEl)tEl.textContent=money(total);
   const apEl=document.getElementById('actualPaidFee');
   if(apEl)apEl.textContent='-¥'+actualPaid.toFixed(2);
@@ -3409,7 +3409,7 @@ function generateRoomCanvas(key,filterStatus){
     {l:'电表',w:90},
     {l:'电费',w:60},
     {l:'扣除',w:55},
-    {l:'补缴',w:55},
+    {l:'欠款',w:55},
     {l:'应收',w:65},
     {l:'实缴',w:65},
     {l:'欠费',w:65},
@@ -3450,7 +3450,7 @@ function generateRoomCanvas(key,filterStatus){
     ctx.fillStyle='#64748b';ctx.fillText(`${md.electricPrev||0}→${md.electricCurr||0}`,cx(4),y);
     ctx.fillStyle='#1e293b';ctx.fillText(money(calc.elecFee),cx(5),y);
     ctx.fillStyle='#e6a700';ctx.fillText(calc.deduction>0?'-'+money(calc.deduction):'-',cx(6),y);
-    ctx.fillStyle='#16a34a';ctx.fillText(calc.arrearsRepayment>0?'-'+money(calc.arrearsRepayment):'-',cx(7),y);
+    ctx.fillStyle='#dc2626';ctx.fillText(calc.arrearsRepayment>0?'+'+money(calc.arrearsRepayment):'-',cx(7),y);
     const paid=calc.paid;
     ctx.fillStyle=paid?'#22c55e':'#ef4444';ctx.font='bold 12px sans-serif';
     ctx.fillText(money(calc.total),cx(8),y);
@@ -3504,7 +3504,7 @@ async function exportAsCSV(key){
   csv+=`${bName} ${num}房 ${tenantName} 水电费明细\n`;
   csv+=`租客,${room.tenant||''},电话,${room.phone||''},身份证,${room.idCard||''}\n`;
   csv+=`单价,水费 ${rates.waterPrice}元/方,电费 ${rates.electricPrice}元/度\n\n`;
-  csv+='月份,租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,扣除项,欠款补缴,本月应收,实际缴费,本月欠费,缴费状态,备注\n';
+  csv+='月份,租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,扣除项,欠款,本月应收,实际缴费,本月欠费,缴费状态,备注\n';
   months.forEach(ym=>{const md=room.months[ym];const calc=calcMonthFee(room,md);const paidTxt=calc.paid?'已缴清':(calc.actualPaid>0?'部分缴费':'未缴费');csv+=[formatYM(ym),calc.rent.toFixed(2),md.waterPrev||'',md.waterCurr||'',calc.waterUsed.toFixed(1),calc.waterFee.toFixed(2),md.electricPrev||'',md.electricCurr||'',calc.elecUsed.toFixed(1),calc.elecFee.toFixed(2),calc.deduction.toFixed(2),calc.arrearsRepayment.toFixed(2),calc.total.toFixed(2),calc.actualPaid.toFixed(2),calc.arrearsLeft.toFixed(2),paidTxt,md.note||''].join(',')+'\n';});
   let tRent=0,tWater=0,tElec=0,tDeduction=0,tArrears=0,tTotal=0,tActual=0,tArrearsLeft=0;months.forEach(ym=>{const c=calcMonthFee(room,room.months[ym]);tRent+=c.rent;tWater+=c.waterFee;tElec+=c.elecFee;tDeduction+=c.deduction;tArrears+=c.arrearsRepayment;tTotal+=c.total;tActual+=c.actualPaid;tArrearsLeft+=c.arrearsLeft;});
   csv+=`合计,${tRent.toFixed(2)},,,${tWater.toFixed(2)},,,,${tElec.toFixed(2)},${tDeduction.toFixed(2)},${tArrears.toFixed(2)},${tTotal.toFixed(2)},${tActual.toFixed(2)},${tArrearsLeft.toFixed(2)},,\n`;
@@ -3712,7 +3712,7 @@ async function doBatchExport(b,selMonths,selRooms,fmt){
         {l:'电表读数',v:`${md.electricPrev||0}→${md.electricCurr||0}度`,y:yOff+144,c:'#64748b'},
         {l:'电费 ('+calc.elecUsed+'度 × ¥'+rates.electricPrice+')',v:money(calc.elecFee),y:yOff+168},
         {l:'扣除',v:calc.deduction>0?'-'+money(calc.deduction):'-',y:yOff+192,c:'#e6a700'},
-        {l:'欠款补缴',v:calc.arrearsRepayment>0?'-'+money(calc.arrearsRepayment):'-',y:yOff+216,c:'#16a34a'},
+        {l:'欠款',v:calc.arrearsRepayment>0?'+'+money(calc.arrearsRepayment):'-',y:yOff+216,c:'#dc2626'},
       ];
       rows.forEach(d=>{
         ctx.fillStyle='#64748b';ctx.textAlign='left';ctx.fillText(d.l,14,d.y);
@@ -3746,7 +3746,7 @@ async function doBatchExport(b,selMonths,selRooms,fmt){
     let csv='\uFEFF';
     csv+=`${bName} 费用明细\n`;
     csv+=`导出时间,${new Date().toISOString().slice(0,10)}\n\n`;
-    csv+='房间号,租客,月份,月租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,扣除项,欠款补缴,本月应收,实际缴费,本月欠费,缴费状态,备注\n';
+    csv+='房间号,租客,月份,月租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,扣除项,欠款,本月应收,实际缴费,本月欠费,缴费状态,备注\n';
     validEntries.forEach(({item,ym,md})=>{
       const{key,room}=item;const num2=key.split('-')[1];
       const c=calcMonthFee(room,md);
@@ -3767,7 +3767,7 @@ async function doBatchExport(b,selMonths,selRooms,fmt){
 const CSV_HEADERS=[
   '楼栋名称','楼层','房间号','房间自定义名称','租客姓名','电话','身份证号','入住日期',
   '固定月租金','押金金额','押金方式','费用月份','月租金',
-  '上月水表','本月水表','上月电表','本月电表','扣除项','欠款补缴','实际缴费','缴费状态','备注','水费单价','电费单价'
+  '上月水表','本月水表','上月电表','本月电表','扣除项','欠款','实际缴费','缴费状态','备注','水费单价','电费单价'
 ];
 // 转义 CSV 单元格（含逗号/引号/换行时加引号转义）
 function csvCell(v){
@@ -3830,7 +3830,7 @@ function getCSVTemplate(){
   csv+=`#4. 同一房间多条记录：租客信息只需在第一行填写，后续行可留空（不会覆盖已有数据）\n`;
   csv+=`#5. 有租客姓名的房间会自动设为"已入住"状态\n`;
   csv+=`#6. 扣除项：如减免、优惠等，合计金额会扣除此项\n`;
-  csv+=`#7. 欠款补缴：租客补缴之前欠的费用金额，合计金额会减去此项（视同已抵扣本月应缴）\n`;
+  csv+=`#7. 欠款：本月新增的欠费金额，会计入本月应收合计（增加应缴）\n`;
   csv+=`#8. 实际缴费：租客当月实际缴纳的金额。留空则根据"缴费状态"自动判定：已缴清=全额，未缴费/部分缴费=0\n`;
   csv+=`#9. 缴费状态：已缴清 / 部分缴费 / 未缴费。如已填写实际缴费金额，则以此为准\n`;
   csv+=`#10. 水费单价、电费单价 留空则使用全局默认值\n`;
@@ -3965,7 +3965,7 @@ function importStateFromCSV(text){
       // 处理"2024-1"格式（补零）
       else if(ym.includes('-')){const[y,m]=ym.split('-');normalizedYm=y+'-'+m.padStart(2,'0');}
       const deduction=get(row,'扣除项');
-      const arrearsRepayment=get(row,'欠款补缴');
+      const arrearsRepayment=get(row,'欠款');
       const paidStatus=get(row,'缴费状态')||'';
       const rawActualPaid=get(row,'实际缴费');
       const hasActualPaidCol=rawActualPaid!==undefined && rawActualPaid!==null;
@@ -4056,7 +4056,7 @@ function parseCSVForReview(text){
       elecPrev:get(row,'上月电表'),
       elecCurr:get(row,'本月电表'),
       deduction:get(row,'扣除项'),
-      arrearsRepayment:get(row,'欠款补缴'),
+      arrearsRepayment:get(row,'欠款'),
       actualPaid:get(row,'实际缴费'),
       paid:get(row,'缴费状态'),
       note:get(row,'备注')
@@ -4105,7 +4105,7 @@ function showImportReview(result){
               <div>水表(上/本): <input type="text" class="rv-input" data-idx="${i}" data-field="waterPrev" value="${esc(r.waterPrev)}" style="width:40px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px">/<input type="text" class="rv-input" data-idx="${i}" data-field="waterCurr" value="${esc(r.waterCurr)}" style="width:40px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
               <div>电表(上/本): <input type="text" class="rv-input" data-idx="${i}" data-field="elecPrev" value="${esc(r.elecPrev)}" style="width:40px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px">/<input type="text" class="rv-input" data-idx="${i}" data-field="elecCurr" value="${esc(r.elecCurr)}" style="width:40px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
               <div>扣除: <input type="number" class="rv-input" data-idx="${i}" data-field="deduction" value="${esc(r.deduction)}" style="width:60px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
-              <div>补缴: <input type="number" class="rv-input" data-idx="${i}" data-field="arrearsRepayment" value="${esc(r.arrearsRepayment)}" style="width:60px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
+              <div>欠款: <input type="number" class="rv-input" data-idx="${i}" data-field="arrearsRepayment" value="${esc(r.arrearsRepayment)}" style="width:60px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px"></div>
               `:''}
             </div>
           </div>
@@ -4903,7 +4903,7 @@ document.getElementById('exportCsv').addEventListener('click',()=>{
   csv+=`${bName} ${num}房 ${tenantName} 水电费明细\n`;
   csv+=`租客,${room.tenant||''},电话,${room.phone||''},身份证,${room.idCard||''}\n`;
   csv+=`单价,水费 ${rates.waterPrice}元/方,电费 ${rates.electricPrice}元/度\n\n`;
-  csv+='月份,租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,扣除项,欠款补缴,本月应收,实际缴费,本月欠费,缴费状态,备注\n';
+  csv+='月份,租金,上月水表,本月水表,用水量(方),水费,上月电表,本月电表,用电量(度),电费,扣除项,欠款,本月应收,实际缴费,本月欠费,缴费状态,备注\n';
   months.forEach(ym=>{const md=room.months[ym];const calc=calcMonthFee(room,md);const paidTxt=calc.paid?'已缴清':(calc.actualPaid>0?'部分缴费':'未缴费');csv+=[formatYM(ym),calc.rent.toFixed(2),md.waterPrev||'',md.waterCurr||'',calc.waterUsed.toFixed(1),calc.waterFee.toFixed(2),md.electricPrev||'',md.electricCurr||'',calc.elecUsed.toFixed(1),calc.elecFee.toFixed(2),calc.deduction.toFixed(2),calc.arrearsRepayment.toFixed(2),calc.total.toFixed(2),calc.actualPaid.toFixed(2),calc.arrearsLeft.toFixed(2),paidTxt,md.note||''].join(',')+'\n';});
   let tRent=0,tWater=0,tElec=0,tDeduction=0,tArrears=0,tTotal=0,tActual=0,tArrearsLeft=0;months.forEach(ym=>{const c=calcMonthFee(room,room.months[ym]);tRent+=c.rent;tWater+=c.waterFee;tElec+=c.elecFee;tDeduction+=c.deduction;tArrears+=c.arrearsRepayment;tTotal+=c.total;tActual+=c.actualPaid;tArrearsLeft+=c.arrearsLeft;});
   csv+=`合计,${tRent.toFixed(2)},,,${tWater.toFixed(2)},,,,${tElec.toFixed(2)},${tDeduction.toFixed(2)},${tArrears.toFixed(2)},${tTotal.toFixed(2)},${tActual.toFixed(2)},${tArrearsLeft.toFixed(2)},,\n`;
