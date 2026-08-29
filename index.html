@@ -188,14 +188,14 @@
   .floor-expanded{background:var(--card);margin:0 10px 12px;border-radius:14px;padding:12px;box-shadow:var(--shadow)}
   .floor-expanded-title{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;margin-bottom:10px}
   .floor-expanded-title .feb{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
-  .expense-card{background:var(--card);margin:0 10px 12px;border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+  .expense-card{background:var(--card);margin:0 10px 12px;border-radius:14px;padding:14px;box-shadow:var(--shadow);overflow:hidden}
   .expense-card-title{font-weight:600;font-size:15px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
-  .expense-grid{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto;gap:8px}
-  .expense-btn{border:none;border-radius:10px;padding:16px 4px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:transform .1s}
+  .expense-grid{display:grid;grid-template-columns:1fr 1fr 1fr;grid-auto-rows:minmax(56px,auto);gap:8px;align-items:stretch}
+  .expense-btn{border:none;border-radius:10px;padding:12px 4px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:transform .1s;min-height:60px;box-sizing:border-box}
   .expense-btn:active{transform:scale(.92)}
-  .expense-btn .eb-icon{font-size:22px}
-  .expense-btn.big{grid-row:span 2;min-height:130px;font-size:22px}
-  .expense-btn.big .eb-icon{font-size:34px}
+  .expense-btn .eb-icon{font-size:20px;line-height:1}
+  .expense-btn.big{grid-row:span 2;min-height:calc(120px + 8px);font-size:22px;padding:14px 4px}
+  .expense-btn.big .eb-icon{font-size:32px}
   .repair-item{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin:4px 0;cursor:pointer}
   .repair-item.pending{border-color:var(--danger);background:#fef2f2}
   .repair-item.unpaid{border-color:#f59e0b;background:#fffbeb}
@@ -227,21 +227,21 @@
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:210;display:none;opacity:0;transition:opacity .15s}
   .overlay.show{display:block;opacity:1}
   .overlay.closing{opacity:0}
-  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:230;background:var(--bg);border-radius:16px 16px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom)}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:230;background:var(--bg);border-radius:16px 16px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom);padding-top:calc(env(safe-area-inset-top) + 0px);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   .sheet.fullscreen-mode{border-radius:0;max-height:none;height:100vh;height:100dvh;top:0;padding-top:calc(env(safe-area-inset-top) + 12px)}
   .sheet.fullscreen-mode .sheet-handle{display:none}
-  .sheet.fullscreen-mode .sheet-header{padding-top:8px}
+  .sheet.fullscreen-mode .sheet-header{position:sticky;top:calc(env(safe-area-inset-top) + 12px);z-index:5;background:#fff;border-radius:0;padding-top:8px}
   .sheet.show{transform:translateY(0)}
-  .page-fullscreen{position:fixed;inset:0;z-index:220;background:var(--bg);transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom);padding-top:calc(env(safe-area-inset-top) + 12px)}
+  .page-fullscreen{position:fixed;inset:0;z-index:220;background:var(--bg);transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom);padding-top:calc(env(safe-area-inset-top) + 12px);overscroll-behavior:contain}
   .page-fullscreen .sheet-handle{display:none}
   .page-fullscreen.show{transform:translateY(0)}
-  .page-fullscreen .sheet-header{position:sticky;top:0;z-index:5;background:#fff;border-radius:0;padding-top:8px}
+  .page-fullscreen .sheet-header{position:sticky;top:calc(env(safe-area-inset-top) + 12px);z-index:5;background:#fff;border-radius:0;padding-top:8px}
   /* 后打开的全屏页面层级更高 */
   #batchSheet{z-index:224}
   #sheet.fullscreen-mode{z-index:228}
   #monthSheet{z-index:232}
   .sheet-handle{width:36px;height:4px;background:#cbd5e1;border-radius:2px;margin:10px auto 0;touch-action:pan-y}
-  .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;border-radius:16px 16px 0 0;z-index:5;touch-action:pan-y}
+  .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;top:calc(env(safe-area-inset-top) + 0px);background:#fff;border-radius:16px 16px 0 0;z-index:5;touch-action:pan-y}
   .swipe-grab{cursor:grab;touch-action:pan-y}
   .modal-swipe-area{height:28px;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:pan-y}
   .modal-swipe-bar{width:36px;height:4px;background:#cbd5e1;border-radius:2px}
@@ -293,10 +293,12 @@
   .month-list-item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer}
   .month-list-item:active{background:#f8fafc}
   .month-list-item.unpaid{border-left:3px solid var(--danger)}
+  .month-list-item.partial{border-left:3px solid #f59e0b}
   .month-list-item.paid{border-left:3px solid var(--success)}
   .swipe-item-wrap{position:relative;overflow:hidden;margin-bottom:8px;border-radius:10px}
   .swipe-item-content{position:relative;z-index:1;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:transform .25s cubic-bezier(.32,.72,0,1);touch-action:pan-y}
   .swipe-item-content.unpaid{border-left:3px solid var(--danger)}
+  .swipe-item-content.partial{border-left:3px solid #f59e0b;background:#fffbeb}
   .swipe-item-content.paid{border-left:3px solid var(--success)}
   .swipe-item-content.swiped{transform:translateX(-150px)}
   .swipe-actions{position:absolute;right:0;top:0;bottom:0;display:flex;z-index:0}
@@ -304,12 +306,16 @@
   .swipe-actions .sa-received{background:var(--success)}
   .swipe-actions .sa-edit{background:var(--primary)}
   .swipe-actions .sa-delete{background:var(--danger)}
-  .mli-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .mli-header{display:flex;justify-content:space-between;align-items:stretch;margin-bottom:4px;gap:10px}
   .mli-month{font-size:15px;font-weight:600}
-  .mli-total{font-size:15px;font-weight:700;color:var(--danger)}
+  .mli-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:120px;flex-shrink:0}
+  .mli-total{font-size:15px;font-weight:700;color:var(--danger);line-height:1.15}
+  .mli-paid{font-size:12px;font-weight:600;color:#b45309;line-height:1.15;margin-top:2px;background:#fff7ed;padding:2px 6px;border-radius:6px}
+  .mli-paid.over{color:#15803d;background:#f0fdf4}
   .mli-status{font-size:10px;padding:1px 8px;border-radius:8px;font-weight:500;display:inline-block;margin-top:4px}
   .mli-status.paid{background:var(--success-bg);color:#15803d}
   .mli-status.unpaid{background:var(--danger-bg);color:#b91c1c}
+  .mli-status.partial{background:#fff7ed;color:#b45309;border:1px solid #fed7aa}
   .mli-detail{font-size:12px;color:var(--text-light);line-height:1.6}
 
   .archive-item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px}
@@ -1038,9 +1044,10 @@ function calcMonthFee(room,monthData){
   const subtotal=rent+waterFee+elecFee;
   // 合计应收 = 本月费用小计 - 扣除项（优惠/减免） - 欠款补缴（本月补上之前欠的，会降低本月应缴金额）
   const total=Math.max(0,subtotal-deduction-arrearsRepayment);
-  // paid 判定：基于 actualPaid（actualPaid>=total 视为已缴清）；若数据仍含旧 paid 字段也兼容
+  // paid 判定：已缴合计（扣除+欠款补缴+实际缴费）>= 本月应收合计 视为已缴清；兼容旧 paid 字段
+  const paidSumMd=actualPaid+deduction+arrearsRepayment;
   let paid=false;
-  if('actualPaid' in monthData){paid=total<=0?false:(actualPaid+0.001>=total);}
+  if('actualPaid' in monthData){paid=total>0?(paidSumMd+0.001>=total):true;}
   else if('paid' in monthData){paid=!!monthData.paid;}
   const arrearsLeft=paid?0:Math.max(0,total-actualPaid);
   return{waterUsed:wUsed>0?wUsed:0,waterFee,elecUsed:eUsed>0?eUsed:0,elecFee,rent,deduction,arrearsRepayment,actualPaid,total,arrearsLeft,paid};
@@ -2304,9 +2311,12 @@ function openRoom(key,archiveIdx){
         ${Object.entries(STATUS_MAP).map(([k,v])=>`<div class="pill ${room.status===k?'active':''}" data-status="${k}">${v.label}</div>`).join('')}
       </div>
     </div>
-    <div class="section">
-      <div class="section-title">租客信息 <span class="st-action" id="btnAddTenant" style="font-size:12px">+ 添加租客</span></div>
-      <div id="tenantList"></div>
+    <div class="section" id="tenantSection">
+      <div class="section-title" id="tenantSectionToggle" style="cursor:pointer;user-select:none">
+        租客信息 <span class="st-action" id="btnAddTenant" style="font-size:12px">+ 添加租客</span>
+        <span id="tenantToggleIcon" style="margin-left:auto;color:var(--text-lighter);font-size:13px;font-weight:400">展开 ▼</span>
+      </div>
+      <div id="tenantList" style="display:none"></div>
     </div>
     <div class="section">
       <div class="section-title">租金/押金</div>
@@ -2393,13 +2403,13 @@ function bindRoomEvents(key){
     }
     let html='';
     list.forEach((t,i)=>{
-      const isFirst=i===0;
-      const collapsed=!isFirst;
+      // 全部租客卡片默认收起
+      const collapsed=true;
       html+=`<div class="tenant-card" data-idx="${i}" style="border:1px solid var(--border);border-radius:10px;padding:${collapsed?'8px 12px':'12px'};margin-bottom:8px;background:#fff">
         <div class="tenant-card-header" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
-          <div style="font-weight:600;font-size:14px">租客 ${i+1}：${esc(t.name||'未命名')}${isFirst?' <span style="color:var(--primary);font-size:11px;font-weight:400">（主要）</span>':''}</div>
+          <div style="font-weight:600;font-size:14px">租客 ${i+1}：${esc(t.name||'未命名')}${i===0?' <span style="color:var(--primary);font-size:11px;font-weight:400">（主要）</span>':''}</div>
           <div style="display:flex;gap:8px;align-items:center">
-            ${list.length>1?`<span class="tenant-toggle" data-idx="${i}" style="font-size:12px;color:var(--text-light)">${collapsed?'展开 ▼':'收起 ▲'}</span>`:''}
+            <span class="tenant-toggle" data-idx="${i}" style="font-size:12px;color:var(--text-light)">${collapsed?'展开 ▼':'收起 ▲'}</span>
             ${list.length>1?`<span class="tenant-del" data-idx="${i}" style="color:var(--danger);font-size:14px;cursor:pointer">✕</span>`:''}
           </div>
         </div>
@@ -2532,6 +2542,48 @@ function bindRoomEvents(key){
 
   renderTenants();
 
+  // === 租客信息 整区 展开/收起（默认收起）===
+  let _tenantSectionOpen=false;
+  const tenantListEl=document.getElementById('tenantList');
+  const tenantToggleIconEl=document.getElementById('tenantToggleIcon');
+  function setTenantSectionOpen(open,animate){
+    _tenantSectionOpen=open;
+    if(tenantListEl)tenantListEl.style.display=open?'':'none';
+    if(tenantToggleIconEl)tenantToggleIconEl.textContent=open?'收起 ▲':'展开 ▼';
+  }
+  setTenantSectionOpen(false);
+  const stEl=document.getElementById('tenantSectionToggle');
+  if(stEl){stEl.addEventListener('click',e=>{
+    // 点击"+ 添加租客"不触发切换，直接让按钮走原有逻辑
+    if(e.target&&(e.target.id==='btnAddTenant'||e.target.closest('#btnAddTenant')))return;
+    setTenantSectionOpen(!_tenantSectionOpen);
+  });}
+  // 点击"+ 添加租客"时自动展开租客列表
+  const addT=document.getElementById('btnAddTenant');
+  if(addT){addT.addEventListener('click',()=>{if(!_tenantSectionOpen)setTenantSectionOpen(true);});}
+  // 添加租客后自动展开刚刚那一张卡片
+  const _origRenderTenants=window.renderTenants;
+  // 当触发添加租客时把最后一张卡打开
+  const obs=new MutationObserver(()=>{
+    const cards=document.querySelectorAll('#tenantList .tenant-card');
+    if(cards.length>0){
+      const last=cards[cards.length-1];
+      const idx=parseInt(last.dataset.idx);
+      if(!isNaN(idx)){
+        const body=document.querySelector(`.tenant-body-${idx}`);
+        const toggle=document.querySelector(`.tenant-toggle[data-idx="${idx}"]`);
+        const added=room.tenants&&room.tenants[idx]&&!room.tenants[idx].name&&!room.tenants[idx].phone;
+        if(added&&body&&body.style.display==='none'){
+          if(!_tenantSectionOpen)setTenantSectionOpen(true);
+          body.style.display='block';
+          if(toggle)toggle.textContent='收起 ▲';
+          last.style.padding='12px';
+        }
+      }
+    }
+  });
+  if(tenantListEl)obs.observe(tenantListEl,{childList:true,subtree:false});
+
   // === 押金凭证 ===
   const receiptBtn=document.getElementById('receiptBtn');
   const receiptInput=document.getElementById('receiptInput');
@@ -2619,17 +2671,36 @@ function renderMonthList(key){
   const monthItemHtml=(ym)=>{
     const md=room.months[ym];
     const calc=calcMonthFee(room,md);
+    // 已缴合计 = 扣除项（优惠/减免视同已缴）+ 欠款补缴（本月补缴的之前欠款）+ 实际缴费
+    const paidSum=calc.deduction+calc.arrearsRepayment+calc.actualPaid;
+    // 多缴金额：实际现金支付 超过 本月应收合计 的部分（扣除和补缴是抵扣，不算多找零）
+    const overPaid=Math.max(0,calc.actualPaid-calc.total);
     const paid=calc.paid;
     let statusLabel='未缴费',statusCls='unpaid';
-    if(paid){statusLabel='已缴清';statusCls='paid';}
-    else if(calc.actualPaid>0){statusLabel='部分缴费 欠'+money(calc.arrearsLeft);statusCls='unpaid';}
+    if(paid){
+      if(overPaid>0){statusLabel='已缴清（多缴 ¥'+overPaid.toFixed(2)+'）';statusCls='paid';}
+      else{statusLabel='已缴清';statusCls='paid';}
+    }
+    else if(calc.actualPaid>0||calc.deduction>0||calc.arrearsRepayment>0){
+      // 有任一项"已缴类"时标记为部分缴费
+      statusLabel='部分缴费';
+      if(calc.arrearsLeft>0)statusLabel+=' 欠'+money(calc.arrearsLeft);
+      statusCls='partial';
+    }
+    // 右边渲染：上=总欠（红色），下=已缴合计（部分缴=黄 / 已缴清且多缴=绿 / 已缴清=绿）
+    const paidCls=paid?'over':(paidSum>0?'partial':'');
+    const rightHtml = `
+      <div class="mli-right">
+        <div class="mli-total" title="当月总欠（本月应收 − 已缴后剩余欠费）">${money(calc.arrearsLeft>0?calc.arrearsLeft:calc.total)}</div>
+        ${paidSum>0?`<div class="mli-paid ${paidCls}" title="已缴合计（扣除项+欠款补缴+实际缴费）">已缴 ${money(paidSum)}${overPaid>0?' （多缴 ¥'+overPaid.toFixed(2)+'）':''}</div>`:''}
+      </div>`;
     return `<div class="swipe-item-wrap">
       <div class="swipe-actions">
         <button class="sa-edit" data-month="${ym}">编辑</button>
         <button class="sa-delete" data-month="${ym}">删除</button>
       </div>
       <div class="swipe-item-content ${statusCls}" data-month="${ym}">
-        <div class="mli-header"><span class="mli-month">${formatYM(ym)}</span><span class="mli-total">${money(calc.total)}</span></div>
+        <div class="mli-header"><span class="mli-month">${formatYM(ym)}</span>${rightHtml}</div>
         <div class="mli-detail">租金${money(calc.rent)} · 水费${money(calc.waterFee)} · 电费${money(calc.elecFee)}${calc.deduction>0?' · 扣除-'+money(calc.deduction):''}${calc.arrearsRepayment>0?' · 补缴-'+money(calc.arrearsRepayment):''}${calc.actualPaid>0?' · 已收'+money(calc.actualPaid):''}</div>
         <span class="mli-status ${statusCls}">${statusLabel}</span>
       </div>
