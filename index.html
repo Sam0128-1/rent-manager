@@ -1020,11 +1020,31 @@ function getRoomRates(room){
   return{waterPrice:wp,electricPrice:ep};
 }
 
+// 获取房间最新月份的月份key
+function getRoomLatestMonth(room){
+  if(!room||!room.months)return null;
+  const months=Object.keys(room.months).sort();
+  if(months.length===0)return null;
+  return months[months.length-1];
+}
+
+// 获取房间最新月份的欠费金额（以最新月份记录为准，不累计多月）
+function getRoomLatestArrears(room){
+  if(!room||!room.months)return 0;
+  const latestYm=getRoomLatestMonth(room);
+  if(!latestYm)return 0;
+  const latestMd=room.months[latestYm];
+  const calc=calcMonthFee(room,latestMd);
+  return calc.arrearsLeft>0?calc.arrearsLeft:0;
+}
+
 function getRoomDisplayStatus(room){
   if(room.status==='empty'||room.status==='maintenance')return room.status;
-  const ym=currentYearMonth();
-  const md=room.months[ym];
-  if(md&&!isMonthPaid(room,md)&&calcMonthFee(room,md).total>0)return'unpaid';
+  const latestYm=getRoomLatestMonth(room);
+  if(latestYm){
+    const md=room.months[latestYm];
+    if(md&&!isMonthPaid(room,md)&&calcMonthFee(room,md).arrearsLeft>0)return'unpaid';
+  }
   if(room.status==='occupied')return'occupied';
   if(room.status==='unpaid')return'unpaid';
   return room.status;
@@ -1334,11 +1354,13 @@ function renderOverview(){
       for(const mym in room.months){
         if(mym.startsWith(selYear)&&isMonthPaid(room,room.months[mym])){const c=calcMonthFee(room,room.months[mym]);yearIncome+=c.actualPaid;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;}
       }
-      for(const mym in room.months){
-        if(mym.startsWith(selYear)&&!isMonthPaid(room,room.months[mym])){
-          const calc=calcMonthFee(room,room.months[mym]);
-          if(calc.arrearsLeft>0){arrears+=calc.arrearsLeft;arrearsList.push({key:`${bid}-${f*100+r}`,num2:f*100+r,ym:mym,tenant:room.tenant,calc});}
-        }
+      // 欠费统计：只取最新月份的欠费金额（不累计多月）
+      const roomArrears=getRoomLatestArrears(room);
+      const roomLatestYm=getRoomLatestMonth(room);
+      if(roomArrears>0&&roomLatestYm){
+        const latestCalc=calcMonthFee(room,room.months[roomLatestYm]);
+        arrears+=roomArrears;
+        arrearsList.push({key:`${bid}-${f*100+r}`,num2:f*100+r,ym:roomLatestYm,tenant:room.tenant,calc:latestCalc});
       }
       // 归档租客的已缴费用也要统计
       (room.archived||[]).forEach((a,aIdx)=>{
@@ -1355,10 +1377,14 @@ function renderOverview(){
               yearIncome+=c.actualPaid;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;
             }
           }
-          for(const mym in a.months){
-            if(mym.startsWith(selYear)&&!isMonthPaid(archRoomObj,a.months[mym])){
-              const calc=calcMonthFee(archRoomObj,a.months[mym]);
-              if(calc.arrearsLeft>0){arrears+=calc.arrearsLeft;arrearsList.push({key:`${bid}-${f*100+r}`,num2:f*100+r,ym:mym,tenant:a.tenant,calc,archiveIdx:aIdx});}
+          // 归档租客欠费：只取最新月份的欠费金额
+          const archMonths=Object.keys(a.months||{}).sort();
+          if(archMonths.length>0){
+            const archLatestYm=archMonths[archMonths.length-1];
+            const archLatestCalc=calcMonthFee(archRoomObj,a.months[archLatestYm]);
+            if(archLatestCalc.arrearsLeft>0){
+              arrears+=archLatestCalc.arrearsLeft;
+              arrearsList.push({key:`${bid}-${f*100+r}`,num2:f*100+r,ym:archLatestYm,tenant:a.tenant,calc:archLatestCalc,archiveIdx:aIdx});
             }
           }
         }
@@ -1953,13 +1979,7 @@ function renderFloors(){
           ${fd.rooms.map(({num:num2,room})=>{
             const dispStatus=getRoomDisplayStatus(room);
             const s=STATUS_MAP[dispStatus]||STATUS_MAP.empty;
-            let arrearsTotal=0;
-            for(const mym in room.months){
-              if(!isMonthPaid(room,room.months[mym])){
-                const c=calcMonthFee(room,room.months[mym]);
-                if(c.arrearsLeft>0)arrearsTotal+=c.arrearsLeft;
-              }
-            }
+            let arrearsTotal=getRoomLatestArrears(room);
             const tenantName=room.tenant||'';
             const displayName=tenantName||'空';
             const shortName=displayName.length>3?displayName.slice(0,3):displayName;
