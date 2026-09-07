@@ -3545,11 +3545,18 @@ async function exportTenantInfo(){
       const num2=f*100+r;
       const room=state.rooms[`${bid}-${num2}`];
       if(!room)continue;
-      const tenantName=room.tenant||'';
-      if(!tenantName)continue;
-      count++;
       const deposit=room.deposit?(room.deposit.amount||''):'';
-      rows.push([f,num2,tenantName,room.phone||'',room.idCard||'',room.moveInDate||'',room.fixedRent||'',deposit,room.note||'']);
+      // 优先用 tenants 数组（多租客），没有就用老字段
+      if(room.tenants&&room.tenants.length>0){
+        room.tenants.forEach(function(t){
+          if(!t.name&&!t.phone)return;
+          count++;
+          rows.push([f,num2,t.name||'',t.phone||'',t.idCard||'',t.moveInDate||'',room.fixedRent||'',deposit,room.note||'']);
+        });
+      }else if(room.tenant){
+        count++;
+        rows.push([f,num2,room.tenant,room.phone||'',room.idCard||'',room.moveInDate||'',room.fixedRent||'',deposit,room.note||'']);
+      }
     }
   });
   if(count===0){toast('当前楼栋暂无租客信息');return;}
