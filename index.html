@@ -3521,6 +3521,40 @@ async function exportAsCSV(key){
   toast(shared?'已分享/保存':'文件已下载');
 }
 
+// 导出当前楼栋所有房间的租客信息（姓名、电话、身份证号、入住日期）
+async function exportTenantInfo(){
+  const b=getBuilding(state.current);if(!b){toast('请先选择楼栋');return;}
+  const bid=b.id;
+  let csv='\uFEFF';
+  csv+='楼栋,楼层,房间号,房间名称,租客姓名,电话,身份证号,入住日期,固定月租金,押金,备注\n';
+  let count=0;
+  (b.floors||[]).forEach((floor,fIdx)=>{
+    const f=fIdx+1;
+    for(let r=1;r<=floor.rooms;r++){
+      const num2=f*100+r;
+      const room=state.rooms[`${bid}-${num2}`];
+      if(!room)continue;
+      const tenantName=room.tenant||'';
+      if(!tenantName)continue;
+      count++;
+      const deposit=room.deposit?(room.deposit.amount||''):'';
+      csv+=[
+        b.name,f,num2,room.displayName||'',tenantName,
+        room.phone||'',room.idCard||'',room.moveInDate||'',
+        room.fixedRent||'',deposit,room.note||''
+      ].map(v=>{v=String(v||'');return v.indexOf(',')>=0||v.indexOf('"')>=0?'"'+v.replace(/"/g,'""')+'"':v;}).join(',')+'\n';
+    }
+  });
+  if(count===0){toast('当前楼栋暂无租客信息');return;}
+  csv+='\n';
+  csv+=`# 共 ${count} 位租客,导出时间:${new Date().toLocaleString('zh-CN')}\n`;
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const filename=`${b.name}_租客信息_${new Date().toISOString().slice(0,10)}.csv`;
+  closeSettings();
+  const shared=await shareFile(blob,filename,'text/csv',`${b.name} 租客信息`);
+  toast(shared?'已分享/保存':'文件已下载');
+}
+
 // 批量导出：月份改为起止区间 + 房间展开点击多选
 function openBatchExport(){
   const b=getBuilding(state.current);if(!b)return;
@@ -4299,11 +4333,17 @@ function openSettings(){
       <button class="btn-full" id="btnBatchExport" style="background:var(--success);color:#fff">批量导出费用明细（可选月份/房间/格式）</button>
       <div class="info-hint">导出当前栋每个房间单独的当月费用图片，可逐张分享给租客</div>
     </div>
+    <div class="section">
+      <div class="section-title">租客信息</div>
+      <button class="btn-full" id="btnExportTenants" style="background:var(--purple);color:#fff">📋 导出当前楼栋租客信息</button>
+      <div class="info-hint">导出姓名、电话、身份证号、入住日期等信息（CSV表格）</div>
+    </div>
     <div style="text-align:center;font-size:11px;color:var(--text-lighter);padding:12px 0 8px">版本号 ${APP_VERSION}</div>
   `;
   document.getElementById('setWaterPrice').addEventListener('input',()=>{state.globalRates.waterPrice=num(val('setWaterPrice'))||6;save();});
   document.getElementById('setElecPrice').addEventListener('input',()=>{state.globalRates.electricPrice=num(val('setElecPrice'))||1.2;save();});
   document.getElementById('btnBatchExport').addEventListener('click',()=>{closeSettings();openBatchExport();});
+  document.getElementById('btnExportTenants').addEventListener('click',()=>{exportTenantInfo();});
   document.getElementById('overlay').classList.add('show');
   document.getElementById('settingsSheet').classList.add('show');
 }
@@ -5068,8 +5108,40 @@ if('serviceWorker' in navigator){
   async function download(){if(!ready){toast("请先配置云同步");return;}try{var r=await sbClient.from("rent_data").select("data,updated_at").eq("id",1).single();if(r.error)throw r.error;if(!r.data||!r.data.data){toast("云端暂无数据");return;}var cs=JSON.parse(r.data.data);if(!cs.rooms){toast("数据格式错误");return;}var t=new Date(r.data.updated_at).toLocaleString("zh-CN");if(!confirm("云端更新于: "+t+"\n\n用云端数据覆盖本地吗?\n(建议先导出备份)"))return;state=cs;_lastJson=JSON.stringify(state);initRooms();save();renderAll();toast("已从云端恢复");}catch(e){toast("下载失败: "+(e.message||e));}}
   var _os=null,_st=null,_cloudSyncPending=false;
   function hookSave(){if(typeof window.save!=="function"||_os)return;_os=window.save;window.save=function(){_os.apply(this,arguments);if(ready&&cfg.autoSync){var cj=JSON.stringify(state);if(cj===_lastJson)return;_lastJson=cj;_cloudSyncPending=true;}};}
-  // 退出/切后台时触发云端同步
-  window._cloudSyncOnExit=function(){if(ready&&cfg.autoSync&&_cloudSyncPending){_cloudSyncPending=false;upload().catch(function(){});}};
+  // 退出/切后台时触发云端同步（无条件上传，保证Supabase有活动）
+  window._cloudSyncOnExit=function(){if(ready&&cfg.autoSync){_cloudSyncPending=false;upload().catch(function(){});}};
+  // 心跳：APP打开就自动上传一次，之后每30分钟再传，切回前台也触发
+  function startHeartbeat(){
+    function doHeartbeat(){
+      if(!ready||!cfg.autoSync)return;
+      var last=lastSync();
+      var now=Date.now();
+      if(!last||(now-last)>3600000){
+        upload().catch(function(){});
+      }
+    }
+    setTimeout(doHeartbeat,5000);
+    setInterval(doHeartbeat,1800000);
+    document.addEventListener('visibilitychange',function(){
+      if(!document.hidden)doHeartbeat();
+    });
+  }
+  // 打开APP时检测：超过3天未同步弹窗提示
+  function checkSyncWarning(){
+    var last=lastSync();
+    if(!last){return;}
+    var now=Date.now();
+    var threeDays=3*24*60*60*1000;
+    if((now-last)>threeDays){
+      var days=Math.floor((now-last)/(24*60*60*1000));
+      setTimeout(function(){
+        if(confirm('⚠️ 已 '+days+' 天未同步云端数据\n\n上次同步：'+new Date(last).toLocaleString('zh-CN')+'\n\n建议立即上传备份，是否现在同步？')){
+          if(ready&&cfg.autoSync){upload().catch(function(){});}
+          else{cfgDlg();}
+        }
+      },2000);
+    }
+  }
   // 更新备份管理页中的云同步UI
   function updCloudUI(){
     var ls=lastSync();var ts=ls?new Date(ls).toLocaleString("zh-CN"):"从未同步";
@@ -5098,7 +5170,7 @@ if('serviceWorker' in navigator){
   window.openCloudCfgDlg=cfgDlg;
   // 暴露 upload/download 供备份管理页调用
   window.CloudSync={upload:upload,download:download,isReady:function(){return ready;},uploadImage:undefined};
-  if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",function(){initSB();_lastJson=JSON.stringify(state);hookSave();});}else{initSB();_lastJson=JSON.stringify(state);hookSave();}
+  if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",function(){initSB();_lastJson=JSON.stringify(state);hookSave();startHeartbeat();checkSyncWarning();});}else{initSB();_lastJson=JSON.stringify(state);hookSave();startHeartbeat();checkSyncWarning();}
   async function uploadImageToStorage(base64Data){
     if(!ready||!sbClient){throw new Error('云同步未配置');}
     var parts=base64Data.split(',');
