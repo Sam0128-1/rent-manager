@@ -383,8 +383,14 @@
     .overview-num{font-size:16px}
   }
 </style>
-<!-- Supabase SDK -->
+<!-- Supabase SDK（jsdelivr主源 + unpkg备用源） -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// 如果 jsdelivr 加载失败，尝试 unpkg
+if(typeof window.supabase==="undefined"){
+  document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"><\/scr'+'ipt>');
+}
+</script>
 </head>
 <body>
 
@@ -3526,7 +3532,9 @@ async function exportTenantInfo(){
   const b=getBuilding(state.current);if(!b){toast('请先选择楼栋');return;}
   const bid=b.id;
   let csv='\uFEFF';
-  csv+='楼栋,楼层,房间号,房间名称,租客姓名,电话,身份证号,入住日期,固定月租金,押金,备注\n';
+  csv+=`${b.name} - 租客信息表\n`;
+  csv+=`共 0 位租客,导出时间:${new Date().toLocaleString('zh-CN')}\n`;
+  csv+='楼层,房间号,租客姓名,电话,身份证号,入住日期,固定月租金,押金,备注\n';
   let count=0;
   (b.floors||[]).forEach((floor,fIdx)=>{
     const f=fIdx+1;
@@ -3539,15 +3547,14 @@ async function exportTenantInfo(){
       count++;
       const deposit=room.deposit?(room.deposit.amount||''):'';
       csv+=[
-        b.name,f,num2,room.displayName||'',tenantName,
+        f,num2,tenantName,
         room.phone||'',room.idCard||'',room.moveInDate||'',
         room.fixedRent||'',deposit,room.note||''
       ].map(v=>{v=String(v||'');return v.indexOf(',')>=0||v.indexOf('"')>=0?'"'+v.replace(/"/g,'""')+'"':v;}).join(',')+'\n';
     }
   });
   if(count===0){toast('当前楼栋暂无租客信息');return;}
-  csv+='\n';
-  csv+=`# 共 ${count} 位租客,导出时间:${new Date().toLocaleString('zh-CN')}\n`;
+  csv=csv.replace('共 0 位租客',`共 ${count} 位租客`);
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
   const filename=`${b.name}_租客信息_${new Date().toISOString().slice(0,10)}.csv`;
   closeSettings();
@@ -5101,11 +5108,50 @@ if('serviceWorker' in navigator){
   function loadCfg(){try{var r=localStorage.getItem(CKEY);return r?JSON.parse(r):{url:"",key:"",autoSync:false};}catch(e){return{url:"",key:"",autoSync:false};}}
   function saveCfg(c){localStorage.setItem(CKEY,JSON.stringify(c));}
   var cfg=loadCfg(),sbClient=null,ready=false;
-  function initSB(){if(!cfg.url||!cfg.key){ready=false;return false;}if(typeof window.supabase==="undefined"){ready=false;return false;}try{sbClient=window.supabase.createClient(cfg.url,cfg.key);ready=true;return true;}catch(e){ready=false;return false;}}
+  function initSB(){
+    if(!cfg.url||!cfg.key){ready=false;console.log('[CloudSync] 未配置URL或Key');return false;}
+    if(typeof window.supabase==="undefined"){ready=false;console.log('[CloudSync] Supabase SDK未加载（CDN可能被墙）');return false;}
+    try{
+      sbClient=window.supabase.createClient(cfg.url,cfg.key);
+      ready=true;
+      console.log('[CloudSync] 初始化成功, URL:',cfg.url);
+      return true;
+    }catch(e){ready=false;console.error('[CloudSync] 初始化异常:',e);return false;}
+  }
   function lastSync(){return parseInt(localStorage.getItem(STORAGE_KEY+"_lastCloudSync")||"0");}
   function setSync(){localStorage.setItem(STORAGE_KEY+"_lastCloudSync",Date.now().toString());}
-  async function upload(){if(!ready){toast("请先配置云同步");return;}try{var j=JSON.stringify(state);var r=await sbClient.from("rent_data").upsert({id:1,data:j,updated_at:new Date().toISOString()});if(r.error)throw r.error;setSync();toast("已同步到云端");updCloudUI();}catch(e){toast("同步失败: "+(e.message||e));}}
-  async function download(){if(!ready){toast("请先配置云同步");return;}try{var r=await sbClient.from("rent_data").select("data,updated_at").eq("id",1).single();if(r.error)throw r.error;if(!r.data||!r.data.data){toast("云端暂无数据");return;}var cs=JSON.parse(r.data.data);if(!cs.rooms){toast("数据格式错误");return;}var t=new Date(r.data.updated_at).toLocaleString("zh-CN");if(!confirm("云端更新于: "+t+"\n\n用云端数据覆盖本地吗?\n(建议先导出备份)"))return;state=cs;_lastJson=JSON.stringify(state);initRooms();save();renderAll();toast("已从云端恢复");}catch(e){toast("下载失败: "+(e.message||e));}}
+  async function upload(){
+    if(!ready){toast("请先配置云同步");return;}
+    try{
+      var j=JSON.stringify(state);
+      var r=await sbClient.from("rent_data").upsert({id:1,data:j,updated_at:new Date().toISOString()},{onConflict:'id'});
+      if(r.error){console.error('Supabase upload error:',r.error);throw r.error;}
+      setSync();toast("已同步到云端");updCloudUI();
+    }catch(e){
+      console.error('upload error:',e);
+      var msg=e.message||String(e);
+      if(msg.indexOf('Failed to fetch')>=0||msg.indexOf('NetworkError')>=0){msg='网络连接失败，请检查网络或Supabase配置';}
+      toast("同步失败: "+msg);
+    }
+  }
+  async function download(){
+    if(!ready){toast("请先配置云同步");return;}
+    try{
+      var r=await sbClient.from("rent_data").select("data,updated_at").eq("id",1).single();
+      if(r.error){console.error('Supabase download error:',r.error);throw r.error;}
+      if(!r.data||!r.data.data){toast("云端暂无数据");return;}
+      var cs=JSON.parse(r.data.data);
+      if(!cs.rooms){toast("数据格式错误");return;}
+      var t=new Date(r.data.updated_at).toLocaleString("zh-CN");
+      if(!confirm("云端更新于: "+t+"\n\n用云端数据覆盖本地吗?\n(建议先导出备份)"))return;
+      state=cs;_lastJson=JSON.stringify(state);initRooms();save();renderAll();toast("已从云端恢复");
+    }catch(e){
+      console.error('download error:',e);
+      var msg=e.message||String(e);
+      if(msg.indexOf('Failed to fetch')>=0||msg.indexOf('NetworkError')>=0){msg='网络连接失败，请检查网络或Supabase配置';}
+      toast("下载失败: "+msg);
+    }
+  }
   var _os=null,_st=null,_cloudSyncPending=false;
   function hookSave(){if(typeof window.save!=="function"||_os)return;_os=window.save;window.save=function(){_os.apply(this,arguments);if(ready&&cfg.autoSync){var cj=JSON.stringify(state);if(cj===_lastJson)return;_lastJson=cj;_cloudSyncPending=true;}};}
   // 退出/切后台时触发云端同步（无条件上传，保证Supabase有活动）
