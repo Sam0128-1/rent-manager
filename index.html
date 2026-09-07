@@ -383,12 +383,18 @@
     .overview-num{font-size:16px}
   }
 </style>
-<!-- Supabase SDK（jsdelivr主源 + unpkg备用源） -->
+<!-- Supabase SDK（多CDN备用源） -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// 如果 jsdelivr 加载失败，尝试 unpkg
+// 多CDN备用加载
 if(typeof window.supabase==="undefined"){
   document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"><\/scr'+'ipt>');
+}
+</script>
+<script>
+// 最后一次检查：如果所有CDN都失败，输出警告
+if(typeof window.supabase==="undefined"){
+  console.error('[CloudSync] ❌ Supabase SDK 加载失败！所有CDN源都不可用，云同步功能无法使用。');
 }
 </script>
 </head>
@@ -5052,7 +5058,7 @@ window.addEventListener('pagehide',()=>{flushSave(true);});
 // 定期保存（每30秒自动保存一次，防止意外）—— 只保存，不备份
 setInterval(()=>{flushSave(false);},30000);
 
-// 启动后检查备份提醒
+// 启动后检查备份提醒 + 打开APP时自动备份
 setTimeout(()=>{
   const cfg=getBackupCfg();
   // 检查是否有数据
@@ -5064,6 +5070,12 @@ setTimeout(()=>{
     }
   }
   if(!hasData)return;
+  // 已开启自动备份：打开APP时自动备份一次
+  if(cfg.autoBackup){
+    autoBackupOnExit().then(ok=>{
+      if(ok)console.log('[Backup] 打开APP自动备份完成');
+    }).catch(e=>console.warn('[Backup] 打开APP自动备份失败',e));
+  }
   // 优先提醒开启自动备份
   if(!cfg.autoBackup){
     toast('建议开启「退出时自动备份」→ 点击顶部 ☁ 云图标');
@@ -5121,16 +5133,29 @@ if('serviceWorker' in navigator){
   function lastSync(){return parseInt(localStorage.getItem(STORAGE_KEY+"_lastCloudSync")||"0");}
   function setSync(){localStorage.setItem(STORAGE_KEY+"_lastCloudSync",Date.now().toString());}
   async function upload(){
-    if(!ready){toast("请先配置云同步");return;}
+    if(!ready){
+      if(typeof window.supabase==="undefined"){
+        toast("Supabase SDK未加载，CDN可能被屏蔽");
+      }else if(!cfg.url||!cfg.key){
+        toast("请先配置云同步");
+      }else{
+        toast("云同步未就绪，请重新配置");
+      }
+      return;
+    }
     try{
       var j=JSON.stringify(state);
+      console.log('[CloudSync] 开始上传, 数据长度:',j.length);
       var r=await sbClient.from("rent_data").upsert({id:1,data:j,updated_at:new Date().toISOString()},{onConflict:'id'});
+      console.log('[CloudSync] 上传响应:',r);
       if(r.error){console.error('Supabase upload error:',r.error);throw r.error;}
       setSync();toast("已同步到云端");updCloudUI();
     }catch(e){
-      console.error('upload error:',e);
+      console.error('[CloudSync] upload error:',e);
       var msg=e.message||String(e);
-      if(msg.indexOf('Failed to fetch')>=0||msg.indexOf('NetworkError')>=0){msg='网络连接失败，请检查网络或Supabase配置';}
+      if(msg.indexOf('Failed to fetch')>=0||msg.indexOf('NetworkError')>=0||msg.indexOf('load failed')>=0){
+        msg='网络连接失败\n可能原因：\n1. Supabase项目已暂停（免费版7天不活跃会暂停）\n2. URL或Key不正确\n3. 网络无法访问Supabase服务器';
+      }
       toast("同步失败: "+msg);
     }
   }
