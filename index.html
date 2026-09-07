@@ -3537,10 +3537,7 @@ async function exportAsCSV(key){
 async function exportTenantInfo(){
   const b=getBuilding(state.current);if(!b){toast('请先选择楼栋');return;}
   const bid=b.id;
-  let csv='\uFEFF';
-  csv+=`${b.name} - 租客信息表\n`;
-  csv+=`共 0 位租客,导出时间:${new Date().toLocaleString('zh-CN')}\n`;
-  csv+='楼层,房间号,租客姓名,电话,身份证号,入住日期,固定月租金,押金,备注\n';
+  let rows=[];
   let count=0;
   (b.floors||[]).forEach((floor,fIdx)=>{
     const f=fIdx+1;
@@ -3552,19 +3549,45 @@ async function exportTenantInfo(){
       if(!tenantName)continue;
       count++;
       const deposit=room.deposit?(room.deposit.amount||''):'';
-      csv+=[
-        f,num2,tenantName,
-        room.phone||'',room.idCard||'',room.moveInDate||'',
-        room.fixedRent||'',deposit,room.note||''
-      ].map(v=>{v=String(v||'');return v.indexOf(',')>=0||v.indexOf('"')>=0?'"'+v.replace(/"/g,'""')+'"':v;}).join(',')+'\n';
+      rows.push([f,num2,tenantName,room.phone||'',room.idCard||'',room.moveInDate||'',room.fixedRent||'',deposit,room.note||'']);
     }
   });
   if(count===0){toast('当前楼栋暂无租客信息');return;}
-  csv=csv.replace('共 0 位租客',`共 ${count} 位租客`);
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
-  const filename=`${b.name}_租客信息_${new Date().toISOString().slice(0,10)}.csv`;
+  var exportDate=new Date().toISOString().slice(0,10);
+  var colCount=9;
+  // 用 HTML 表格生成 .xls 文件，支持合并单元格和样式
+  var esc=function(v){v=String(v==null?'':v);return v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+  html+='<meta charset="UTF-8"><head><meta http-equiv="content-type" content="text/html; charset=UTF-8"></head><body>';
+  html+='<table border="1" cellspacing="0" style="border-collapse:collapse;border:1px solid #000;width:100%">';
+  // 标题行：合并整行，大字号加粗居中
+  html+='<tr><td colspan="'+colCount+'" style="font-size:22px;font-weight:bold;text-align:center;padding:10px;background:#e8e8e8">'+esc(b.name)+' - 租客信息表</td></tr>';
+  // 空行
+  html+='<tr><td colspan="'+colCount+'" style="height:8px"></td></tr>';
+  // 表头
+  html+='<tr>';
+  ['楼层','房间号','租客姓名','电话','身份证号','入住日期','固定月租金','押金','备注'].forEach(function(h){
+    html+='<td style="font-weight:bold;background:#f0f0f0;text-align:center;padding:4px 8px">'+esc(h)+'</td>';
+  });
+  html+='</tr>';
+  // 数据行
+  rows.forEach(function(row){
+    html+='<tr>';
+    row.forEach(function(v){
+      html+='<td style="padding:4px 8px">'+esc(v)+'</td>';
+    });
+    html+='</tr>';
+  });
+  // 空行
+  html+='<tr><td colspan="'+colCount+'" style="height:8px"></td></tr>';
+  // 合计和导出日期：靠右
+  html+='<tr><td colspan="'+(colCount-1)+'"></td><td style="text-align:right;font-weight:bold">共 '+count+' 位租客</td></tr>';
+  html+='<tr><td colspan="'+(colCount-1)+'"></td><td style="text-align:right">导出日期：'+exportDate+'</td></tr>';
+  html+='</table></body></html>';
+  var blob=new Blob(['\uFEFF'+html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  var filename=b.name+'_租客信息_'+exportDate+'.xls';
   closeSettings();
-  const shared=await shareFile(blob,filename,'text/csv',`${b.name} 租客信息`);
+  var shared=await shareFile(blob,filename,'application/vnd.ms-excel',b.name+' 租客信息');
   toast(shared?'已分享/保存':'文件已下载');
 }
 
