@@ -442,7 +442,7 @@ if(typeof window.supabase==="undefined"){
 <!-- 主内容 -->
 <div class="main" id="main">
   <div class="overview">
-    <div class="overview-title" id="overviewTitle"><span id="ovTitleText">概览</span> <span id="ovMonthSelector" style="cursor:pointer;font-size:13px;color:var(--primary);margin-left:8px">📅 <span id="ovSelMonth">本月</span></span></div>
+    <div class="overview-title" id="overviewTitle"><span id="ovTitleText">概览</span> <span id="ovMonthSelector" style="cursor:pointer;font-size:13px;color:var(--primary);margin-left:8px">📅 <span id="ovSelMonth">本月</span></span> <span id="heartbeatDot" style="margin-left:auto;font-size:11px;color:var(--text-lighter);display:flex;align-items:center;gap:3px"><span style="width:6px;height:6px;border-radius:50%;background:#cbd5e1;display:inline-block" id="hbDot"></span><span id="hbText">未同步</span></span></div>
     <div class="overview-grid" id="overviewGrid">
       <div class="overview-item" style="grid-column:1/-1;display:flex;justify-content:space-around;align-items:center"><div style="text-align:center"><div class="overview-num" id="ovTotalRooms" style="color:var(--primary)">0</div><div class="overview-label">房间</div></div><div style="text-align:center"><div class="overview-num" id="ovOccupied" style="color:var(--success)">0</div><div class="overview-label">已入住</div></div><div class="clickable" id="ovVacantWrap" style="text-align:center;cursor:pointer"><div class="overview-num" id="ovVacant" style="color:var(--text-light)">0</div><div class="overview-label">空置 ▶</div></div></div>
       <div class="overview-item clickable" id="ovArrearsWrap" style="grid-column:span 2"><div class="overview-num" id="ovArrears" style="color:var(--danger)">¥0</div><div class="overview-label">欠缴租金 ▶</div></div>
@@ -5265,21 +5265,30 @@ if('serviceWorker' in navigator){
   function hookSave(){if(typeof window.save!=="function"||_os)return;_os=window.save;window.save=function(){_os.apply(this,arguments);if(ready&&cfg.autoSync){var cj=JSON.stringify(state);if(cj===_lastJson)return;_lastJson=cj;_cloudSyncPending=true;}};}
   // 退出/切后台时触发云端同步（无条件上传，保证Supabase有活动）
   window._cloudSyncOnExit=function(){if(ready&&cfg.autoSync){_cloudSyncPending=false;upload().catch(function(){});}};
-  // 心跳：APP打开就自动上传一次，之后每30分钟再传，切回前台也触发
+  // 心跳：APP打开就自动上传一次，之后每5分钟再传，切回前台也触发
+  // 无条件上传，保证Supabase有活动记录，防止免费项目被暂停
   function startHeartbeat(){
+    function updDot(color,text){
+      var d=document.getElementById('hbDot'),t=document.getElementById('hbText');
+      if(d)d.style.background=color;
+      if(t)t.textContent=text;
+    }
     function doHeartbeat(){
-      if(!ready||!cfg.autoSync)return;
-      var last=lastSync();
-      var now=Date.now();
-      if(!last||(now-last)>3600000){
-        upload().catch(function(){});
-      }
+      if(!ready||!cfg.autoSync){updDot('#cbd5e1','未开启');return;}
+      updDot('#f59e0b','同步中...');
+      upload().then(function(){
+        updDot('#22c55e','已同步 '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}));
+      }).catch(function(e){
+        updDot('#ef4444','同步失败');
+        console.warn('[CloudSync] 心跳失败',e);
+      });
     }
     setTimeout(doHeartbeat,5000);
-    setInterval(doHeartbeat,1800000);
+    var hbTimer=setInterval(doHeartbeat,300000);
     document.addEventListener('visibilitychange',function(){
       if(!document.hidden)doHeartbeat();
     });
+    window._updHbDot=updDot;
   }
   // 打开APP时检测：超过3天未同步弹窗提示
   function checkSyncWarning(){
