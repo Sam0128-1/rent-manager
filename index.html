@@ -1445,17 +1445,15 @@ function renderOverview(){
   expTypes.forEach(t=>{
     monthExpDetailHtml+=`<div class="ovd-row"><span class="ovd-label">${typeLabels[t]}</span><span class="ovd-val">¥${expByTypeMonth[t].toFixed(2)}</span></div>`;
   });
-  monthExpDetailHtml+=`<div class="ovd-row total"><span class="ovd-label">合计</span><span class="ovd-val">¥${monthExpense.toFixed(2)}</span></div>`;
   document.getElementById('ovMonthExpDetail').innerHTML=monthExpDetailHtml;
   let yearExpDetailHtml='';
   expTypes.forEach(t=>{
     yearExpDetailHtml+=`<div class="ovd-row"><span class="ovd-label">${typeLabels[t]}</span><span class="ovd-val">¥${expByTypeYear[t].toFixed(2)}</span></div>`;
   });
-  yearExpDetailHtml+=`<div class="ovd-row total"><span class="ovd-label">合计</span><span class="ovd-val">¥${yearExpense.toFixed(2)}</span></div>`;
   document.getElementById('ovYearExpDetail').innerHTML=yearExpDetailHtml;
-  // 月租金详情：房租、水费、电费、净收入
-  document.getElementById('ovMonthDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${mRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${mWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${mElec.toFixed(2)}</span></div><div class="ovd-row total"><span class="ovd-label">已收合计</span><span class="ovd-val">¥${monthIncome.toFixed(2)}</span></div>`;
-  document.getElementById('ovYearDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${yRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${yWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${yElec.toFixed(2)}</span></div><div class="ovd-row total"><span class="ovd-label">已收合计</span><span class="ovd-val">¥${yearIncome.toFixed(2)}</span></div>`;
+  // 月租金详情：房租、水费、电费
+  document.getElementById('ovMonthDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${mRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${mWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${mElec.toFixed(2)}</span></div>`;
+  document.getElementById('ovYearDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${yRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${yWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${yElec.toFixed(2)}</span></div>`;
   // 绑定展开/收起
   const mw=document.getElementById('ovMonthWrap');const nw=mw.cloneNode(true);mw.parentNode.replaceChild(nw,mw);
   nw.addEventListener('click',()=>{const d=document.getElementById('ovMonthDetail');const a=document.getElementById('ovMonthArrow');d.style.display=d.style.display==='none'?'block':'none';a.textContent=d.style.display==='none'?'▶':'▼';});
@@ -1604,7 +1602,7 @@ function openExpenses(bid){
       </div>
       <div class="btn-group" style="margin-top:8px">
         <button class="btn btn-primary" id="btnAddWater" style="flex:1;background:#0ea5e9">💧 水费</button>
-        <button class="btn btn-primary" id="btnAddElec" style="flex:1;background:#facc15;color:#78350f">⚡ 电费</button>
+        <button class="btn btn-primary" id="btnAddElec" style="flex:1;background:#facc15;color:#fff">⚡ 电费</button>
       </div>
     </div>
     <div class="section" id="expFormSection" style="display:none"></div>
@@ -2105,7 +2103,7 @@ function renderExpenseCard(){
           <span class="eb-icon">🏗️</span>
           <div style="display:flex;flex-direction:column;align-items:center">维修${badge(repairIncomplete,'#ef4444','#fff')}</div>
         </button>
-        <button class="expense-btn" id="ecElec" style="background:#facc15;color:#78350f;grid-column:2;grid-row:1"><span class="eb-icon">⚡</span>电费</button>
+        <button class="expense-btn" id="ecElec" style="background:#facc15;color:#fff;grid-column:2;grid-row:1"><span class="eb-icon">⚡</span>电费</button>
         <button class="expense-btn" id="ecWater" style="background:#0ea5e9;grid-column:3;grid-row:1"><span class="eb-icon">💧</span>水费</button>
         <button class="expense-btn" id="ecClean" style="background:var(--success);grid-column:2;grid-row:2"><span class="eb-icon">🧹</span><div style="display:flex;flex-direction:column;align-items:center">清洁${badge(cleanIncomplete,'var(--success)','#fff')}</div></button>
         <button class="expense-btn" id="ecSupply" style="background:#e6a700;grid-column:3;grid-row:2"><span class="eb-icon">📦</span><div style="display:flex;flex-direction:column;align-items:center">其它${badge(supplyIncomplete,'#e6a700','#fff')}</div></button>
