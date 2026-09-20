@@ -167,7 +167,7 @@
   .overview{margin:10px 10px;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
   .overview-title{font-size:13px;color:var(--text-light);margin-bottom:10px;font-weight:500;display:flex;align-items:center;gap:6px}
   .overview-title::before{content:'';width:3px;height:14px;background:var(--primary);border-radius:2px}
-  .overview-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .overview-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
   .overview-item{text-align:center;background:#f8fafc;border-radius:10px;padding:10px 6px}
   .overview-item.clickable{cursor:pointer;transition:background .15s}
   .overview-item.clickable:active{background:#f1f5f9}
@@ -445,10 +445,11 @@ if(typeof window.supabase==="undefined"){
     <div class="overview-title" id="overviewTitle"><span id="ovTitleText">概览</span> <span id="ovMonthSelector" style="cursor:pointer;font-size:13px;color:var(--primary);margin-left:8px">📅 <span id="ovSelMonth">本月</span></span></div>
     <div class="overview-grid" id="overviewGrid">
       <div class="overview-item" style="grid-column:1/-1;display:flex;justify-content:space-around;align-items:center"><div style="text-align:center"><div class="overview-num" id="ovTotalRooms" style="color:var(--primary)">0</div><div class="overview-label">房间</div></div><div style="text-align:center"><div class="overview-num" id="ovOccupied" style="color:var(--success)">0</div><div class="overview-label">已入住</div></div><div class="clickable" id="ovVacantWrap" style="text-align:center;cursor:pointer"><div class="overview-num" id="ovVacant" style="color:var(--text-light)">0</div><div class="overview-label">空置 ▶</div></div></div>
-      <div class="overview-item clickable" id="ovArrearsWrap"><div class="overview-num" id="ovArrears" style="color:var(--danger)">¥0</div><div class="overview-label">欠缴租金 ▶</div></div>
-      <div class="overview-item clickable" id="ovExpenseWrap"><div class="overview-num" id="ovExpense" style="color:#e6a700">¥0 <span id="ovExpArrow" style="font-size:11px">▶</span></div><div class="overview-label">支出</div><div class="ov-detail" id="ovExpenseDetail" style="display:none"></div></div>
-      <div class="overview-item clickable" id="ovMonthWrap"><div class="overview-num" id="ovMonthIncome" style="color:var(--success)">¥0 <span id="ovMonthArrow" style="font-size:11px">▶</span></div><div class="overview-label">月租金(已收)</div><div class="ov-detail" id="ovMonthDetail" style="display:none"></div></div>
-      <div class="overview-item clickable" id="ovYearWrap"><div class="overview-num" id="ovYearIncome" style="color:var(--primary)">¥0 <span id="ovYearArrow" style="font-size:11px">▶</span></div><div class="overview-label">年租金(已收)</div><div class="ov-detail" id="ovYearDetail" style="display:none"></div></div>
+      <div class="overview-item clickable" id="ovArrearsWrap" style="grid-column:span 2"><div class="overview-num" id="ovArrears" style="color:var(--danger)">¥0</div><div class="overview-label">欠缴租金 ▶</div></div>
+      <div class="overview-item clickable" id="ovMonthWrap" style="grid-column:span 2"><div class="overview-num" id="ovMonthIncome" style="color:var(--success)">¥0 <span id="ovMonthArrow" style="font-size:11px">▶</span></div><div class="overview-label">月租金</div><div class="ov-detail" id="ovMonthDetail" style="display:none"></div></div>
+      <div class="overview-item clickable" id="ovMonthExpWrap" style="grid-column:span 2"><div class="overview-num" id="ovMonthExp" style="color:#d97706">¥0 <span id="ovMonthExpArrow" style="font-size:11px">▶</span></div><div class="overview-label">月支出</div><div class="ov-detail" id="ovMonthExpDetail" style="display:none"></div></div>
+      <div class="overview-item clickable" id="ovYearWrap" style="grid-column:span 3"><div class="overview-num" id="ovYearIncome" style="color:var(--primary)">¥0 <span id="ovYearArrow" style="font-size:11px">▶</span></div><div class="overview-label">年租金</div><div class="ov-detail" id="ovYearDetail" style="display:none"></div></div>
+      <div class="overview-item clickable" id="ovYearExpWrap" style="grid-column:span 3"><div class="overview-num" id="ovYearExp" style="color:#92400e">¥0 <span id="ovYearExpArrow" style="font-size:11px">▶</span></div><div class="overview-label">年支出</div><div class="ov-detail" id="ovYearExpDetail" style="display:none"></div></div>
     </div>
   </div>
   <div id="floorList"></div>
@@ -1435,38 +1436,43 @@ function renderOverview(){
   document.getElementById('ovMonthIncome').innerHTML='¥'+monthIncome.toFixed(2)+' <span id="ovMonthArrow" style="font-size:11px">▶</span>';
   document.getElementById('ovYearIncome').innerHTML='¥'+yearIncome.toFixed(2)+' <span id="ovYearArrow" style="font-size:11px">▶</span>';
   document.getElementById('ovArrears').textContent='¥'+arrears.toFixed(2);
-  // 支出卡片根据是否选月显示当月或全年
-  const expLabel=_overviewMonth?'支出('+_overviewMonth+')':'支出(全年)';
-  const expTotal=_overviewMonth?monthExpense:yearExpense;
-  const expByType=_overviewMonth?expByTypeMonth:expByTypeYear;
-  document.getElementById('ovExpense').innerHTML=`¥${expTotal.toFixed(2)} <span id="ovExpArrow" style="font-size:11px">▶</span>`;
-  document.querySelector('#ovExpenseWrap .overview-label').textContent=expLabel;
-  // 支出展开详情：五项分项统计
+  // 月支出和年支出
+  document.getElementById('ovMonthExp').innerHTML='¥'+monthExpense.toFixed(2)+' <span id="ovMonthExpArrow" style="font-size:11px">▶</span>';
+  document.getElementById('ovYearExp').innerHTML='¥'+yearExpense.toFixed(2)+' <span id="ovYearExpArrow" style="font-size:11px">▶</span>';
+  // 支出分项统计
   const typeLabels={repair:'🔧 维修',clean:'🧹 清洁',supply:'📦 其它',water:'💧 水费',electric:'⚡ 电费'};
-  let expDetailHtml='';
+  let monthExpDetailHtml='';
   expTypes.forEach(t=>{
-    expDetailHtml+=`<div class="ovd-row"><span class="ovd-label">${typeLabels[t]}</span><span class="ovd-val">¥${expByType[t].toFixed(2)}</span></div>`;
+    monthExpDetailHtml+=`<div class="ovd-row"><span class="ovd-label">${typeLabels[t]}</span><span class="ovd-val">¥${expByTypeMonth[t].toFixed(2)}</span></div>`;
   });
-  expDetailHtml+=`<div class="ovd-row total"><span class="ovd-label">合计</span><span class="ovd-val">¥${expTotal.toFixed(2)}</span></div>`;
-  document.getElementById('ovExpenseDetail').innerHTML=expDetailHtml;
-  document.getElementById('ovMonthDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${mRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${mWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${mElec.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label" style="color:#e6a700">支出</span><span class="ovd-val" style="color:#e6a700">-¥${monthExpense.toFixed(2)}</span></div><div class="ovd-row total"><span class="ovd-label">净收入</span><span class="ovd-val">¥${(monthIncome-monthExpense).toFixed(2)}</span></div>`;
-  document.getElementById('ovYearDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${yRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${yWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${yElec.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label" style="color:#e6a700">支出</span><span class="ovd-val" style="color:#e6a700">-¥${yearExpense.toFixed(2)}</span></div><div class="ovd-row total"><span class="ovd-label">净收入</span><span class="ovd-val">¥${(yearIncome-yearExpense).toFixed(2)}</span></div>`;
+  monthExpDetailHtml+=`<div class="ovd-row total"><span class="ovd-label">合计</span><span class="ovd-val">¥${monthExpense.toFixed(2)}</span></div>`;
+  document.getElementById('ovMonthExpDetail').innerHTML=monthExpDetailHtml;
+  let yearExpDetailHtml='';
+  expTypes.forEach(t=>{
+    yearExpDetailHtml+=`<div class="ovd-row"><span class="ovd-label">${typeLabels[t]}</span><span class="ovd-val">¥${expByTypeYear[t].toFixed(2)}</span></div>`;
+  });
+  yearExpDetailHtml+=`<div class="ovd-row total"><span class="ovd-label">合计</span><span class="ovd-val">¥${yearExpense.toFixed(2)}</span></div>`;
+  document.getElementById('ovYearExpDetail').innerHTML=yearExpDetailHtml;
+  // 月租金详情：房租、水费、电费、净收入
+  document.getElementById('ovMonthDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${mRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${mWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${mElec.toFixed(2)}</span></div><div class="ovd-row total"><span class="ovd-label">已收合计</span><span class="ovd-val">¥${monthIncome.toFixed(2)}</span></div>`;
+  document.getElementById('ovYearDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${yRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${yWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${yElec.toFixed(2)}</span></div><div class="ovd-row total"><span class="ovd-label">已收合计</span><span class="ovd-val">¥${yearIncome.toFixed(2)}</span></div>`;
   // 绑定展开/收起
   const mw=document.getElementById('ovMonthWrap');const nw=mw.cloneNode(true);mw.parentNode.replaceChild(nw,mw);
   nw.addEventListener('click',()=>{const d=document.getElementById('ovMonthDetail');const a=document.getElementById('ovMonthArrow');d.style.display=d.style.display==='none'?'block':'none';a.textContent=d.style.display==='none'?'▶':'▼';});
   const yw=document.getElementById('ovYearWrap');const nyw=yw.cloneNode(true);yw.parentNode.replaceChild(nyw,yw);
   nyw.addEventListener('click',()=>{const d=document.getElementById('ovYearDetail');const a=document.getElementById('ovYearArrow');d.style.display=d.style.display==='none'?'block':'none';a.textContent=d.style.display==='none'?'▶':'▼';});
+  // 月支出点击：展开/收起分项
+  const mew=document.getElementById('ovMonthExpWrap');const nmew=mew.cloneNode(true);mew.parentNode.replaceChild(nmew,mew);
+  nmew.addEventListener('click',()=>{const d=document.getElementById('ovMonthExpDetail');const a=document.getElementById('ovMonthExpArrow');d.style.display=d.style.display==='none'?'block':'none';a.textContent=d.style.display==='none'?'▶':'▼';});
+  // 年支出点击：展开/收起分项
+  const yew=document.getElementById('ovYearExpWrap');const nyew=yew.cloneNode(true);yew.parentNode.replaceChild(nyew,yew);
+  nyew.addEventListener('click',()=>{const d=document.getElementById('ovYearExpDetail');const a=document.getElementById('ovYearExpArrow');d.style.display=d.style.display==='none'?'block':'none';a.textContent=d.style.display==='none'?'▶':'▼';});
   const wrap=document.getElementById('ovArrearsWrap');
   const newWrap=wrap.cloneNode(true);
   wrap.parentNode.replaceChild(newWrap,wrap);
   if(arrearsList.length>0){
     newWrap.addEventListener('click',()=>showArrearsDetail(arrearsList,b.name));
   }
-  // 支出栏点击：展开/收起分项统计（与月/年租金一致）
-  const ew=document.getElementById('ovExpenseWrap');
-  const newEw=ew.cloneNode(true);
-  ew.parentNode.replaceChild(newEw,ew);
-  newEw.addEventListener('click',()=>{const d=document.getElementById('ovExpenseDetail');const a=document.getElementById('ovExpArrow');d.style.display=d.style.display==='none'?'block':'none';a.textContent=d.style.display==='none'?'▶':'▼';});
   // 空置房间点击
   const vw=document.getElementById('ovVacantWrap');
   const newVw=vw.cloneNode(true);
@@ -1598,7 +1604,7 @@ function openExpenses(bid){
       </div>
       <div class="btn-group" style="margin-top:8px">
         <button class="btn btn-primary" id="btnAddWater" style="flex:1;background:#0ea5e9">💧 水费</button>
-        <button class="btn btn-primary" id="btnAddElec" style="flex:1;background:#f59e0b">⚡ 电费</button>
+        <button class="btn btn-primary" id="btnAddElec" style="flex:1;background:#facc15;color:#78350f">⚡ 电费</button>
       </div>
     </div>
     <div class="section" id="expFormSection" style="display:none"></div>
@@ -1733,7 +1739,7 @@ function showExpForm(type,editEx){
 }
 function renderExpList(bid,filterType){
   const sec=document.getElementById('expListSection');if(!sec)return;
-  const allTypes=[{key:'repair',label:'🔧 维修',color:'#3b82f6'},{key:'clean',label:'🧹 清洁',color:'var(--success)'},{key:'supply',label:'📦 其它',color:'#e6a700'},{key:'water',label:'💧 水费',color:'#0ea5e9'},{key:'electric',label:'⚡ 电费',color:'#f59e0b'}];
+  const allTypes=[{key:'repair',label:'🔧 维修',color:'#3b82f6'},{key:'clean',label:'🧹 清洁',color:'var(--success)'},{key:'supply',label:'📦 其它',color:'#e6a700'},{key:'water',label:'💧 水费',color:'#0ea5e9'},{key:'electric',label:'⚡ 电费',color:'#facc15'}];
   // 未完成：repair/clean/supply 未结账（repair也由维修情况管理，但这里是支出记录）
   function expIncomplete(e){return (e.type==='repair'||e.type==='clean'||e.type==='supply')&&!e.isPaid;}
   const rawList=(state.expenses||[]).filter(e=>e.bid===bid);
@@ -1781,50 +1787,100 @@ function renderExpList(bid,filterType){
     bindExpListEvents(sec);
     return;
   }
-  // 全部模式（从概览进入）：分组显示
-  const types=allTypes;
+  // 全部模式（从概览进入）：按月份分组显示
+  const curYM=currentYearMonth();
+  const curYear=curYM.split('-')[0];
+  // 按年月分组
+  const byYear={};
+  list.forEach(e=>{
+    const ym=e.date?e.date.slice(0,7):'无日期';
+    const year=e.date?e.date.slice(0,4):'无日期';
+    if(!byYear[year])byYear[year]={};
+    if(!byYear[year][ym])byYear[year][ym]=[];
+    byYear[year][ym].push(e);
+  });
+  const years=Object.keys(byYear).sort().reverse();
   let html='';
-  types.forEach(t=>{
-    const items=list.filter(e=>e.type===t.key);
-    const subTotal=items.reduce((s,e)=>s+num(e.amount),0);
-    html+=`<div class="exp-group" style="margin-bottom:10px">
-      <div class="exp-group-header" data-type="${t.key}" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8fafc;border-radius:8px;cursor:pointer">
-        <span style="font-weight:600;color:${t.color}">${t.label}（${items.length}）</span>
-        <span style="color:${t.color};font-weight:600">¥${subTotal.toFixed(2)} <span class="exp-arrow" style="font-size:11px">▶</span></span>
-      </div>
-      <div class="exp-items" style="display:none;padding:4px 0">`;
-    if(items.length===0){
-      html+=`<div style="text-align:center;color:var(--text-lighter);padding:12px;font-size:13px">暂无记录</div>`;
+  years.forEach(year=>{
+    const yearItems=Object.values(byYear[year]).flat();
+    const yearTotal=yearItems.reduce((s,e)=>s+num(e.amount),0);
+    const isCurYear=year===curYear;
+    const yearCollapsed=!isCurYear;
+    if(!isCurYear){
+      html+=`<div class="exp-year-group" data-year="${year}" style="margin-bottom:12px">
+        <div class="exp-year-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#e2e8f0;border-radius:8px;cursor:pointer;font-weight:600">
+          <span>${year}年</span>
+          <span>¥${yearTotal.toFixed(2)} <span class="exp-year-arrow" style="font-size:11px">▶</span></span>
+        </div>
+        <div class="exp-year-content" style="display:none;padding:4px 0">`;
     }else{
-      items.forEach(e=>{
+      html+=`<div class="exp-year-group" data-year="${year}" style="margin-bottom:12px"><div class="exp-year-content" style="display:block;padding:4px 0">`;
+    }
+    const months=Object.keys(byYear[year]).sort().reverse();
+    months.forEach(ym=>{
+      const monthItems=byYear[year][ym];
+      const monthTotal=monthItems.reduce((s,e)=>s+num(e.amount),0);
+      const isCurMonth=ym===curYM;
+      const monthCollapsed=!isCurMonth;
+      let monthLabel,dateRange;
+      if(ym==='无日期'){
+        monthLabel='无日期';dateRange='';
+      }else{
+        const[y,m]=ym.split('-');
+        monthLabel=`${y}年${parseInt(m)}月`;
+        dateRange=`${m.padStart(2,'0')}/01 - ${m.padStart(2,'0')}/30`;
+      }
+      html+=`<div class="exp-month-group" data-ym="${ym}" style="margin-bottom:8px">
+        <div class="exp-month-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8fafc;border-radius:8px;cursor:pointer">
+          <span style="font-weight:600">${monthLabel}${dateRange?` <span style="font-size:11px;color:var(--text-lighter);font-weight:400">${dateRange}</span>`:''}</span>
+          <span style="font-weight:600">¥${monthTotal.toFixed(2)} <span class="exp-month-arrow" style="font-size:11px">${monthCollapsed?'▶':'▼'}</span></span>
+        </div>
+        <div class="exp-month-content" style="${monthCollapsed?'display:none':'display:block'};padding:4px 0">`;
+      const sortedItems=expSort(monthItems.slice());
+      sortedItems.forEach(e=>{
+        const t=allTypes.find(x=>x.key===e.type)||allTypes[0];
         const personLabel=e.type==='supply'?'购买渠道':(e.type==='repair'?'维修人':(e.type==='clean'?'清洁人':'缴款账户'));
         const titleText=(e.type==='water'||e.type==='electric')?(e.date||'未填'):(esc(e.location)||'未填写');
+        const paidTypes=['repair','clean','supply'];
+        const unpaid=paidTypes.includes(e.type)&&e.date&&!e.isPaid;
+        const cardStyle=unpaid?'background:#fffbeb;border:1px solid #f59e0b':'background:#fff;border:1px solid #e2e8f0';
+        const paidBadge=paidTypes.includes(e.type)?(e.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">已结账</span>':'<span style="font-size:11px;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">未结账</span>'):'';
         html+=`<div class="exp-swipe-wrap" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
           <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
             <button class="exp-action-edit" data-id="${e.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
             <button class="exp-action-del" data-id="${e.id}" style="width:56px;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer">删除</button>
           </div>
-          <div class="exp-swipe-card" data-id="${e.id}" style="position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;transition:transform .2s;z-index:1;cursor:pointer">
+          <div class="exp-swipe-card" data-id="${e.id}" style="position:relative;${cardStyle};border-radius:8px;padding:10px 12px;transition:transform .2s;z-index:1;cursor:pointer">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-weight:500">${titleText}</span>
-              <span style="color:${t.color};font-weight:600">¥${num(e.amount).toFixed(2)}</span>
+              <div style="display:flex;align-items:center;gap:4px"><span style="font-weight:500">${titleText}</span></div>
+              <div style="display:flex;align-items:center">${paidBadge}<span style="color:${t.color};font-weight:600">¥${num(e.amount).toFixed(2)}</span></div>
             </div>
             <div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 ${e.date||'未填'} · ${personLabel}：${esc(e.person)||'-'}</div>
           </div>
         </div>`;
       });
-    }
+      html+=`</div></div>`;
+    });
     html+=`</div></div>`;
   });
   if(list.length===0){html='<div class="empty-hint" style="padding:20px;text-align:center">暂无支出记录，点击上方按钮添加</div>';}
   sec.innerHTML=`<div class="section-title">📋 支出记录</div>`+html;
-  // 绑定折叠
-  sec.querySelectorAll('.exp-group-header').forEach(h=>{
+  // 绑定月份折叠
+  sec.querySelectorAll('.exp-month-header').forEach(h=>{
     h.addEventListener('click',()=>{
-      const items=h.nextElementSibling;
-      const arrow=h.querySelector('.exp-arrow');
-      items.style.display=items.style.display==='none'?'block':'none';
-      arrow.textContent=items.style.display==='none'?'▶':'▼';
+      const content=h.nextElementSibling;
+      const arrow=h.querySelector('.exp-month-arrow');
+      content.style.display=content.style.display==='none'?'block':'none';
+      arrow.textContent=content.style.display==='none'?'▶':'▼';
+    });
+  });
+  // 绑定年份折叠
+  sec.querySelectorAll('.exp-year-header').forEach(h=>{
+    h.addEventListener('click',()=>{
+      const content=h.nextElementSibling;
+      const arrow=h.querySelector('.exp-year-arrow');
+      content.style.display=content.style.display==='none'?'block':'none';
+      arrow.textContent=content.style.display==='none'?'▶':'▼';
     });
   });
   bindExpListEvents(sec);
@@ -2049,7 +2105,7 @@ function renderExpenseCard(){
           <span class="eb-icon">🏗️</span>
           <div style="display:flex;flex-direction:column;align-items:center">维修${badge(repairIncomplete,'#ef4444','#fff')}</div>
         </button>
-        <button class="expense-btn" id="ecElec" style="background:#f59e0b;grid-column:2;grid-row:1"><span class="eb-icon">⚡</span>电费</button>
+        <button class="expense-btn" id="ecElec" style="background:#facc15;color:#78350f;grid-column:2;grid-row:1"><span class="eb-icon">⚡</span>电费</button>
         <button class="expense-btn" id="ecWater" style="background:#0ea5e9;grid-column:3;grid-row:1"><span class="eb-icon">💧</span>水费</button>
         <button class="expense-btn" id="ecClean" style="background:var(--success);grid-column:2;grid-row:2"><span class="eb-icon">🧹</span><div style="display:flex;flex-direction:column;align-items:center">清洁${badge(cleanIncomplete,'var(--success)','#fff')}</div></button>
         <button class="expense-btn" id="ecSupply" style="background:#e6a700;grid-column:3;grid-row:2"><span class="eb-icon">📦</span><div style="display:flex;flex-direction:column;align-items:center">其它${badge(supplyIncomplete,'#e6a700','#fff')}</div></button>
@@ -2230,7 +2286,7 @@ function doSearch(keyword){
     const per=(ex.person||'').toLowerCase();
     if(loc.includes(kw)||per.includes(kw)){
       const typeLabels={repair:'维修',clean:'清洁',supply:'其它',water:'水费',electric:'电费'};
-      const typeColors={repair:'#3b82f6',clean:'var(--success)',supply:'#e6a700',water:'#0ea5e9',electric:'#f59e0b'};
+      const typeColors={repair:'#3b82f6',clean:'var(--success)',supply:'#e6a700',water:'#0ea5e9',electric:'#facc15'};
       results.push({type:'expense',expId:ex.id,bid:ex.bid,bName,expType:ex.type,expTypeLabel:typeLabels[ex.type]||ex.type,expColor:typeColors[ex.type]||'var(--primary)',expDate:ex.date,expLocation:ex.location||'-',expPerson:ex.person||'-',expAmount:ex.amount});
     }
   });
