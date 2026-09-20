@@ -161,7 +161,7 @@
   .sr-detail{font-size:12px;color:var(--text-light);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
   /* ===== 主内容区 ===== */
-  .main{padding-top:calc(env(safe-area-inset-top) + 108px);padding-bottom:24px;padding-left:var(--sidebar-w);height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch;transition:padding-left .3s cubic-bezier(.32,.72,0,1)}
+  .main{padding-top:calc(env(safe-area-inset-top) + 108px);padding-bottom:calc(env(safe-area-inset-bottom) + 24px);padding-left:var(--sidebar-w);height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch;transition:padding-left .3s cubic-bezier(.32,.72,0,1)}
   .main.searching{padding-top:auto}
 
   .overview{margin:10px 10px;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
@@ -213,7 +213,7 @@
   .add-record-btn{width:100%;padding:14px;font-size:15px;font-weight:600}
 
   .rooms-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-  .room-cell{aspect-ratio:.8;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-weight:600;font-size:14px;transition:transform .1s;border:2px solid transparent;position:relative;padding:2px 0}
+  .room-cell{aspect-ratio:.53;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-weight:600;font-size:14px;transition:transform .1s;border:2px solid transparent;position:relative;padding:2px 0}
   .room-cell:active{transform:scale(.9)}
   .room-cell .r-num{font-size:15px;font-weight:600;line-height:1.2}
   .room-cell .r-tenant{font-size:11px;font-weight:500;margin-top:2px;line-height:1.2;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -446,10 +446,10 @@ if(typeof window.supabase==="undefined"){
     <div class="overview-grid" id="overviewGrid">
       <div class="overview-item" style="grid-column:1/-1;display:flex;justify-content:space-around;align-items:center"><div style="text-align:center"><div class="overview-num" id="ovTotalRooms" style="color:var(--primary)">0</div><div class="overview-label">房间</div></div><div style="text-align:center"><div class="overview-num" id="ovOccupied" style="color:var(--success)">0</div><div class="overview-label">已入住</div></div><div class="clickable" id="ovVacantWrap" style="text-align:center;cursor:pointer"><div class="overview-num" id="ovVacant" style="color:var(--text-light)">0</div><div class="overview-label">空置 ▶</div></div></div>
       <div class="overview-item clickable" id="ovArrearsWrap" style="grid-column:span 2"><div class="overview-num" id="ovArrears" style="color:var(--danger)">¥0</div><div class="overview-label">欠缴租金 ▶</div></div>
-      <div class="overview-item clickable" id="ovMonthWrap" style="grid-column:span 2"><div class="overview-num" id="ovMonthIncome" style="color:var(--success)">¥0 <span id="ovMonthArrow" style="font-size:11px">▶</span></div><div class="overview-label">月租金</div><div class="ov-detail" id="ovMonthDetail" style="display:none"></div></div>
-      <div class="overview-item clickable" id="ovMonthExpWrap" style="grid-column:span 2"><div class="overview-num" id="ovMonthExp" style="color:#d97706">¥0 <span id="ovMonthExpArrow" style="font-size:11px">▶</span></div><div class="overview-label">月支出</div><div class="ov-detail" id="ovMonthExpDetail" style="display:none"></div></div>
-      <div class="overview-item clickable" id="ovYearWrap" style="grid-column:span 3"><div class="overview-num" id="ovYearIncome" style="color:var(--primary)">¥0 <span id="ovYearArrow" style="font-size:11px">▶</span></div><div class="overview-label">年租金</div><div class="ov-detail" id="ovYearDetail" style="display:none"></div></div>
-      <div class="overview-item clickable" id="ovYearExpWrap" style="grid-column:span 3"><div class="overview-num" id="ovYearExp" style="color:#92400e">¥0 <span id="ovYearExpArrow" style="font-size:11px">▶</span></div><div class="overview-label">年支出</div><div class="ov-detail" id="ovYearExpDetail" style="display:none"></div></div>
+      <div class="overview-item clickable" id="ovMonthWrap" style="grid-column:span 2"><div class="overview-num" id="ovMonthIncome" style="color:var(--success)">¥0</div><div class="overview-label">月租金 <span id="ovMonthArrow" style="font-size:11px">▶</span></div><div class="ov-detail" id="ovMonthDetail" style="display:none"></div></div>
+      <div class="overview-item clickable" id="ovMonthExpWrap" style="grid-column:span 2"><div class="overview-num" id="ovMonthExp" style="color:#d97706">¥0</div><div class="overview-label">月支出 <span id="ovMonthExpArrow" style="font-size:11px">▶</span></div><div class="ov-detail" id="ovMonthExpDetail" style="display:none"></div></div>
+      <div class="overview-item clickable" id="ovYearWrap" style="grid-column:span 3"><div class="overview-num" id="ovYearIncome" style="color:var(--primary)">¥0</div><div class="overview-label">年租金 <span id="ovYearArrow" style="font-size:11px">▶</span></div><div class="ov-detail" id="ovYearDetail" style="display:none"></div></div>
+      <div class="overview-item clickable" id="ovYearExpWrap" style="grid-column:span 3"><div class="overview-num" id="ovYearExp" style="color:#92400e">¥0</div><div class="overview-label">年支出 <span id="ovYearExpArrow" style="font-size:11px">▶</span></div><div class="ov-detail" id="ovYearExpDetail" style="display:none"></div></div>
     </div>
   </div>
   <div id="floorList"></div>
@@ -1433,12 +1433,12 @@ function renderOverview(){
   document.getElementById('ovTotalRooms').textContent=total;
   document.getElementById('ovOccupied').textContent=occ;
   document.getElementById('ovVacant').textContent=(total-occ);
-  document.getElementById('ovMonthIncome').innerHTML='¥'+monthIncome.toFixed(2)+' <span id="ovMonthArrow" style="font-size:11px">▶</span>';
-  document.getElementById('ovYearIncome').innerHTML='¥'+yearIncome.toFixed(2)+' <span id="ovYearArrow" style="font-size:11px">▶</span>';
+  document.getElementById('ovMonthIncome').textContent='¥'+monthIncome.toFixed(2);
+  document.getElementById('ovYearIncome').textContent='¥'+yearIncome.toFixed(2);
   document.getElementById('ovArrears').textContent='¥'+arrears.toFixed(2);
   // 月支出和年支出
-  document.getElementById('ovMonthExp').innerHTML='¥'+monthExpense.toFixed(2)+' <span id="ovMonthExpArrow" style="font-size:11px">▶</span>';
-  document.getElementById('ovYearExp').innerHTML='¥'+yearExpense.toFixed(2)+' <span id="ovYearExpArrow" style="font-size:11px">▶</span>';
+  document.getElementById('ovMonthExp').textContent='¥'+monthExpense.toFixed(2);
+  document.getElementById('ovYearExp').textContent='¥'+yearExpense.toFixed(2);
   // 支出分项统计
   const typeLabels={repair:'🔧 维修',clean:'🧹 清洁',supply:'📦 其它',water:'💧 水费',electric:'⚡ 电费'};
   let monthExpDetailHtml='';
@@ -1747,7 +1747,7 @@ function renderExpList(bid,filterType){
     return (b.date||'').localeCompare(a.date||'');
   });}
   let list=expSort(rawList.slice());
-  // 独立页面模式：只显示该项的记录，不带分组折叠
+  // 独立页面模式：按月份分组折叠显示
   if(filterType){
     const t=allTypes.find(x=>x.key===filterType)||allTypes[0];
     const items=expSort(rawList.filter(e=>e.type===filterType).slice());
@@ -1756,32 +1756,93 @@ function renderExpList(bid,filterType){
     if(items.length===0){
       html+='<div class="empty-hint" style="padding:20px;text-align:center">暂无记录，点击上方按钮添加</div>';
     }else{
-      html+='<div>';
+      const curYM=currentYearMonth();
+      const curYear=curYM.split('-')[0];
+      const byYear={};
       items.forEach(e=>{
-        const personLabel=e.type==='supply'?'渠道':(e.type==='repair'?'维修人':(e.type==='clean'?'清洁人':'缴款账户'));
-        const titleText=(e.type==='water'||e.type==='electric')?(e.date||'未填'):(esc(e.location)||'未填写');
-        // 标黄条件：维修情况/清洁/其它 只填了日期（有日期）但未结账
-        const paidTypes=['repair','clean','supply'];
-        const unpaid=paidTypes.includes(e.type)&&e.date&&!e.isPaid;
-        const cardStyle=unpaid?'background:#fffbeb;border:1px solid #f59e0b':'background:#fff;border:1px solid #e2e8f0';
-        const paidBadge=paidTypes.includes(e.type)?(e.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">已结账</span>':'<span style="font-size:11px;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">未结账</span>'):'';
-        html+=`<div class="exp-swipe-wrap exp-item ${unpaid?'unpaid':''}" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
-          <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
-            <button class="exp-action-edit" data-id="${e.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
-            <button class="exp-action-del" data-id="${e.id}" style="width:56px;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer">删除</button>
-          </div>
-          <div class="exp-swipe-card" data-id="${e.id}" style="position:relative;${cardStyle};border-radius:8px;padding:10px 12px;transition:transform .2s;z-index:1;cursor:pointer">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="display:flex;align-items:center;gap:4px"><span style="font-weight:500">${titleText}</span></div>
-              <div style="display:flex;align-items:center">${paidBadge}<span style="color:${t.color};font-weight:600">¥${num(e.amount).toFixed(2)}</span></div>
-            </div>
-            <div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 ${e.date||'未填'} · ${personLabel}：${esc(e.person)||'-'}</div>
-          </div>
-        </div>`;
+        const ym=e.date?e.date.slice(0,7):'无日期';
+        const year=e.date?e.date.slice(0,4):'无日期';
+        if(!byYear[year])byYear[year]={};
+        if(!byYear[year][ym])byYear[year][ym]=[];
+        byYear[year][ym].push(e);
       });
-      html+='</div>';
+      const years=Object.keys(byYear).sort().reverse();
+      years.forEach(year=>{
+        const yearItems=Object.values(byYear[year]).flat();
+        const yearTotal=yearItems.reduce((s,e)=>s+num(e.amount),0);
+        const isCurYear=year===curYear;
+        if(!isCurYear){
+          html+=`<div class="exp-year-group" data-year="${year}" style="margin-bottom:12px">
+            <div class="exp-year-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#e2e8f0;border-radius:8px;cursor:pointer;font-weight:600">
+              <span>${year}年</span>
+              <span>¥${yearTotal.toFixed(2)}</span>
+            </div>
+            <div class="exp-year-content" style="display:none;padding:4px 0">`;
+        }else{
+          html+=`<div class="exp-year-group" data-year="${year}" style="margin-bottom:12px"><div class="exp-year-content" style="display:block;padding:4px 0">`;
+        }
+        const months=Object.keys(byYear[year]).sort().reverse();
+        months.forEach(ym=>{
+          const monthItems=byYear[year][ym];
+          const monthTotal=monthItems.reduce((s,e)=>s+num(e.amount),0);
+          const isCurMonth=ym===curYM;
+          const monthCollapsed=!isCurMonth;
+          let monthLabel;
+          if(ym==='无日期'){monthLabel='无日期';}
+          else{const[y,m]=ym.split('-');monthLabel=`${y}年${parseInt(m)}月`;}
+          const expPaidTypes=['repair','clean','supply'];
+          const mPaidSum=monthItems.filter(e=>expPaidTypes.includes(e.type)&&e.isPaid).reduce((s,e)=>s+num(e.amount),0);
+          const mUnpaidSum=monthItems.filter(e=>expPaidTypes.includes(e.type)&&!e.isPaid).reduce((s,e)=>s+num(e.amount),0);
+          const mPaidHtml=mPaidSum>0?`<span style="font-size:13px;color:var(--success);">已结账 ¥${mPaidSum.toFixed(2)}</span>`:'';
+          const mUnpaidHtml=mUnpaidSum>0?`<span style="font-size:13px;color:#ef4444;">未结账 ¥${mUnpaidSum.toFixed(2)}</span>`:'';
+          html+=`<div class="exp-month-group" data-ym="${ym}" style="margin-bottom:8px">
+            <div class="exp-month-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8fafc;border-radius:8px;cursor:pointer">
+              <span style="font-weight:600">${monthLabel}</span>
+              <span style="display:flex;align-items:center;gap:8px"><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">${mPaidHtml}${mUnpaidHtml}</span><span class="exp-month-arrow" style="font-size:11px;color:#94a3b8">${monthCollapsed?'▶':'▼'}</span></span>
+            </div>
+            <div class="exp-month-content" style="${monthCollapsed?'display:none':'display:block'};padding:4px 0">`;
+          const sortedItems=expSort(monthItems.slice());
+          sortedItems.forEach(e=>{
+            const personLabel=e.type==='supply'?'渠道':(e.type==='repair'?'维修人':(e.type==='clean'?'清洁人':'缴款账户'));
+            const titleText=(e.type==='water'||e.type==='electric')?(e.date||'未填'):(esc(e.location)||'未填写');
+            const paidTypes=['repair','clean','supply'];
+            const unpaid=paidTypes.includes(e.type)&&e.date&&!e.isPaid;
+            const cardStyle=unpaid?'background:#fef2f2;border:1px solid #ef4444':'background:#fff;border:1px solid #e2e8f0';
+            const paidBadge=paidTypes.includes(e.type)?(e.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">已结账</span>':'<span style="font-size:11px;background:#ef4444;color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">未结账</span>'):'';
+            html+=`<div class="exp-swipe-wrap exp-item ${unpaid?'unpaid':''}" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
+              <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
+                <button class="exp-action-edit" data-id="${e.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
+                <button class="exp-action-del" data-id="${e.id}" style="width:56px;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer">删除</button>
+              </div>
+              <div class="exp-swipe-card" data-id="${e.id}" style="position:relative;${cardStyle};border-radius:8px;padding:10px 12px;transition:transform .2s;z-index:1;cursor:pointer">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <div style="display:flex;align-items:center;gap:4px"><span style="font-weight:500">${titleText}</span></div>
+                  <div style="display:flex;align-items:center">${paidBadge}<span style="color:${t.color};font-weight:600">¥${num(e.amount).toFixed(2)}</span></div>
+                </div>
+                <div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 ${e.date||'未填'} · ${personLabel}：${esc(e.person)||'-'}</div>
+              </div>
+            </div>`;
+          });
+          html+=`</div></div>`;
+        });
+        html+=`</div></div>`;
+      });
     }
     sec.innerHTML=html;
+    sec.querySelectorAll('.exp-month-header').forEach(h=>{
+      h.addEventListener('click',()=>{
+        const content=h.nextElementSibling;
+        const arrow=h.querySelector('.exp-month-arrow');
+        content.style.display=content.style.display==='none'?'block':'none';
+        if(arrow)arrow.textContent=content.style.display==='none'?'▶':'▼';
+      });
+    });
+    sec.querySelectorAll('.exp-year-header').forEach(h=>{
+      h.addEventListener('click',()=>{
+        const content=h.nextElementSibling;
+        content.style.display=content.style.display==='none'?'block':'none';
+      });
+    });
     bindExpListEvents(sec);
     return;
   }
@@ -1820,18 +1881,22 @@ function renderExpList(bid,filterType){
       const monthTotal=monthItems.reduce((s,e)=>s+num(e.amount),0);
       const isCurMonth=ym===curYM;
       const monthCollapsed=!isCurMonth;
-      let monthLabel,dateRange;
+      let monthLabel;
       if(ym==='无日期'){
-        monthLabel='无日期';dateRange='';
+        monthLabel='无日期';
       }else{
         const[y,m]=ym.split('-');
         monthLabel=`${y}年${parseInt(m)}月`;
-        dateRange=`${m.padStart(2,'0')}/01 - ${m.padStart(2,'0')}/30`;
       }
+      const expPaidTypes=['repair','clean','supply'];
+      const mPaidSum=monthItems.filter(e=>expPaidTypes.includes(e.type)&&e.isPaid).reduce((s,e)=>s+num(e.amount),0);
+      const mUnpaidSum=monthItems.filter(e=>expPaidTypes.includes(e.type)&&!e.isPaid).reduce((s,e)=>s+num(e.amount),0);
+      const mPaidHtml=mPaidSum>0?`<span style="font-size:13px;color:var(--success);">已结账 ¥${mPaidSum.toFixed(2)}</span>`:'';
+      const mUnpaidHtml=mUnpaidSum>0?`<span style="font-size:13px;color:#ef4444;">未结账 ¥${mUnpaidSum.toFixed(2)}</span>`:'';
       html+=`<div class="exp-month-group" data-ym="${ym}" style="margin-bottom:8px">
         <div class="exp-month-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8fafc;border-radius:8px;cursor:pointer">
-          <span style="font-weight:600">${monthLabel}${dateRange?` <span style="font-size:11px;color:var(--text-lighter);font-weight:400">${dateRange}</span>`:''}</span>
-          <span style="font-weight:600">¥${monthTotal.toFixed(2)} <span class="exp-month-arrow" style="font-size:11px">${monthCollapsed?'▶':'▼'}</span></span>
+          <span style="font-weight:600">${monthLabel}</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">${mPaidHtml}${mUnpaidHtml}</span><span class="exp-month-arrow" style="font-size:11px;color:#94a3b8">${monthCollapsed?'▶':'▼'}</span></span>
         </div>
         <div class="exp-month-content" style="${monthCollapsed?'display:none':'display:block'};padding:4px 0">`;
       const sortedItems=expSort(monthItems.slice());
@@ -1841,8 +1906,8 @@ function renderExpList(bid,filterType){
         const titleText=(e.type==='water'||e.type==='electric')?(e.date||'未填'):(esc(e.location)||'未填写');
         const paidTypes=['repair','clean','supply'];
         const unpaid=paidTypes.includes(e.type)&&e.date&&!e.isPaid;
-        const cardStyle=unpaid?'background:#fffbeb;border:1px solid #f59e0b':'background:#fff;border:1px solid #e2e8f0';
-        const paidBadge=paidTypes.includes(e.type)?(e.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">已结账</span>':'<span style="font-size:11px;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">未结账</span>'):'';
+        const cardStyle=unpaid?'background:#fef2f2;border:1px solid #ef4444':'background:#fff;border:1px solid #e2e8f0';
+        const paidBadge=paidTypes.includes(e.type)?(e.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">已结账</span>':'<span style="font-size:11px;background:#ef4444;color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">未结账</span>'):'';
         html+=`<div class="exp-swipe-wrap" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
           <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
             <button class="exp-action-edit" data-id="${e.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
@@ -1869,16 +1934,14 @@ function renderExpList(bid,filterType){
       const content=h.nextElementSibling;
       const arrow=h.querySelector('.exp-month-arrow');
       content.style.display=content.style.display==='none'?'block':'none';
-      arrow.textContent=content.style.display==='none'?'▶':'▼';
+      if(arrow)arrow.textContent=content.style.display==='none'?'▶':'▼';
     });
   });
   // 绑定年份折叠
   sec.querySelectorAll('.exp-year-header').forEach(h=>{
     h.addEventListener('click',()=>{
       const content=h.nextElementSibling;
-      const arrow=h.querySelector('.exp-year-arrow');
       content.style.display=content.style.display==='none'?'block':'none';
-      arrow.textContent=content.style.display==='none'?'▶':'▼';
     });
   });
   bindExpListEvents(sec);
@@ -5216,14 +5279,12 @@ if('serviceWorker' in navigator){
   }
   function lastSync(){return parseInt(localStorage.getItem(STORAGE_KEY+"_lastCloudSync")||"0");}
   function setSync(){localStorage.setItem(STORAGE_KEY+"_lastCloudSync",Date.now().toString());}
-  async function upload(){
+  async function upload(silent){
     if(!ready){
-      if(typeof window.supabase==="undefined"){
-        toast("Supabase SDK未加载，CDN可能被屏蔽");
-      }else if(!cfg.url||!cfg.key){
-        toast("请先配置云同步");
-      }else{
-        toast("云同步未就绪，请重新配置");
+      if(!silent){
+        if(typeof window.supabase==="undefined"){toast("Supabase SDK未加载，CDN可能被屏蔽");}
+        else if(!cfg.url||!cfg.key){toast("请先配置云同步");}
+        else{toast("云同步未就绪，请重新配置");}
       }
       return;
     }
@@ -5233,14 +5294,16 @@ if('serviceWorker' in navigator){
       var r=await sbClient.from("rent_data").upsert({id:1,data:j,updated_at:new Date().toISOString()},{onConflict:'id'});
       console.log('[CloudSync] 上传响应:',r);
       if(r.error){console.error('Supabase upload error:',r.error);throw r.error;}
-      setSync();toast("已同步到云端");updCloudUI();
+      setSync();if(!silent)toast("已同步到云端");updCloudUI();
     }catch(e){
       console.error('[CloudSync] upload error:',e);
-      var msg=e.message||String(e);
-      if(msg.indexOf('Failed to fetch')>=0||msg.indexOf('NetworkError')>=0||msg.indexOf('load failed')>=0){
-        msg='网络连接失败\n可能原因：\n1. Supabase项目已暂停（免费版7天不活跃会暂停）\n2. URL或Key不正确\n3. 网络无法访问Supabase服务器';
+      if(!silent){
+        var msg=e.message||String(e);
+        if(msg.indexOf('Failed to fetch')>=0||msg.indexOf('NetworkError')>=0||msg.indexOf('load failed')>=0){
+          msg='网络连接失败\n可能原因：\n1. Supabase项目已暂停（免费版7天不活跃会暂停）\n2. URL或Key不正确\n3. 网络无法访问Supabase服务器';
+        }
+        toast("同步失败: "+msg);
       }
-      toast("同步失败: "+msg);
     }
   }
   async function download(){
@@ -5265,9 +5328,11 @@ if('serviceWorker' in navigator){
   function hookSave(){if(typeof window.save!=="function"||_os)return;_os=window.save;window.save=function(){_os.apply(this,arguments);if(ready&&cfg.autoSync){var cj=JSON.stringify(state);if(cj===_lastJson)return;_lastJson=cj;_cloudSyncPending=true;}};}
   // 退出/切后台时触发云端同步（无条件上传，保证Supabase有活动）
   window._cloudSyncOnExit=function(){if(ready&&cfg.autoSync){_cloudSyncPending=false;upload().catch(function(){});}};
-  // 心跳：APP打开就自动上传一次，之后每5分钟再传，切回前台也触发
+  // 心跳：APP打开就自动上传一次，之后每1分钟再传，切回前台也触发
   // 无条件上传，保证Supabase有活动记录，防止免费项目被暂停
+  // 只有每次打开APP的第一次同步会弹窗提示，其余只更新时间
   function startHeartbeat(){
+    var isFirstSync=true;
     function updDot(color,text){
       var d=document.getElementById('hbDot'),t=document.getElementById('hbText');
       if(d)d.style.background=color;
@@ -5275,16 +5340,27 @@ if('serviceWorker' in navigator){
     }
     function doHeartbeat(){
       if(!ready||!cfg.autoSync){updDot('#cbd5e1','未开启');return;}
-      updDot('#f59e0b','同步中...');
-      upload().then(function(){
-        updDot('#22c55e','已同步 '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}));
-      }).catch(function(e){
-        updDot('#ef4444','同步失败');
-        console.warn('[CloudSync] 心跳失败',e);
-      });
+      if(isFirstSync){
+        updDot('#f59e0b','同步中...');
+        upload().then(function(){
+          updDot('#22c55e','已同步 '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}));
+          isFirstSync=false;
+        }).catch(function(e){
+          updDot('#ef4444','同步失败');
+          console.warn('[CloudSync] 心跳失败',e);
+          isFirstSync=false;
+        });
+      }else{
+        upload(true).then(function(){
+          updDot('#22c55e','已同步 '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}));
+        }).catch(function(e){
+          updDot('#ef4444','同步失败');
+          console.warn('[CloudSync] 心跳失败',e);
+        });
+      }
     }
     setTimeout(doHeartbeat,5000);
-    var hbTimer=setInterval(doHeartbeat,300000);
+    var hbTimer=setInterval(doHeartbeat,60000);
     document.addEventListener('visibilitychange',function(){
       if(!document.hidden)doHeartbeat();
     });
