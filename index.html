@@ -202,8 +202,12 @@
   .repair-item-title{display:flex;justify-content:space-between;align-items:center}
   .repair-item-meta{font-size:12px;color:var(--text-light);margin-top:4px}
   .exp-item.unpaid{background:#fffbeb;border-color:#f59e0b}
-  .form-switch{display:flex;align-items:center;justify-content:space-between;padding:0}
-  .form-switch label{margin-bottom:0}
+  .form-switch{display:flex;align-items:center;justify-content:space-between;padding:12px 0;min-height:48px}
+  .form-switch .switch-label{font-size:13px;color:var(--text-light);font-weight:500}
+  .toggle-box{width:46px;height:26px;background:#cbd5e1;border-radius:13px;position:relative;cursor:pointer;flex-shrink:0;transition:background .2s}
+  .toggle-box.on{background:var(--success)}
+  .toggle-box .toggle-knob{width:20px;height:20px;background:#fff;border-radius:50%;position:absolute;top:3px;left:3px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .toggle-box.on .toggle-knob{left:23px}
   .switch{position:relative;display:inline-block;width:44px;height:24px}
   .switch input{opacity:0;width:0;height:0}
   .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#cbd5e1;transition:.3s;border-radius:24px}
@@ -1623,7 +1627,7 @@ function saveExp(type,editId){
   const person=val('expPerson');
   const amount=val('expAmount');
   const note=val('expNote');
-  const isPaid=document.getElementById('expIsPaid')?document.getElementById('expIsPaid').checked:false;
+  const isPaid=document.getElementById('expIsPaidToggle')?document.getElementById('expIsPaidToggle').classList.contains('on'):false;
   if(!date){toast('请选择日期');return;}
   if(!amount||num(amount)<=0){toast('请输入金额');return;}
   if(!state.expenses)state.expenses=[];
@@ -1635,10 +1639,19 @@ function saveExp(type,editId){
     state.expenses.push({id:'exp'+Date.now()+Math.random().toString(36).slice(2,6),bid:_expBuildingId,type,date,location:location||'',person:person||'',amount:num(amount),note:note||'',isPaid});
     toast('支出已保存');
   }
-  save();renderExpList(_expBuildingId,_expSingleType);
-  // 保存后收起表单
-  const sec=document.getElementById('expFormSection');
-  if(sec){sec.style.display='none';sec.innerHTML='';}
+  save();
+  // 恢复列表页面
+  const labels={repair:'维修',clean:'清洁',supply:'其它',water:'水费',electric:'电费'};
+  const addBtnLabel={repair:'添加维修记录',clean:'添加清洁记录',supply:'添加记录',water:'添加水费记录',electric:'添加电费记录'};
+  const b=getBuilding(_expBuildingId);
+  document.getElementById('sheetTitle').textContent=b?b.name+' · '+labels[type]+'支出':'';
+  const body=document.getElementById('sheetBody');
+  body.innerHTML=`<div class="section" id="expAddSection">
+    <button class="btn btn-primary add-record-btn" id="btnAddExpRecord">➕ ${addBtnLabel[type]||'添加记录'}</button>
+  </div>
+  <div class="section" id="expListSection"></div>`;
+  document.getElementById('btnAddExpRecord').addEventListener('click',()=>showExpForm(type));
+  renderExpList(_expBuildingId,type);
   renderAll();
 }
 function deleteExp(id){
@@ -1701,21 +1714,21 @@ function showExpForm(type,editEx){
     <div class="form-row"><label>维修位置</label><input type="text" id="expLocation" placeholder="如：3楼走廊灯" value="${editEx?esc(editEx.location):''}"></div>
     <div class="form-row"><label>维修人</label><input type="text" id="expPerson" placeholder="维修师傅姓名" value="${editEx?esc(editEx.person):''}"></div>
     <div class="form-row"><label>维修金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
-    ${showPaidSwitch?`<div class="form-row form-switch"><label>已结账</label><label class="switch"><input type="checkbox" id="expIsPaid" ${paidChecked}><span class="slider"></span></label></div>`:''}
+    ${showPaidSwitch?`<div class="form-row form-switch"><span class="switch-label">已结账</span><div class="toggle-box ${paidChecked?'on':''}" id="expIsPaidToggle"><div class="toggle-knob"></div></div></div>`:''}
     <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
   }else if(type==='clean'){
     fields=`<div class="form-row"><label>清洁日期</label><input type="date" id="expDate" value="${today}"></div>
     <div class="form-row"><label>清洁位置</label><input type="text" id="expLocation" placeholder="如：5楼公共区域" value="${editEx?esc(editEx.location):''}"></div>
     <div class="form-row"><label>清洁人</label><input type="text" id="expPerson" placeholder="清洁人员姓名" value="${editEx?esc(editEx.person):''}"></div>
     <div class="form-row"><label>清洁费用 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
-    ${showPaidSwitch?`<div class="form-row form-switch"><label>已结账</label><label class="switch"><input type="checkbox" id="expIsPaid" ${paidChecked}><span class="slider"></span></label></div>`:''}
+    ${showPaidSwitch?`<div class="form-row form-switch"><span class="switch-label">已结账</span><div class="toggle-box ${paidChecked?'on':''}" id="expIsPaidToggle"><div class="toggle-knob"></div></div></div>`:''}
     <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
   }else if(type==='supply'){
     fields=`<div class="form-row"><label>日期</label><input type="date" id="expDate" value="${today}"></div>
     <div class="form-row"><label>名称</label><input type="text" id="expLocation" placeholder="如：办公用品" value="${editEx?esc(editEx.location):''}"></div>
     <div class="form-row"><label>渠道</label><input type="text" id="expPerson" placeholder="如：淘宝/实体店" value="${editEx?esc(editEx.person):''}"></div>
     <div class="form-row"><label>金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
-    ${showPaidSwitch?`<div class="form-row form-switch"><label>已结账</label><label class="switch"><input type="checkbox" id="expIsPaid" ${paidChecked}><span class="slider"></span></label></div>`:''}
+    ${showPaidSwitch?`<div class="form-row form-switch"><span class="switch-label">已结账</span><div class="toggle-box ${paidChecked?'on':''}" id="expIsPaidToggle"><div class="toggle-knob"></div></div></div>`:''}
     <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
   }else if(type==='water'){
     fields=`<div class="form-row"><label>缴款日期</label><input type="date" id="expDate" value="${today}"></div>
@@ -1728,15 +1741,40 @@ function showExpForm(type,editEx){
     <div class="form-row"><label>缴款金额 (¥)</label><input type="number" id="expAmount" placeholder="0" min="0" step="0.01" value="${editEx?editEx.amount:''}"></div>
     <div class="form-row"><label>备注</label><textarea id="expNote" placeholder="可选" style="min-height:48px">${editEx?esc(editEx.note):''}</textarea></div>`;
   }
-  sec.innerHTML=`<div class="section-title">${editEx?'✏️ 编辑':'➕ 添加'}${labels[type]}支出</div>${fields}
-    <div class="btn-group"><button class="btn btn-primary" id="btnSaveExp">${editEx?'更新':'保存'}</button><button class="btn btn-secondary" id="btnCancelExp">取消</button></div>`;
-  sec.style.display='';
+  const isEdit=!!editEx;
+  const sheetBody=document.getElementById('sheetBody');
+  const oldHTML=sheetBody.innerHTML;
+  document.getElementById('sheetTitle').textContent=(isEdit?'✏️ 编辑':'➕ 添加')+labels[type]+'支出';
+  sheetBody.innerHTML=`<div class="section">${fields}
+    <div class="btn-group"><button class="btn btn-primary" id="btnSaveExp">${isEdit?'更新':'保存'}</button><button class="btn btn-secondary" id="btnCancelExp">取消</button></div></div>`;
   document.getElementById('btnSaveExp').addEventListener('click',()=>saveExp(type,editEx?editEx.id:null));
-  document.getElementById('btnCancelExp').addEventListener('click',()=>{sec.style.display='none';sec.innerHTML='';});
-  sec.scrollIntoView({behavior:'smooth',block:'nearest'});
+  document.getElementById('btnCancelExp').addEventListener('click',()=>{
+    // 恢复原来的列表页面
+    document.getElementById('sheetTitle').textContent=_expBuildingId?getBuilding(_expBuildingId).name+' · '+labels[type]+'支出':'';
+    sheetBody.innerHTML=oldHTML;
+    renderExpList(_expBuildingId,type);
+    bindExpListEvents(document.getElementById('expListSection'));
+  });
+  // 开关点击切换
+  document.querySelectorAll('.form-switch .toggle-box').forEach(tb=>{
+    tb.addEventListener('click',function(){this.classList.toggle('on');});
+  });
 }
 function renderExpList(bid,filterType){
   const sec=document.getElementById('expListSection');if(!sec)return;
+  // 记住当前展开的月份
+  if(!window._expExpandedMonths)window._expExpandedMonths=new Set();
+  if(!window._expExpandedYears)window._expExpandedYears=new Set();
+  const beforeExpanded=sec.querySelectorAll('.exp-month-content[style*="display:block"],.exp-month-content[style*="display: block"]');
+  beforeExpanded.forEach(c=>{
+    const mg=c.closest('.exp-month-group');
+    if(mg&&mg.dataset.ym)window._expExpandedMonths.add(mg.dataset.ym);
+  });
+  const beforeExpYears=sec.querySelectorAll('.exp-year-content[style*="display:block"],.exp-year-content[style*="display: block"]');
+  beforeExpYears.forEach(c=>{
+    const yg=c.closest('.exp-year-group');
+    if(yg&&yg.dataset.year)window._expExpandedYears.add(yg.dataset.year);
+  });
   const allTypes=[{key:'repair',label:'🔧 维修',color:'#3b82f6'},{key:'clean',label:'🧹 清洁',color:'var(--success)'},{key:'supply',label:'📦 其它',color:'#e6a700'},{key:'water',label:'💧 水费',color:'#0ea5e9'},{key:'electric',label:'⚡ 电费',color:'#facc15'}];
   // 未完成：repair/clean/supply 未结账（repair也由维修情况管理，但这里是支出记录）
   function expIncomplete(e){return (e.type==='repair'||e.type==='clean'||e.type==='supply')&&!e.isPaid;}
@@ -1771,11 +1809,12 @@ function renderExpList(bid,filterType){
         const yearItems=Object.values(byYear[year]).flat();
         const yearTotal=yearItems.reduce((s,e)=>s+num(e.amount),0);
         const isCurYear=year===curYear;
-        if(!isCurYear){
+        const yearCollapsed=isCurYear?false:!window._expExpandedYears.has(year);
+        if(yearCollapsed){
           html+=`<div class="exp-year-group" data-year="${year}" style="margin-bottom:12px">
             <div class="exp-year-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#e2e8f0;border-radius:8px;cursor:pointer;font-weight:600">
               <span>${year}年</span>
-              <span>¥${yearTotal.toFixed(2)}</span>
+              <span>¥${yearTotal.toFixed(2)} <span class="exp-year-arrow" style="font-size:11px">▶</span></span>
             </div>
             <div class="exp-year-content" style="display:none;padding:4px 0">`;
         }else{
@@ -1786,7 +1825,7 @@ function renderExpList(bid,filterType){
           const monthItems=byYear[year][ym];
           const monthTotal=monthItems.reduce((s,e)=>s+num(e.amount),0);
           const isCurMonth=ym===curYM;
-          const monthCollapsed=!isCurMonth;
+          const monthCollapsed=isCurMonth?false:!window._expExpandedMonths.has(ym);
           let monthLabel;
           if(ym==='无日期'){monthLabel='无日期';}
           else{const[y,m]=ym.split('-');monthLabel=`${y}年${parseInt(m)}月`;}
@@ -1796,9 +1835,9 @@ function renderExpList(bid,filterType){
           const mPaidHtml=mPaidSum>0?`<span style="font-size:13px;color:var(--success);">已结账 ¥${mPaidSum.toFixed(2)}</span>`:'';
           const mUnpaidHtml=mUnpaidSum>0?`<span style="font-size:13px;color:#ef4444;">未结账 ¥${mUnpaidSum.toFixed(2)}</span>`:'';
           html+=`<div class="exp-month-group" data-ym="${ym}" style="margin-bottom:8px">
-            <div class="exp-month-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8fafc;border-radius:8px;cursor:pointer">
+            <div class="exp-month-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;min-height:48px;background:#f8fafc;border-radius:8px;cursor:pointer">
               <span style="font-weight:600">${monthLabel}</span>
-              <span style="display:flex;align-items:center;gap:8px"><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">${mPaidHtml}${mUnpaidHtml}</span><span class="exp-month-arrow" style="font-size:11px;color:#94a3b8">${monthCollapsed?'▶':'▼'}</span></span>
+              <span style="display:flex;align-items:center;gap:8px"><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;justify-content:center;min-height:34px">${mPaidHtml}${mUnpaidHtml}</span><span class="exp-month-arrow" style="font-size:11px;color:#94a3b8">${monthCollapsed?'▶':'▼'}</span></span>
             </div>
             <div class="exp-month-content" style="${monthCollapsed?'display:none':'display:block'};padding:4px 0">`;
           const sortedItems=expSort(monthItems.slice());
@@ -1807,19 +1846,23 @@ function renderExpList(bid,filterType){
             const titleText=(e.type==='water'||e.type==='electric')?(e.date||'未填'):(esc(e.location)||'未填写');
             const paidTypes=['repair','clean','supply'];
             const unpaid=paidTypes.includes(e.type)&&e.date&&!e.isPaid;
-            const cardStyle=unpaid?'background:#fef2f2;border:1px solid #ef4444':'background:#fff;border:1px solid #e2e8f0';
-            const paidBadge=paidTypes.includes(e.type)?(e.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">已结账</span>':'<span style="font-size:11px;background:#ef4444;color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">未结账</span>'):'';
-            html+=`<div class="exp-swipe-wrap exp-item ${unpaid?'unpaid':''}" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
+            const cardStyle='background:#fff;border:1px solid #e2e8f0';
+            const hasBadge=paidTypes.includes(e.type);
+            const paidBadge=hasBadge?(e.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px">已结账</span>':'<span style="font-size:11px;background:#ef4444;color:#fff;border-radius:4px;padding:1px 6px">未结账</span>'):'';
+            const amtColor=hasBadge?(e.isPaid?'var(--success)':'#ef4444'):t.color;
+            html+=`<div class="exp-swipe-wrap exp-item" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
               <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
                 <button class="exp-action-edit" data-id="${e.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
                 <button class="exp-action-del" data-id="${e.id}" style="width:56px;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer">删除</button>
               </div>
               <div class="exp-swipe-card" data-id="${e.id}" style="position:relative;${cardStyle};border-radius:8px;padding:10px 12px;transition:transform .2s;z-index:1;cursor:pointer">
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                  <div style="display:flex;align-items:center;gap:4px"><span style="font-weight:500">${titleText}</span></div>
-                  <div style="display:flex;align-items:center">${paidBadge}<span style="color:${t.color};font-weight:600">¥${num(e.amount).toFixed(2)}</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                  <div style="flex:1;min-width:0">
+                    <div style="font-weight:500">${titleText}</div>
+                    <div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 ${e.date||'未填'} · ${personLabel}：${esc(e.person)||'-'}</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">${paidBadge}<span style="color:${amtColor};font-weight:600">¥${num(e.amount).toFixed(2)}</span></div>
                 </div>
-                <div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 ${e.date||'未填'} · ${personLabel}：${esc(e.person)||'-'}</div>
               </div>
             </div>`;
           });
@@ -1835,12 +1878,22 @@ function renderExpList(bid,filterType){
         const arrow=h.querySelector('.exp-month-arrow');
         content.style.display=content.style.display==='none'?'block':'none';
         if(arrow)arrow.textContent=content.style.display==='none'?'▶':'▼';
+        const mg=h.closest('.exp-month-group');
+        if(mg&&mg.dataset.ym){
+          if(content.style.display==='none')window._expExpandedMonths.delete(mg.dataset.ym);
+          else window._expExpandedMonths.add(mg.dataset.ym);
+        }
       });
     });
     sec.querySelectorAll('.exp-year-header').forEach(h=>{
       h.addEventListener('click',()=>{
         const content=h.nextElementSibling;
         content.style.display=content.style.display==='none'?'block':'none';
+        const yg=h.closest('.exp-year-group');
+        if(yg&&yg.dataset.year){
+          if(content.style.display==='none')window._expExpandedYears.delete(yg.dataset.year);
+          else window._expExpandedYears.add(yg.dataset.year);
+        }
       });
     });
     bindExpListEvents(sec);
@@ -1864,8 +1917,8 @@ function renderExpList(bid,filterType){
     const yearItems=Object.values(byYear[year]).flat();
     const yearTotal=yearItems.reduce((s,e)=>s+num(e.amount),0);
     const isCurYear=year===curYear;
-    const yearCollapsed=!isCurYear;
-    if(!isCurYear){
+    const yearCollapsed=isCurYear?false:!window._expExpandedYears.has(year);
+    if(yearCollapsed){
       html+=`<div class="exp-year-group" data-year="${year}" style="margin-bottom:12px">
         <div class="exp-year-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#e2e8f0;border-radius:8px;cursor:pointer;font-weight:600">
           <span>${year}年</span>
@@ -1880,7 +1933,7 @@ function renderExpList(bid,filterType){
       const monthItems=byYear[year][ym];
       const monthTotal=monthItems.reduce((s,e)=>s+num(e.amount),0);
       const isCurMonth=ym===curYM;
-      const monthCollapsed=!isCurMonth;
+      const monthCollapsed=isCurMonth?false:!window._expExpandedMonths.has(ym);
       let monthLabel;
       if(ym==='无日期'){
         monthLabel='无日期';
@@ -1894,9 +1947,9 @@ function renderExpList(bid,filterType){
       const mPaidHtml=mPaidSum>0?`<span style="font-size:13px;color:var(--success);">已结账 ¥${mPaidSum.toFixed(2)}</span>`:'';
       const mUnpaidHtml=mUnpaidSum>0?`<span style="font-size:13px;color:#ef4444;">未结账 ¥${mUnpaidSum.toFixed(2)}</span>`:'';
       html+=`<div class="exp-month-group" data-ym="${ym}" style="margin-bottom:8px">
-        <div class="exp-month-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8fafc;border-radius:8px;cursor:pointer">
+        <div class="exp-month-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;min-height:48px;background:#f8fafc;border-radius:8px;cursor:pointer">
           <span style="font-weight:600">${monthLabel}</span>
-          <span style="display:flex;align-items:center;gap:8px"><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">${mPaidHtml}${mUnpaidHtml}</span><span class="exp-month-arrow" style="font-size:11px;color:#94a3b8">${monthCollapsed?'▶':'▼'}</span></span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;justify-content:center;min-height:34px">${mPaidHtml}${mUnpaidHtml}</span><span class="exp-month-arrow" style="font-size:11px;color:#94a3b8">${monthCollapsed?'▶':'▼'}</span></span>
         </div>
         <div class="exp-month-content" style="${monthCollapsed?'display:none':'display:block'};padding:4px 0">`;
       const sortedItems=expSort(monthItems.slice());
@@ -1906,19 +1959,23 @@ function renderExpList(bid,filterType){
         const titleText=(e.type==='water'||e.type==='electric')?(e.date||'未填'):(esc(e.location)||'未填写');
         const paidTypes=['repair','clean','supply'];
         const unpaid=paidTypes.includes(e.type)&&e.date&&!e.isPaid;
-        const cardStyle=unpaid?'background:#fef2f2;border:1px solid #ef4444':'background:#fff;border:1px solid #e2e8f0';
-        const paidBadge=paidTypes.includes(e.type)?(e.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">已结账</span>':'<span style="font-size:11px;background:#ef4444;color:#fff;border-radius:4px;padding:1px 6px;margin-right:4px">未结账</span>'):'';
+        const cardStyle='background:#fff;border:1px solid #e2e8f0';
+        const hasBadge=paidTypes.includes(e.type);
+        const paidBadge=hasBadge?(e.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px">已结账</span>':'<span style="font-size:11px;background:#ef4444;color:#fff;border-radius:4px;padding:1px 6px">未结账</span>'):'';
+        const amtColor=hasBadge?(e.isPaid?'var(--success)':'#ef4444'):t.color;
         html+=`<div class="exp-swipe-wrap" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
           <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
             <button class="exp-action-edit" data-id="${e.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
             <button class="exp-action-del" data-id="${e.id}" style="width:56px;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer">删除</button>
           </div>
           <div class="exp-swipe-card" data-id="${e.id}" style="position:relative;${cardStyle};border-radius:8px;padding:10px 12px;transition:transform .2s;z-index:1;cursor:pointer">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="display:flex;align-items:center;gap:4px"><span style="font-weight:500">${titleText}</span></div>
-              <div style="display:flex;align-items:center">${paidBadge}<span style="color:${t.color};font-weight:600">¥${num(e.amount).toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:500">${titleText}</div>
+                <div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 ${e.date||'未填'} · ${personLabel}：${esc(e.person)||'-'}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">${paidBadge}<span style="color:${amtColor};font-weight:600">¥${num(e.amount).toFixed(2)}</span></div>
             </div>
-            <div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 ${e.date||'未填'} · ${personLabel}：${esc(e.person)||'-'}</div>
           </div>
         </div>`;
       });
@@ -1935,6 +1992,11 @@ function renderExpList(bid,filterType){
       const arrow=h.querySelector('.exp-month-arrow');
       content.style.display=content.style.display==='none'?'block':'none';
       if(arrow)arrow.textContent=content.style.display==='none'?'▶':'▼';
+      const mg=h.closest('.exp-month-group');
+      if(mg&&mg.dataset.ym){
+        if(content.style.display==='none')window._expExpandedMonths.delete(mg.dataset.ym);
+        else window._expExpandedMonths.add(mg.dataset.ym);
+      }
     });
   });
   // 绑定年份折叠
@@ -1942,6 +2004,11 @@ function renderExpList(bid,filterType){
     h.addEventListener('click',()=>{
       const content=h.nextElementSibling;
       content.style.display=content.style.display==='none'?'block':'none';
+      const yg=h.closest('.exp-year-group');
+      if(yg&&yg.dataset.year){
+        if(content.style.display==='none')window._expExpandedYears.delete(yg.dataset.year);
+        else window._expExpandedYears.add(yg.dataset.year);
+      }
     });
   });
   bindExpListEvents(sec);
@@ -1963,10 +2030,10 @@ function bindExpListEvents(sec){
       const dx=e.changedTouches[0].clientX-startX;
       if(dx<-50){card.style.transform='translateX(-112px)';}
       else{card.style.transform='translateX(0)';}
-      if(!moved){toggleExpDetail(card.dataset.id);}
+      if(!moved){editExp(card.dataset.id);}
     });
     card.addEventListener('click',e=>{
-      if(!moved&&'ontouchstart' in window===false){toggleExpDetail(card.dataset.id);}
+      if(!moved&&'ontouchstart' in window===false){editExp(card.dataset.id);}
     });
   });
   sec.querySelectorAll('.exp-action-edit').forEach(btn=>{
@@ -2230,12 +2297,15 @@ function showRepairForm(editR){
     <div class="form-row"><label>人工费 (¥)</label><input type="number" id="rpLaborFee" placeholder="0" min="0" step="0.01" value="${editR?editR.laborFee:''}"></div>
     <div class="form-row"><label>提出日期</label><input type="date" id="rpRequestDate" value="${editR?editR.requestDate:today}"></div>
     <div class="form-row"><label>维修日期</label><input type="date" id="rpRepairDate" value="${editR?(editR.repairDate||''):''}"></div>
-    <div class="form-row form-switch"><label>已结账</label><label class="switch"><input type="checkbox" id="rpIsPaid" ${editR&&editR.isPaid?'checked':''}><span class="slider"></span></label></div>
+    <div class="form-row form-switch"><span class="switch-label">已结账</span><div class="toggle-box ${editR&&editR.isPaid?'on':''}" id="rpIsPaidToggle"><div class="toggle-knob"></div></div></div>
     <div class="form-row"><label>备注</label><textarea id="rpNote" placeholder="可选" style="min-height:48px">${editR?esc(editR.note):''}</textarea></div>
     <div class="btn-group"><button class="btn btn-primary" id="btnSaveRepair">${editR?'更新':'保存'}</button><button class="btn btn-secondary" id="btnCancelRepair">取消</button></div>`;
   sec.style.display='';
   document.getElementById('btnSaveRepair').addEventListener('click',()=>saveRepair(editR?editR.id:null));
   document.getElementById('btnCancelRepair').addEventListener('click',()=>{sec.style.display='none';sec.innerHTML='';});
+  sec.querySelectorAll('.form-switch .toggle-box').forEach(tb=>{
+    tb.addEventListener('click',function(){this.classList.toggle('on');});
+  });
   sec.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function saveRepair(editId){
@@ -2250,7 +2320,7 @@ function saveRepair(editId){
   const requestDate=val('rpRequestDate');
   const repairDate=val('rpRepairDate');
   const note=val('rpNote');
-  const isPaid=document.getElementById('rpIsPaid')?document.getElementById('rpIsPaid').checked:false;
+  const isPaid=document.getElementById('rpIsPaidToggle')?document.getElementById('rpIsPaidToggle').classList.contains('on'):false;
   if(!requestDate){toast('请选择提出日期');return;}
   if(!state.repairs)state.repairs=[];
   if(editId){
@@ -2286,39 +2356,149 @@ function renderRepairList(bid){
     if(aIn!==bIn)return aIn-bIn;
     return (repairSortKey(b)||'').localeCompare(repairSortKey(a)||'');
   });
+  // 记住当前展开的月份
+  if(!window._expExpandedMonths)window._expExpandedMonths=new Set();
+  if(!window._expExpandedYears)window._expExpandedYears=new Set();
+  const sec0=sec;
+  const beforeExpanded=sec0.querySelectorAll('.exp-month-content[style*="display:block"],.exp-month-content[style*="display: block"]');
+  beforeExpanded.forEach(c=>{const mg=c.closest('.exp-month-group');if(mg&&mg.dataset.ym)window._expExpandedMonths.add(mg.dataset.ym);});
+  const beforeExpYears=sec0.querySelectorAll('.exp-year-content[style*="display:block"],.exp-year-content[style*="display: block"]');
+  beforeExpYears.forEach(c=>{const yg=c.closest('.exp-year-group');if(yg&&yg.dataset.year)window._expExpandedYears.add(yg.dataset.year);});
   let html='<div class="section-title">📋 维修记录</div>';
   if(list.length===0){
     html+='<div class="empty-hint" style="padding:20px;text-align:center">暂无维修记录，点击上方按钮添加</div>';
   }else{
+    const curYM=currentYearMonth();
+    const curYear=curYM.split('-')[0];
+    const byYear={};
     list.forEach(r=>{
-      const pending=!r.repairDate;
-      // 标黄条件：有维修日期（维修项的日期）但未结账
-      const unpaid=!pending&&!r.isPaid;
-      const totalFee=num(r.materialFee)+num(r.laborFee);
-      const roomLabel=r.roomNum==='whole'?'整栋':r.roomNum;
-      const rowClass=pending?'pending':(unpaid?'unpaid':'');
-      html+=`<div class="repair-item ${rowClass}" data-id="${r.id}">
-        <div class="repair-item-title">
-          <span style="font-weight:600;${pending?'color:var(--danger)':''}">${esc(roomLabel)} · ${esc(r.point||'未填维修点')}</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            ${unpaid?'<span style="font-size:11px;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 6px">未结账</span>':''}
-            ${r.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px">已结账</span>':''}
-            <span style="font-weight:600;${pending?'color:var(--danger)':''}">¥${totalFee.toFixed(2)}</span>
+      const sortKey=repairSortKey(r);
+      const ym=sortKey?sortKey.slice(0,7):'无日期';
+      const year=sortKey?sortKey.slice(0,4):'无日期';
+      if(!byYear[year])byYear[year]={};
+      if(!byYear[year][ym])byYear[year][ym]=[];
+      byYear[year][ym].push(r);
+    });
+    const years=Object.keys(byYear).sort().reverse();
+    years.forEach(year=>{
+      const yearItems=Object.values(byYear[year]).flat();
+      const yearTotal=yearItems.reduce((s,r)=>s+num(r.materialFee)+num(r.laborFee),0);
+      const isCurYear=year===curYear;
+      const yearCollapsed=isCurYear?false:!window._expExpandedYears.has(year);
+      if(yearCollapsed){
+        html+=`<div class="exp-year-group" data-year="${year}" style="margin-bottom:12px">
+          <div class="exp-year-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#e2e8f0;border-radius:8px;cursor:pointer;font-weight:600">
+            <span>${year}年</span>
+            <span>¥${yearTotal.toFixed(2)} <span class="exp-year-arrow" style="font-size:11px">▶</span></span>
           </div>
-        </div>
-        <div class="repair-item-meta">提出日期：${r.requestDate||'-'} · 维修日期：${r.repairDate||'<span style="color:var(--danger);font-weight:600">未填</span>'}</div>
-        ${r.location?`<div class="repair-item-meta">位置：${esc(r.location)}</div>`:''}
-        ${r.method?`<div class="repair-item-meta">办法：${esc(r.method)}</div>`:''}
-        <div style="display:flex;gap:8px;margin-top:6px">
-          <button class="btn btn-secondary" style="flex:1;padding:6px;font-size:12px" data-edit="${r.id}">编辑</button>
-          <button class="btn btn-secondary" style="flex:1;padding:6px;font-size:12px;color:var(--danger)" data-del="${r.id}">删除</button>
-        </div>
-      </div>`;
+          <div class="exp-year-content" style="display:none;padding:4px 0">`;
+      }else{
+        html+=`<div class="exp-year-group" data-year="${year}" style="margin-bottom:12px"><div class="exp-year-content" style="display:block;padding:4px 0">`;
+      }
+      const months=Object.keys(byYear[year]).sort().reverse();
+      months.forEach(ym=>{
+        const monthItems=byYear[year][ym];
+        const isCurMonth=ym===curYM;
+        const monthCollapsed=isCurMonth?false:!window._expExpandedMonths.has(ym);
+        let monthLabel;
+        if(ym==='无日期'){monthLabel='无日期';}
+        else{const[y,m]=ym.split('-');monthLabel=`${y}年${parseInt(m)}月`;}
+        const mPaidSum=monthItems.filter(r=>r.repairDate&&r.isPaid).reduce((s,r)=>s+num(r.materialFee)+num(r.laborFee),0);
+        const mUnpaidSum=monthItems.filter(r=>r.repairDate&&!r.isPaid).reduce((s,r)=>s+num(r.materialFee)+num(r.laborFee),0);
+        const mPendingSum=monthItems.filter(r=>!r.repairDate).reduce((s,r)=>s+num(r.materialFee)+num(r.laborFee),0);
+        const mPaidHtml=mPaidSum>0?`<span style="font-size:13px;color:var(--success);">已结账 ¥${mPaidSum.toFixed(2)}</span>`:'';
+        const mUnpaidHtml=mUnpaidSum>0?`<span style="font-size:13px;color:#ef4444;">未结账 ¥${mUnpaidSum.toFixed(2)}</span>`:'';
+        const mPendingHtml=mPendingSum>0?`<span style="font-size:13px;color:#f59e0b;">待维修 ¥${mPendingSum.toFixed(2)}</span>`:'';
+        html+=`<div class="exp-month-group" data-ym="${ym}" style="margin-bottom:8px">
+          <div class="exp-month-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;min-height:48px;background:#f8fafc;border-radius:8px;cursor:pointer">
+            <span style="font-weight:600">${monthLabel}</span>
+            <span style="display:flex;align-items:center;gap:8px"><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;justify-content:center;min-height:34px">${mPaidHtml}${mUnpaidHtml}${mPendingHtml}</span><span class="exp-month-arrow" style="font-size:11px;color:#94a3b8">${monthCollapsed?'▶':'▼'}</span></span>
+          </div>
+          <div class="exp-month-content" style="${monthCollapsed?'display:none':'display:block'};padding:4px 0">`;
+        const sortedItems=monthItems.slice().sort((a,b)=>{
+          const aIn=repairIncomplete(a)?0:1;const bIn=repairIncomplete(b)?0:1;
+          if(aIn!==bIn)return aIn-bIn;
+          return (repairSortKey(b)||'').localeCompare(repairSortKey(a)||'');
+        });
+        sortedItems.forEach(r=>{
+          const pending=!r.repairDate;
+          const unpaid=!pending&&!r.isPaid;
+          const totalFee=num(r.materialFee)+num(r.laborFee);
+          const roomLabel=r.roomNum==='whole'?'整栋':r.roomNum;
+          const cardStyle='background:#fff;border:1px solid #e2e8f0';
+          const statusBadge=pending?'<span style="font-size:11px;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 6px">待维修</span>':(r.isPaid?'<span style="font-size:11px;background:var(--success);color:#fff;border-radius:4px;padding:1px 6px">已结账</span>':'<span style="font-size:11px;background:#ef4444;color:#fff;border-radius:4px;padding:1px 6px">未结账</span>');
+          const repairAmtColor=pending?'#f59e0b':(r.isPaid?'var(--success)':'#ef4444');
+          html+=`<div class="exp-swipe-wrap" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
+            <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
+              <button class="exp-action-edit" data-edit="${r.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
+              <button class="exp-action-del" data-del="${r.id}" style="width:56px;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer">删除</button>
+            </div>
+            <div class="exp-swipe-card" data-id="${r.id}" style="position:relative;${cardStyle};border-radius:8px;padding:10px 12px;transition:transform .2s;z-index:1;cursor:pointer">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:500">${esc(roomLabel)} · ${esc(r.point||'未填维修点')}</div>
+                  <div style="font-size:12px;color:var(--text-light);margin-top:4px">提出：${r.requestDate||'-'} · 维修：${r.repairDate||'<span style="color:var(--danger);font-weight:600">未填</span>'}</div>
+                  ${r.location?`<div style="font-size:12px;color:var(--text-light);margin-top:2px">位置：${esc(r.location)}</div>`:''}
+                  ${r.method?`<div style="font-size:12px;color:var(--text-light);margin-top:2px">办法：${esc(r.method)}</div>`:''}
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">${statusBadge}<span style="color:${repairAmtColor};font-weight:600">¥${totalFee.toFixed(2)}</span></div>
+              </div>
+            </div>
+          </div>`;
+        });
+        html+=`</div></div>`;
+      });
+      html+=`</div></div>`;
     });
   }
   sec.innerHTML=html;
+  sec.querySelectorAll('.exp-month-header').forEach(h=>{
+    h.addEventListener('click',()=>{
+      const content=h.nextElementSibling;
+      const arrow=h.querySelector('.exp-month-arrow');
+      content.style.display=content.style.display==='none'?'block':'none';
+      if(arrow)arrow.textContent=content.style.display==='none'?'▶':'▼';
+      const mg=h.closest('.exp-month-group');
+      if(mg&&mg.dataset.ym){
+        if(content.style.display==='none')window._expExpandedMonths.delete(mg.dataset.ym);
+        else window._expExpandedMonths.add(mg.dataset.ym);
+      }
+    });
+  });
+  sec.querySelectorAll('.exp-year-header').forEach(h=>{
+    h.addEventListener('click',()=>{
+      const content=h.nextElementSibling;
+      content.style.display=content.style.display==='none'?'block':'none';
+      const yg=h.closest('.exp-year-group');
+      if(yg&&yg.dataset.year){
+        if(content.style.display==='none')window._expExpandedYears.delete(yg.dataset.year);
+        else window._expExpandedYears.add(yg.dataset.year);
+      }
+    });
+  });
   sec.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();editRepair(btn.dataset.edit);}));
   sec.querySelectorAll('[data-del]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();deleteRepair(btn.dataset.del);}));
+  sec.querySelectorAll('.exp-swipe-card').forEach(card=>{
+    let startX=0,startY=0,swiping=false,moved=false;
+    card.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;swiping=true;moved=false;},{passive:true});
+    card.addEventListener('touchmove',e=>{
+      if(!swiping)return;
+      const dx=e.touches[0].clientX-startX;
+      const dy=e.touches[0].clientY-startY;
+      if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)){moved=true;e.preventDefault();}
+      if(Math.abs(dx)>Math.abs(dy)){card.style.transform='translateX('+Math.max(-112,Math.min(0,dx))+'px)';}
+    },{passive:false});
+    card.addEventListener('touchend',e=>{
+      if(!swiping)return;swiping=false;
+      const dx=e.changedTouches[0].clientX-startX;
+      if(dx<-50){card.style.transform='translateX(-112px)';}
+      else{card.style.transform='translateX(0)';}
+      if(!moved){editRepair(card.dataset.id);}
+    });
+    card.addEventListener('click',e=>{
+      if(!moved&&'ontouchstart' in window===false){editRepair(card.dataset.id);}
+    });
+  });
 }
 
 function renderAll(){renderSidebar();renderOverview();renderFloors();renderExpenseCard();}
