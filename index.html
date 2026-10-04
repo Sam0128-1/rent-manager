@@ -249,7 +249,10 @@
   .swipe-grab{cursor:grab;touch-action:pan-y}
   .modal-swipe-area{height:28px;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:pan-y}
   .modal-swipe-bar{width:36px;height:4px;background:#cbd5e1;border-radius:2px}
-  .sheet-title{font-size:17px;font-weight:600}
+  .sheet-title{font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px;flex:1}
+  .room-nav-btn{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#f1f5f9;color:var(--text);cursor:pointer;font-size:12px;flex-shrink:0;user-select:none}
+  .room-nav-btn:active{background:#e2e8f0}
+  .room-nav-btn.disabled{opacity:.3;cursor:not-allowed}
   .sheet-close{width:32px;height:32px;border:none;background:#f1f5f9;border-radius:50%;font-size:20px;color:var(--text-light);cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
   .sheet-body{padding:12px 16px 24px}
 
@@ -305,9 +308,11 @@
   .swipe-item-content.partial{border-left:3px solid #f59e0b}
   .swipe-item-content.paid{border-left:3px solid var(--success)}
   .swipe-item-content.swiped{transform:translateX(-150px)}
+  .swipe-item-content.swiped3{transform:translateX(-225px)}
   .swipe-actions{position:absolute;right:0;top:0;bottom:0;display:flex;z-index:0}
   .swipe-actions button{width:75px;border:none;font-size:13px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:500}
   .swipe-actions .sa-received{background:var(--success)}
+  .swipe-actions .sa-copy{background:#8b5cf6}
   .swipe-actions .sa-edit{background:var(--primary)}
   .swipe-actions .sa-delete{background:var(--danger)}
   .mli-header{display:flex;justify-content:space-between;align-items:stretch;margin-bottom:4px;gap:10px}
@@ -1354,6 +1359,7 @@ function renderOverview(){
   const selMonth=selYm.split('-')[1];
   const arrearsList=[];
   const vacantList=[];
+  const monthRentList=[];
   (b.floors||[]).forEach((floor,fIdx)=>{
     const f=fIdx+1;
     for(let r=1;r<=floor.rooms;r++){
@@ -1367,7 +1373,8 @@ function renderOverview(){
       }
       // 选中月份的费用（部分缴费也计入已收）
       const md=room.months[selYm];
-      if(md){const c=calcMonthFee(room,md);if(c.actualPaid>0){monthIncome+=c.actualPaid;mRent+=c.rent;mWater+=c.waterFee;mElec+=c.elecFee;}}
+      if(md){const c=calcMonthFee(room,md);if(c.actualPaid>0){monthIncome+=c.actualPaid;mRent+=c.rent;mWater+=c.waterFee;mElec+=c.elecFee;}monthRentList.push({key:`${bid}-${f*100+r}`,num2:f*100+r,tenant:room.tenant,calc:c,hasRecord:true});}
+      else if(room.status!=='empty'&&room.status!=='maintenance'){monthRentList.push({key:`${bid}-${f*100+r}`,num2:f*100+r,tenant:room.tenant,calc:{rent:num(room.fixedRent),waterFee:0,elecFee:0,total:num(room.fixedRent),actualPaid:0,arrearsLeft:num(room.fixedRent),deduction:0,arrearsRepayment:0},hasRecord:false});}
       for(const mym in room.months){
         if(mym.startsWith(selYear)){const c=calcMonthFee(room,room.months[mym]);if(c.actualPaid>0){yearIncome+=c.actualPaid;yRent+=c.rent;yWater+=c.waterFee;yElec+=c.elecFee;}}
       }
@@ -1458,9 +1465,9 @@ function renderOverview(){
   // 月租金详情：房租、水费、电费
   document.getElementById('ovMonthDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${mRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${mWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${mElec.toFixed(2)}</span></div>`;
   document.getElementById('ovYearDetail').innerHTML=`<div class="ovd-row"><span class="ovd-label">房租</span><span class="ovd-val">¥${yRent.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">水费</span><span class="ovd-val">¥${yWater.toFixed(2)}</span></div><div class="ovd-row"><span class="ovd-label">电费</span><span class="ovd-val">¥${yElec.toFixed(2)}</span></div>`;
-  // 绑定展开/收起
-  const mw=document.getElementById('ovMonthWrap');const nw=mw.cloneNode(true);mw.parentNode.replaceChild(nw,mw);
-  nw.addEventListener('click',()=>{const d=document.getElementById('ovMonthDetail');const a=document.getElementById('ovMonthArrow');d.style.display=d.style.display==='none'?'block':'none';a.textContent=d.style.display==='none'?'▶':'▼';});
+  // 绑定月租金点击
+  const mw=document.getElementById('ovMonthWrap');
+  mw.onclick=()=>showMonthRentDetail(monthRentList,b.name,selYm);
   const yw=document.getElementById('ovYearWrap');const nyw=yw.cloneNode(true);yw.parentNode.replaceChild(nyw,yw);
   nyw.addEventListener('click',()=>{const d=document.getElementById('ovYearDetail');const a=document.getElementById('ovYearArrow');d.style.display=d.style.display==='none'?'block':'none';a.textContent=d.style.display==='none'?'▶':'▼';});
   // 月支出点击：展开/收起分项
@@ -1549,12 +1556,12 @@ function openMonthWheelPicker(){
   function closeWheel(){overlay.remove();}
   document.getElementById('mpWheelCancel').addEventListener('click',closeWheel);
   document.getElementById('mpWheelClear').addEventListener('click',()=>{
-    _overviewMonth=null;renderOverview();closeWheel();toast('已恢复本月');
+    _overviewMonth=null;renderOverview();renderFloors();closeWheel();toast('已恢复本月');
   });
   document.getElementById('mpWheelConfirm').addEventListener('click',()=>{
     updateSelection();
     const ym=`${selY}-${String(selM).padStart(2,'0')}`;
-    _overviewMonth=ym;renderOverview();closeWheel();toast('已切换到 '+ym);
+    _overviewMonth=ym;renderOverview();renderFloors();closeWheel();toast('已切换到 '+ym);
   });
 }
 
@@ -1852,6 +1859,7 @@ function renderExpList(bid,filterType){
             const amtColor=hasBadge?(e.isPaid?'var(--success)':'#ef4444'):t.color;
             html+=`<div class="exp-swipe-wrap exp-item" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
               <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
+                <button class="exp-action-copy" data-id="${e.id}" style="width:56px;border:none;background:#8b5cf6;color:#fff;font-size:12px;cursor:pointer">复制</button>
                 <button class="exp-action-edit" data-id="${e.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
                 <button class="exp-action-del" data-id="${e.id}" style="width:56px;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer">删除</button>
               </div>
@@ -1965,6 +1973,7 @@ function renderExpList(bid,filterType){
         const amtColor=hasBadge?(e.isPaid?'var(--success)':'#ef4444'):t.color;
         html+=`<div class="exp-swipe-wrap" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
           <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
+            <button class="exp-action-copy" data-id="${e.id}" style="width:56px;border:none;background:#8b5cf6;color:#fff;font-size:12px;cursor:pointer">复制</button>
             <button class="exp-action-edit" data-id="${e.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
             <button class="exp-action-del" data-id="${e.id}" style="width:56px;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer">删除</button>
           </div>
@@ -2013,7 +2022,7 @@ function renderExpList(bid,filterType){
   });
   bindExpListEvents(sec);
 }
-// 公共事件绑定（编辑/删除/点击详情/滑动）
+// 公共事件绑定（复制/编辑/删除/点击详情/滑动）
 function bindExpListEvents(sec){
   sec.querySelectorAll('.exp-swipe-card').forEach(card=>{
     let startX=0,startY=0,swiping=false,moved=false;
@@ -2023,12 +2032,12 @@ function bindExpListEvents(sec){
       const dx=e.touches[0].clientX-startX;
       const dy=e.touches[0].clientY-startY;
       if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)){moved=true;e.preventDefault();}
-      if(Math.abs(dx)>Math.abs(dy)){card.style.transform='translateX('+Math.max(-112,Math.min(0,dx))+'px)';}
+      if(Math.abs(dx)>Math.abs(dy)){card.style.transform='translateX('+Math.max(-168,Math.min(0,dx))+'px)';}
     },{passive:false});
     card.addEventListener('touchend',e=>{
       if(!swiping)return;swiping=false;
       const dx=e.changedTouches[0].clientX-startX;
-      if(dx<-50){card.style.transform='translateX(-112px)';}
+      if(dx<-50){card.style.transform='translateX(-168px)';}
       else{card.style.transform='translateX(0)';}
       if(!moved){editExp(card.dataset.id);}
     });
@@ -2036,12 +2045,25 @@ function bindExpListEvents(sec){
       if(!moved&&'ontouchstart' in window===false){editExp(card.dataset.id);}
     });
   });
+  sec.querySelectorAll('.exp-action-copy').forEach(btn=>{
+    btn.addEventListener('click',e=>{e.stopPropagation();copyExp(btn.dataset.id);});
+  });
   sec.querySelectorAll('.exp-action-edit').forEach(btn=>{
     btn.addEventListener('click',e=>{e.stopPropagation();editExp(btn.dataset.id);});
   });
   sec.querySelectorAll('.exp-action-del').forEach(btn=>{
     btn.addEventListener('click',e=>{e.stopPropagation();if(confirm('确定删除？'))deleteExp(btn.dataset.id);});
   });
+}
+
+function copyExp(id){
+  const ex=(state.expenses||[]).find(e=>e.id===id);if(!ex)return;
+  const newEx=JSON.parse(JSON.stringify(ex));
+  newEx.id='exp'+Date.now()+Math.random().toString(36).slice(2,6);
+  newEx.date=new Date().toISOString().slice(0,10);
+  state.expenses.push(newEx);
+  save();renderExpList(_expBuildingId,_expSingleType);renderAll();
+  toast('已复制记录');
 }
 
 function showArrearsDetail(list,bname){
@@ -2134,6 +2156,37 @@ function showArrearsDetail(list,bname){
   document.getElementById('sheet').classList.add('show');
 }
 
+function showMonthRentDetail(list,bname,ym){
+  const body=document.getElementById('sheetBody');
+  document.getElementById('sheetTitle').textContent=bname+' · '+formatYM(ym)+' 租金明细';
+  const totalRent=list.reduce((s,i)=>s+num(i.calc.rent),0);
+  const totalPaid=list.reduce((s,i)=>s+num(i.calc.actualPaid),0);
+  body.innerHTML=`
+    <div class="section">
+      <div class="section-title">当月租金明细 <span style="font-size:11px;color:var(--text-lighter);font-weight:400;margin-left:6px">共 ${list.length} 个房间</span></div>
+      ${list.map((item,i)=>`
+        <div class="swipe-item-wrap">
+          <div class="swipe-item-content" data-idx="${i}" data-room="${item.key}" style="${item.hasRecord?'':'opacity:.6'}">
+            <div class="mli-header"><span class="mli-month">${item.num2}房 · ${item.tenant||'未命名'}</span><span class="mli-status ${item.calc.actualPaid>0?'paid':'unpaid'}">${item.calc.actualPaid>0?'已缴':'未缴'}</span></div>
+            <div class="mli-detail">租金${money(item.calc.rent)}${item.calc.waterFee>0?' · 水费'+money(item.calc.waterFee):''}${item.calc.elecFee>0?' · 电费'+money(item.calc.elecFee):''}${item.calc.deduction>0?' · 扣除-'+money(item.calc.deduction):''}${item.calc.arrearsRepayment>0?' · 上月欠款+'+money(item.calc.arrearsRepayment):''}</div>
+            <div class="mli-total" style="color:${item.calc.actualPaid>0?'var(--success)':'var(--danger)'}">${item.calc.actualPaid>0?'已收 '+money(item.calc.actualPaid):'应收 '+money(item.calc.total)}</div>
+          </div>
+        </div>
+      `).join('')}
+      <div class="fee-calc" style="margin-top:8px">
+        <div class="fee-calc-row"><span class="fc-label">应收总计</span><span class="fc-value">${money(list.reduce((s,i)=>s+num(i.calc.total),0))}</span></div>
+        <div class="fee-calc-row total"><span class="fc-label">已收总计</span><span class="fc-value" style="color:var(--success)">${money(totalPaid)}</span></div>
+      </div>
+    </div>
+  `;
+  // 点击进入房间
+  body.querySelectorAll('.swipe-item-content').forEach(el=>{
+    el.addEventListener('click',()=>{openRoom(el.dataset.room);});
+  });
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+}
+
 let _lastExpandedFloor=null; // 记录上次展开的楼层
 
 function renderFloors(){
@@ -2167,23 +2220,35 @@ function renderFloors(){
   });
   html+='</div>';
   // 展开的楼层房间（一次只展开一个）
+  const selYm=_overviewMonth||currentYearMonth();
+  const isMonthView=!!_overviewMonth;
   if(_lastExpandedFloor!==null){
     const fd=floorData.find(d=>d.f===_lastExpandedFloor);
     if(fd){
+      const titleExtra=isMonthView?' · '+formatYM(selYm):'';
       html+=`<div class="floor-expanded">
-        <div class="floor-expanded-title"><span class="feb">${fd.f}F</span><span>${fd.f} 楼 · ${fd.occCount}/${fd.totalCount} 入住</span></div>
+        <div class="floor-expanded-title"><span class="feb">${fd.f}F</span><span>${fd.f} 楼 · ${fd.occCount}/${fd.totalCount} 入住${titleExtra}</span></div>
         <div class="rooms-grid">
           ${fd.rooms.map(({num:num2,room})=>{
             const dispStatus=getRoomDisplayStatus(room);
             const s=STATUS_MAP[dispStatus]||STATUS_MAP.empty;
-            let arrearsTotal=getRoomLatestArrears(room);
             const tenantName=room.tenant||'';
             const displayName=tenantName||'空';
             const shortName=displayName.length>3?displayName.slice(0,3):displayName;
             const dn=getRoomDisplayName(room,num2);
+            let topBadge='';
+            if(isMonthView){
+              const md=room.months[selYm];
+              let monthRent=num(room.fixedRent);
+              if(md){const c=calcMonthFee(room,md);monthRent=c.total;}
+              topBadge=`<span class="r-arrears" style="color:var(--primary);background:rgba(59,130,246,.1)">¥${monthRent.toFixed(0)}</span>`;
+            }else{
+              let arrearsTotal=getRoomLatestArrears(room);
+              topBadge=arrearsTotal>0?`<span class="r-arrears">¥${arrearsTotal.toFixed(0)}</span>`:'';
+            }
             return `<div class="room-cell ${s.cls}" data-room="${b.id}-${num2}">
               <span class="r-num">${esc(dn)}</span>
-              ${arrearsTotal>0?`<span class="r-arrears">¥${arrearsTotal.toFixed(0)}</span>`:''}
+              ${topBadge}
               <span class="r-tenant">${esc(shortName)}</span>
             </div>`;
           }).join('')}
@@ -2346,6 +2411,17 @@ function editRepair(id){
   const r=(state.repairs||[]).find(r=>r.id===id);if(!r)return;
   showRepairForm(r);
 }
+function copyRepair(id){
+  const r=(state.repairs||[]).find(x=>x.id===id);if(!r)return;
+  const newR=JSON.parse(JSON.stringify(r));
+  newR.id='rep'+Date.now()+Math.random().toString(36).slice(2,6);
+  newR.requestDate=new Date().toISOString().slice(0,10);
+  newR.repairDate='';
+  newR.isPaid=false;
+  state.repairs.push(newR);
+  save();renderRepairList(_repairBuildingId);renderAll();
+  toast('已复制记录');
+}
 function renderRepairList(bid){
   const sec=document.getElementById('repairListSection');if(!sec)return;
   // 未完成：未填维修日期 OR 未结账；完成的按日期降序；未完成组内也按日期降序
@@ -2430,6 +2506,7 @@ function renderRepairList(bid){
           const repairAmtColor=pending?'#f59e0b':(r.isPaid?'var(--success)':'#ef4444');
           html+=`<div class="exp-swipe-wrap" style="position:relative;overflow:hidden;margin:4px 0;border-radius:8px">
             <div class="exp-swipe-actions" style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch">
+              <button class="exp-action-copy" data-copy="${r.id}" style="width:56px;border:none;background:#8b5cf6;color:#fff;font-size:12px;cursor:pointer">复制</button>
               <button class="exp-action-edit" data-edit="${r.id}" style="width:56px;border:none;background:var(--primary);color:#fff;font-size:12px;cursor:pointer">编辑</button>
               <button class="exp-action-del" data-del="${r.id}" style="width:56px;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer">删除</button>
             </div>
@@ -2476,6 +2553,7 @@ function renderRepairList(bid){
       }
     });
   });
+  sec.querySelectorAll('[data-copy]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();copyRepair(btn.dataset.copy);}));
   sec.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();editRepair(btn.dataset.edit);}));
   sec.querySelectorAll('[data-del]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();deleteRepair(btn.dataset.del);}));
   sec.querySelectorAll('.exp-swipe-card').forEach(card=>{
@@ -2486,12 +2564,12 @@ function renderRepairList(bid){
       const dx=e.touches[0].clientX-startX;
       const dy=e.touches[0].clientY-startY;
       if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)){moved=true;e.preventDefault();}
-      if(Math.abs(dx)>Math.abs(dy)){card.style.transform='translateX('+Math.max(-112,Math.min(0,dx))+'px)';}
+      if(Math.abs(dx)>Math.abs(dy)){card.style.transform='translateX('+Math.max(-168,Math.min(0,dx))+'px)';}
     },{passive:false});
     card.addEventListener('touchend',e=>{
       if(!swiping)return;swiping=false;
       const dx=e.changedTouches[0].clientX-startX;
-      if(dx<-50){card.style.transform='translateX(-112px)';}
+      if(dx<-50){card.style.transform='translateX(-168px)';}
       else{card.style.transform='translateX(0)';}
       if(!moved){editRepair(card.dataset.id);}
     });
@@ -2621,6 +2699,28 @@ function getAllTenants(room){
   if(t.name||t.phone)return [t];
   return [];
 }
+function getAllRoomKeysOfBuilding(bid){
+  const b=getBuilding(bid);if(!b)return [];
+  const keys=[];
+  (b.floors||[]).forEach((floor,fIdx)=>{
+    const f=fIdx+1;
+    for(let r=1;r<=floor.rooms;r++){
+      const key=`${bid}-${f*100+r}`;
+      if(state.rooms[key])keys.push(key);
+    }
+  });
+  return keys;
+}
+function navigateRoom(key,direction){
+  const[b]=key.split('-');
+  const allKeys=getAllRoomKeysOfBuilding(b);
+  const idx=allKeys.indexOf(key);
+  if(idx<0)return;
+  const newIdx=idx+direction;
+  if(newIdx<0||newIdx>=allKeys.length)return;
+  // 先保存当前房间信息（自动保存的逻辑已经有了，这里直接切换）
+  openRoom(allKeys[newIdx]);
+}
 function openRoom(key,archiveIdx){
   currentRoomKey=key;
   currentArchiveIdx=(archiveIdx===undefined||archiveIdx===null)?null:archiveIdx;
@@ -2631,7 +2731,14 @@ function openRoom(key,archiveIdx){
   _lastExpandedFloor=Math.floor(parseInt(num)/100);
   const bld=getBuilding(b);
   const displayName=getRoomDisplayName(room,num);
-  document.getElementById('sheetTitle').innerHTML=`${bld?bld.name:(b+'栋')} <span id="roomNameDisplay" style="cursor:pointer;border-bottom:1px dashed var(--text-lighter)">${esc(displayName)}</span> <span id="roomNameEditBtn" style="cursor:pointer;color:var(--primary);font-size:14px">✏️</span>`;
+  // 计算前后房间
+  const allRoomKeys=getAllRoomKeysOfBuilding(b);
+  const curIdx=allRoomKeys.indexOf(key);
+  const prevKey=curIdx>0?allRoomKeys[curIdx-1]:null;
+  const nextKey=curIdx>=0&&curIdx<allRoomKeys.length-1?allRoomKeys[curIdx+1]:null;
+  const prevBtn=prevKey?`<span class="room-nav-btn" id="btnPrevRoom" title="上一间">◀</span>`:`<span class="room-nav-btn disabled">◀</span>`;
+  const nextBtn=nextKey?`<span class="room-nav-btn" id="btnNextRoom" title="下一间">▶</span>`:`<span class="room-nav-btn disabled">▶</span>`;
+  document.getElementById('sheetTitle').innerHTML=`${prevBtn}<span style="flex:1;text-align:center">${bld?bld.name:(b+'栋')} <span id="roomNameDisplay" style="cursor:pointer;border-bottom:1px dashed var(--text-lighter)">${esc(displayName)}</span> <span id="roomNameEditBtn" style="cursor:pointer;color:var(--primary);font-size:14px">✏️</span></span>${nextBtn}`;
   const body=document.getElementById('sheetBody');
 
   body.innerHTML=`
@@ -2695,6 +2802,11 @@ function openRoom(key,archiveIdx){
 function bindRoomEvents(key){
   const room=state.rooms[key];
   const body=document.getElementById('sheetBody');
+  // 房间左右切换
+  const prevBtn=document.getElementById('btnPrevRoom');
+  const nextBtn=document.getElementById('btnNextRoom');
+  if(prevBtn)prevBtn.addEventListener('click',e=>{e.stopPropagation();navigateRoom(key,-1);});
+  if(nextBtn)nextBtn.addEventListener('click',e=>{e.stopPropagation();navigateRoom(key,1);});
   let _statusManuallySet=false; // 打开房间时重置手动状态标记
   body.querySelectorAll('.pill').forEach(p=>p.addEventListener('click',()=>{
     const newStatus=p.dataset.status;
@@ -3013,6 +3125,7 @@ function renderMonthList(key){
       </div>`;
     return `<div class="swipe-item-wrap">
       <div class="swipe-actions">
+        <button class="sa-copy" data-month="${ym}">复制</button>
         <button class="sa-edit" data-month="${ym}">编辑</button>
         <button class="sa-delete" data-month="${ym}">删除</button>
       </div>
@@ -3038,23 +3151,24 @@ function renderMonthList(key){
       const dx=e.touches[0].clientX-startX,dy=e.touches[0].clientY-startY;
       if(Math.abs(dx)>10||Math.abs(dy)>10)moved=true;
       if(Math.abs(dx)>Math.abs(dy)){
-        const offset=swiped?dx-150:dx;
-        if(offset<0&&offset>-150){el.style.transform=`translateX(${offset}px)`;el.style.transition='none';}
+        const offset=swiped?dx-225:dx;
+        if(offset<0&&offset>-225){el.style.transform=`translateX(${offset}px)`;el.style.transition='none';}
       }
     },{passive:true});
     el.addEventListener('touchend',e=>{
       if(!tracking)return;tracking=false;
       const dx=e.changedTouches[0].clientX-startX;
       el.style.transition='';
-      if(!swiped&&dx<-50){el.classList.add('swiped');swiped=true;}
-      else if(swiped&&dx>-50){el.classList.remove('swiped');swiped=false;el.style.transform='';}
+      if(!swiped&&dx<-50){el.classList.add('swiped3');swiped=true;}
+      else if(swiped&&dx>-50){el.classList.remove('swiped3');swiped=false;el.style.transform='';}
       else{el.style.transform='';}
     });
     el.addEventListener('click',ev=>{
-      if(swiped){el.classList.remove('swiped');swiped=false;el.style.transform='';return;}
+      if(swiped){el.classList.remove('swiped3');swiped=false;el.style.transform='';return;}
       openMonthEdit(key,el.dataset.month);
     });
   });
+  container.querySelectorAll('.sa-copy').forEach(btn=>btn.addEventListener('click',()=>copyMonth(key,btn.dataset.month)));
   container.querySelectorAll('.sa-edit').forEach(btn=>btn.addEventListener('click',()=>openMonthEdit(key,btn.dataset.month)));
   container.querySelectorAll('.sa-delete').forEach(btn=>btn.addEventListener('click',()=>{
     if(!confirm('确定删除 '+formatYM(btn.dataset.month)+' 的记录？'))return;
@@ -3249,6 +3363,25 @@ function saveMonth(key){
   save();renderMonthList(key);renderAll();closeMonthSheet();toast('保存成功');
 }
 function deleteMonth(key){if(!confirm('确定删除该月记录？'))return;const ym=val('monthYm');delete state.rooms[key].months[ym];save();renderMonthList(key);renderAll();closeMonthSheet();toast('已删除');}
+
+function copyMonth(key,ym){
+  const room=state.rooms[key];if(!room||!room.months[ym])return;
+  const[y,m]=ym.split('-').map(n=>parseInt(n));
+  let nextY=y,nextM=m+1;if(nextM>12){nextM=1;nextY++;}
+  const nextYm=nextY+'-'+String(nextM).padStart(2,'0');
+  if(room.months[nextYm]){if(!confirm(formatYM(nextYm)+' 已有记录，是否覆盖？'))return;}
+  room.months[nextYm]=JSON.parse(JSON.stringify(room.months[ym]));
+  // 自动结转：下月的上月欠款 = 本月剩余欠费
+  const curCalc=calcMonthFee(room,room.months[ym]);
+  if(curCalc.arrearsLeft>0){room.months[nextYm].arrearsRepayment=String(curCalc.arrearsLeft);}
+  // 下月的水表/电表上月读数 = 本月的本月读数
+  if(room.months[ym].waterCurr!==undefined&&room.months[ym].waterCurr!==''){room.months[nextYm].waterPrev=room.months[ym].waterCurr;room.months[nextYm].waterCurr='';}
+  if(room.months[ym].electricCurr!==undefined&&room.months[ym].electricCurr!==''){room.months[nextYm].electricPrev=room.months[ym].electricCurr;room.months[nextYm].electricCurr='';}
+  // 重置实际缴费和缴费状态
+  room.months[nextYm].actualPaid='0';
+  delete room.months[nextYm].paid;
+  save();renderMonthList(key);renderAll();toast('已复制到 '+formatYM(nextYm));
+}
 function closeMonthSheet(){
   const ms=document.getElementById('monthSheet');
   if(!ms.classList.contains('show'))return;
