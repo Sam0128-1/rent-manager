@@ -227,6 +227,13 @@
   .room-occupied{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
   .room-unpaid{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
   .room-maintenance{background:#fefce8;color:#a16207;border-color:#fde68a}
+  .room-paid-month{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+  .room-paid-month .r-arrears{color:#1d4ed8}
+  .room-unpaid-month{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+  .room-unpaid-month .r-arrears{color:#b91c1c}
+  .room-empty-month{background:#f1f5f9;color:#94a3b8;border-color:#cbd5e1}
+  .room-empty-month .r-tenant{color:#94a3b8}
+  .r-month-amt{font-size:14px;font-weight:700;margin:2px 0}
 
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:210;display:none;opacity:0;transition:opacity .15s}
   .overlay.show{display:block;opacity:1}
@@ -2237,16 +2244,30 @@ function renderFloors(){
             const shortName=displayName.length>3?displayName.slice(0,3):displayName;
             const dn=getRoomDisplayName(room,num2);
             let topBadge='';
+            let roomCls=s.cls;
             if(isMonthView){
               const md=room.months[selYm];
               let monthRent=num(room.fixedRent);
-              if(md){const c=calcMonthFee(room,md);monthRent=c.total;}
-              topBadge=`<span class="r-arrears" style="color:var(--primary);background:rgba(59,130,246,.1)">¥${monthRent.toFixed(0)}</span>`;
+              let isPaidMonth=false;
+              if(md){const c=calcMonthFee(room,md);monthRent=c.total;isPaidMonth=c.paid;}
+              if(room.status==='empty'||room.status==='maintenance'){
+                // 空置/维修房间：灰色
+                roomCls='room-empty-month';
+              }else if(isPaidMonth){
+                // 已缴：蓝色
+                roomCls='room-paid-month';
+              }else{
+                // 未缴：红色
+                roomCls='room-unpaid-month';
+              }
+              if(room.status!=='empty'&&room.status!=='maintenance'){
+                topBadge=`<span class="r-arrears r-month-amt">¥${monthRent.toFixed(0)}</span>`;
+              }
             }else{
               let arrearsTotal=getRoomLatestArrears(room);
               topBadge=arrearsTotal>0?`<span class="r-arrears">¥${arrearsTotal.toFixed(0)}</span>`:'';
             }
-            return `<div class="room-cell ${s.cls}" data-room="${b.id}-${num2}">
+            return `<div class="room-cell ${roomCls}" data-room="${b.id}-${num2}">
               <span class="r-num">${esc(dn)}</span>
               ${topBadge}
               <span class="r-tenant">${esc(shortName)}</span>
